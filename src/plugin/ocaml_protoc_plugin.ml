@@ -21,6 +21,6 @@ let write response =
 
 let () =
   let request = read () in
-  Emit.parse request;
+  Emit.parse_request request;
   let response = Spec.Plugin.default_code_generator_response () in
   write response

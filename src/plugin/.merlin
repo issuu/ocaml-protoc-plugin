@@ -19,7 +19,7 @@ B /home/afu/.opam/4.07.1/lib/parsexp
 B /home/afu/.opam/4.07.1/lib/ppx_assert/runtime-lib
 B /home/afu/.opam/4.07.1/lib/ppx_bench/runtime-lib
 B /home/afu/.opam/4.07.1/lib/ppx_compare/runtime-lib
-B /home/afu/.opam/4.07.1/lib/ppx_deriving
+B /home/afu/.opam/4.07.1/lib/ppx_deriving/runtime
 B /home/afu/.opam/4.07.1/lib/ppx_deriving_protobuf
 B /home/afu/.opam/4.07.1/lib/ppx_enumerate/runtime-lib
 B /home/afu/.opam/4.07.1/lib/ppx_expect/collector
@@ -62,7 +62,7 @@ S /home/afu/.opam/4.07.1/lib/parsexp
 S /home/afu/.opam/4.07.1/lib/ppx_assert/runtime-lib
 S /home/afu/.opam/4.07.1/lib/ppx_bench/runtime-lib
 S /home/afu/.opam/4.07.1/lib/ppx_compare/runtime-lib
-S /home/afu/.opam/4.07.1/lib/ppx_deriving
+S /home/afu/.opam/4.07.1/lib/ppx_deriving/runtime
 S /home/afu/.opam/4.07.1/lib/ppx_deriving_protobuf
 S /home/afu/.opam/4.07.1/lib/ppx_enumerate/runtime-lib
 S /home/afu/.opam/4.07.1/lib/ppx_expect/collector

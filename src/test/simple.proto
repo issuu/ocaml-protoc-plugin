@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+
+enum Enum {
+    Test1 = 0;
+    Test2 = 1;
+}
+
+message A {
+  B b = 1;
+}
+
+message B {
+  A a = 1;
+}
+
+message C {
+  C c = 1;
+}

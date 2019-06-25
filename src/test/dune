@@ -1,15 +1,6 @@
 (executable
  (name        test))
 
-(rule
- (targets plugin.ml)
- (deps
-  (:proto /usr/include/google/protobuf/compiler/plugin.proto)
-  (:plugin ../../src/plugin/ocaml_protoc_plugin.exe)
- )
- (action (run protoc -I /usr/include/ --plugin=protoc-gen-ocaml=%{plugin} --ocaml_out . %{proto}))
-)
-
 (alias
  (name   runtest)
  (action (run ./test.exe)))
