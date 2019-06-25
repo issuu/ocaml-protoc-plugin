@@ -11,7 +11,6 @@ open Core
    Relative types are prefixed with '.'
 *)
 
-
 (* Remember to mangle reserved keywords *)
 let type_name name =
   String.uncapitalize (Option.value_exn name)
@@ -48,8 +47,12 @@ module Code = struct
   let push t name =
     t.path <- name :: t.path
 
-  let pop t =
-    t.path = List.tl_exn t.path
+  let pop t name =
+    match t.path with
+    | p :: ps when String.equal p name ->
+      t.path <- ps
+    | [] -> failwith "Cannot pop empty scope"
+    | _ -> failwith "Cannot pop wrong scope"
 
   let make_reference_name t = function
     | Some name -> begin
@@ -112,6 +115,17 @@ let emit_enum_type t Spec.Descriptor.{ name;
   Code.emit t `End "end";
   ()
 
+(* Message type should have a name a signature and an implementation. These should then be declared recursivly.
+   But at this point its not possible to join them.
+
+   Also inner modules needs to be declared in the outer module. So inner signatures needs to be returned to the outer.
+   If we create a code peice for the inner signature, it should be ok, as it will contain all inner signatures recursivly.
+
+   The implementation should also be carried to the outer level in the same manner.
+
+   Service descriptions should be a functor over the io monad.
+
+*)
 
 let rec emit_message_type t Spec.Descriptor.{ name;
                                               field = fields;
@@ -203,8 +217,12 @@ let parse_proto_file t { Spec.Descriptor.name;
     (to_string_opt syntax)
     (List.length enum_types)
   ;
+  let path = String.split ~on:'.' (Option.value ~default:"" package) in
+  List.iter ~f:(Code.push t) path;
   List.iter ~f:(emit_enum_type t) enum_types;
   List.iter ~f:(emit_message_type t) message_types;
+  (* pop the path again *)
+  List.iter ~f:(Code.pop t) (List.rev path);
   ()
 
 let parse_request { Spec.Plugin.file_to_generate; parameter; proto_file; compiler_version=_ } =

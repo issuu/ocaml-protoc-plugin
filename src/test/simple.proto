@@ -1,6 +1,8 @@
 syntax = "proto3";
 
 
+package pack.age;
+
 enum Enum {
     Test1 = 0;
     Test2 = 1;
