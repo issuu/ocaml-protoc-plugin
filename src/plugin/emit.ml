@@ -9,7 +9,22 @@ open Core
 
    We need to track the path for all types, as they seem to be fully qualified.
    Relative types are prefixed with '.'
+
+   Service functions could be implemented as simple as:
+   module Service = sig
+     val name: string
+     type request = ...
+     type response = ...
+     val encode_request: request -> string
+     val decode_request: string -> request result
+     val encode_response: response -> string
+     val decode_response: string -> response result
+   end
+
+   User code could then implement something like:
+   val create_service: (module F : Service_type) -> ~handler:(F.request -> F.response Deferred.Result.t) -> string -> string Deferred.Result.t
 *)
+
 
 (* Remember to mangle reserved keywords *)
 let type_name name =

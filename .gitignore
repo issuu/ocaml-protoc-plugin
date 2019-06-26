@@ -1,2 +1,3 @@
 _build
 ocaml-protoc-plugin.install
+.merlin
