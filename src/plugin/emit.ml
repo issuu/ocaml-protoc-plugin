@@ -75,7 +75,7 @@ module Code = struct
         | "" :: xs ->
           let rec inner = function
             | x :: xs, y :: ys when String.equal x y -> inner (xs, ys)
-            | xs, _ -> List.map ~f:String.capitalize xs |> String.concat ~sep:"." |> sprintf "%s.t"
+            | xs, _ -> List.map ~f:String.capitalize xs |> List.map ~f:(sprintf "%s.") |> String.concat ~sep:"." |> sprintf "%st"
           in
           inner (xs, List.rev t.path)
         | _ -> failwith "Expected name to start with a '.'"
@@ -190,6 +190,8 @@ let rec emit_message_type t Spec.Descriptor.{ name;
   in
 
   Code.emit t `Begin "module rec %s : sig" (module_name name);
+  Code.push t (module_name name);
+
   List.iter ~f:(emit_enum_type t) enum_types;
   List.iter ~f:(emit_message_type t) nested_types;
   let () = match fields with
@@ -210,6 +212,7 @@ let rec emit_message_type t Spec.Descriptor.{ name;
       Code.emit t `End  "}"
   in
   Code.emit t `End "end";
+  Code.pop t (module_name name);
   ()
 
 
