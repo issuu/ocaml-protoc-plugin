@@ -38,38 +38,34 @@ let module_name name =
 let field_name name =
   String.uncapitalize (Option.value_exn name)
 
+let constructor_name { Spec.Descriptor.name; number = _; options = _} =
+  String.capitalize (Option.value_exn name)
 
 
 let to_string_opt = function
   | Some s -> s
   | None -> "<None>"
 
-(** Imperative construct to hold emitted code. It also holds the current path. *)
-module Code = struct
-  type t = {
-    mutable indent: string;
-    mutable code: string list;
-    filename : string;
-    mutable path : string list;
-  }
-  let init filename = {
-    indent = "";
-    code = [];
-    filename;
-    path = [];
-  }
 
-  let push t name =
-    t.path <- name :: t.path
+module Scope = struct
+  type t = string list
 
-  let pop t name =
-    match t.path with
+  let init ~package =
+    match package with
+    | Some package ->
+      String.split ~on:'.' package |> List.rev
+    | None -> []
+
+  let push t name : t = name :: t
+
+  let pop t name : t =
+    match t with
     | p :: ps when String.equal p name ->
-      t.path <- ps
+      ps
     | [] -> failwith "Cannot pop empty scope"
     | _ -> failwith "Cannot pop wrong scope"
 
-  let make_reference_name t = function
+  let get_scoped_name t = function
     | Some name -> begin
         match String.split ~on:'.' name with
         | "" :: xs ->
@@ -77,11 +73,24 @@ module Code = struct
             | x :: xs, y :: ys when String.equal x y -> inner (xs, ys)
             | xs, _ -> List.map ~f:String.capitalize xs |> List.map ~f:(sprintf "%s.") |> String.concat ~sep:"." |> sprintf "%st"
           in
-          inner (xs, List.rev t.path)
+          inner (xs, List.rev t)
         | _ -> failwith "Expected name to start with a '.'"
       end
     | None -> failwith "Does not contain a name"
+end
 
+(** Imperative construct to hold emitted code. It also holds the current path. *)
+module Code = struct
+  type t = {
+    mutable indent: string;
+    mutable code: string list;
+    filename : string;
+  }
+  let init filename = {
+    indent = "";
+    code = [];
+    filename;
+  }
 
   let incr t =
     t.indent <- "  " ^ t.indent
@@ -120,9 +129,6 @@ let emit_enum_type t Spec.Descriptor.{ name;
                                        options = _;
                                        reserved_range = _;
                                        reserved_name = _ } =
-  let constructor_name { Spec.Descriptor.name; number = _; options = _} =
-    String.capitalize (Option.value_exn name)
-  in
 
   Code.emit t `Begin "module %s = struct" (module_name name);
   Code.emit t `None "type t = %s"
@@ -141,8 +147,42 @@ let emit_enum_type t Spec.Descriptor.{ name;
    Service descriptions should be a functor over the io monad.
 
 *)
+let emit_field t scope Spec.Descriptor.{ name;
+                                         number = _;
+                                         label = _;
+                                         type_;
+                                         type_name = t_name;
+                                         extendee = _; (* Extensions are not supported *)
+                                         default_value = _;
+                                         oneof_index = _;
+                                         json_name = _;
+                                         options = _;
+                                       } =
+  let type_spec =
+    match Option.value_exn type_ with
+    | Spec.Descriptor.Type_double
+    | Spec.Descriptor.Type_float -> "float"
+    | Spec.Descriptor.Type_int64
+    | Spec.Descriptor.Type_uint64
+    | Spec.Descriptor.Type_int32
+    | Spec.Descriptor.Type_fixed64
+    | Spec.Descriptor.Type_fixed32
+    | Spec.Descriptor.Type_sfixed32
+    | Spec.Descriptor.Type_sfixed64
+    | Spec.Descriptor.Type_sint32
+    | Spec.Descriptor.Type_sint64
+    | Spec.Descriptor.Type_uint32 -> "int"
+    | Spec.Descriptor.Type_bool -> "bool"
+    | Spec.Descriptor.Type_string -> "string"
+    | Spec.Descriptor.Type_group -> failwith "Deprecated"
+    | Spec.Descriptor.Type_message ->  Scope.get_scoped_name scope t_name ^ " option"
+    | Spec.Descriptor.Type_bytes -> "bytes"
+    | Spec.Descriptor.Type_enum -> Scope.get_scoped_name scope t_name
+  in
+  Code.emit t `None "%s: %s;" (field_name name) (type_spec)
 
-let rec emit_message_type t Spec.Descriptor.{ name;
+(* This should return: (module name, sig, impl) *)
+let rec emit_message_type t scope Spec.Descriptor.{ name;
                                               field = fields;
                                               extension = _;
                                               nested_type = nested_types;
@@ -153,66 +193,29 @@ let rec emit_message_type t Spec.Descriptor.{ name;
                                               reserved_range = _;
                                               reserved_name = _;
                                             } =
-
-  let emit_field t Spec.Descriptor.{ name;
-                                     number = _;
-                                     label = _;
-                                     type_;
-                                     type_name = t_name;
-                                     extendee = _; (* Extensions are not supported *)
-                                     default_value = _;
-                                     oneof_index = _;
-                                     json_name = _;
-                                     options = _;
-                                   } =
-    let type_spec =
-      match Option.value_exn type_ with
-      | Spec.Descriptor.Type_double
-      | Spec.Descriptor.Type_float -> "float"
-      | Spec.Descriptor.Type_int64
-      | Spec.Descriptor.Type_uint64
-      | Spec.Descriptor.Type_int32
-      | Spec.Descriptor.Type_fixed64
-      | Spec.Descriptor.Type_fixed32
-      | Spec.Descriptor.Type_sfixed32
-      | Spec.Descriptor.Type_sfixed64
-      | Spec.Descriptor.Type_sint32
-      | Spec.Descriptor.Type_sint64
-      | Spec.Descriptor.Type_uint32 -> "int"
-      | Spec.Descriptor.Type_bool -> "bool"
-      | Spec.Descriptor.Type_string -> "string"
-      | Spec.Descriptor.Type_group -> failwith "Unhandled"
-      | Spec.Descriptor.Type_message ->  Code.make_reference_name t t_name ^ " option"
-      | Spec.Descriptor.Type_bytes -> "bytes"
-      | Spec.Descriptor.Type_enum -> Code.make_reference_name t t_name
-    in
-    Code.emit t `None "%s: %s;" (field_name name) (type_spec)
-  in
-
   Code.emit t `Begin "module rec %s : sig" (module_name name);
-  Code.push t (module_name name);
+  let scope = Scope.push scope (module_name name) in
 
   List.iter ~f:(emit_enum_type t) enum_types;
-  List.iter ~f:(emit_message_type t) nested_types;
+  List.iter ~f:(emit_message_type t scope) nested_types;
   let () = match fields with
     | [] -> ()
     | fields ->
       Code.emit t `Begin "type t = {";
-      List.iter ~f:(emit_field t) fields;
+      List.iter ~f:(emit_field t scope) fields;
       Code.emit t `End  "}"
   in
   Code.emit t `EndBegin "end = struct";
   List.iter ~f:(emit_enum_type t) enum_types;
-  List.iter ~f:(emit_message_type t) nested_types;
+  List.iter ~f:(emit_message_type t scope) nested_types;
   let () = match fields with
     | [] -> ()
     | fields ->
       Code.emit t `Begin "type t = {";
-      List.iter ~f:(emit_field t) fields;
+      List.iter ~f:(emit_field t scope) fields;
       Code.emit t `End  "}"
   in
   Code.emit t `End "end";
-  Code.pop t (module_name name);
   ()
 
 
@@ -235,12 +238,9 @@ let parse_proto_file t { Spec.Descriptor.name;
     (to_string_opt syntax)
     (List.length enum_types)
   ;
-  let path = String.split ~on:'.' (Option.value ~default:"" package) in
-  List.iter ~f:(Code.push t) path;
+  let scope = Scope.init ~package in
   List.iter ~f:(emit_enum_type t) enum_types;
-  List.iter ~f:(emit_message_type t) message_types;
-  (* pop the path again *)
-  List.iter ~f:(Code.pop t) (List.rev path);
+  List.iter ~f:(emit_message_type t scope) message_types;
   ()
 
 let parse_request { Spec.Plugin.file_to_generate; parameter; proto_file; compiler_version=_ } =
