@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 
-package pack.age;
+package outer_package.inner_package;
 
 enum Enum {
     Test1 = 0;

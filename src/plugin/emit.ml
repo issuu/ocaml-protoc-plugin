@@ -25,7 +25,6 @@ open Core
    val create_service: (module F : Service_type) -> ~handler:(F.request -> F.response Deferred.Result.t) -> string -> string Deferred.Result.t
 *)
 
-
 (* Remember to mangle reserved keywords *)
 let type_name name =
   String.uncapitalize (Option.value_exn name)
@@ -46,95 +45,29 @@ let to_string_opt = function
   | Some s -> s
   | None -> "<None>"
 
+(** Slightly overloaded name here. Its also used for all other types which would go into a module *)
+type message = { module_name: string;
+                 signature: Code.t;
+                 implementation: Code.t;
+               }
 
-module Scope = struct
-  type t = string list
-
-  let init ~package =
-    match package with
-    | Some package ->
-      String.split ~on:'.' package |> List.rev
-    | None -> []
-
-  let push t name : t = name :: t
-
-  let pop t name : t =
-    match t with
-    | p :: ps when String.equal p name ->
-      ps
-    | [] -> failwith "Cannot pop empty scope"
-    | _ -> failwith "Cannot pop wrong scope"
-
-  let get_scoped_name t = function
-    | Some name -> begin
-        match String.split ~on:'.' name with
-        | "" :: xs ->
-          let rec inner = function
-            | x :: xs, y :: ys when String.equal x y -> inner (xs, ys)
-            | xs, _ -> List.map ~f:String.capitalize xs |> List.map ~f:(sprintf "%s.") |> String.concat ~sep:"." |> sprintf "%st"
-          in
-          inner (xs, List.rev t)
-        | _ -> failwith "Expected name to start with a '.'"
-      end
-    | None -> failwith "Does not contain a name"
-end
-
-(** Imperative construct to hold emitted code. It also holds the current path. *)
-module Code = struct
-  type t = {
-    mutable indent: string;
-    mutable code: string list;
-    filename : string;
-  }
-  let init filename = {
-    indent = "";
-    code = [];
-    filename;
-  }
-
-  let incr t =
-    t.indent <- "  " ^ t.indent
-
-  let decr t =
-    t.indent <- String.chop_prefix_exn ~prefix:"  " t.indent
-
-  let emit t indent fmt =
-    let emit s =
-      match indent with
-      | `Begin ->
-        t.code <- (t.indent ^ s) :: t.code;
-        incr t;
-      | `None->
-        t.code <- (t.indent ^ s) :: t.code
-      | `End ->
-        decr t;
-        t.code <- (t.indent ^ s) :: t.code
-      | `EndBegin ->
-        t.code <- (String.chop_prefix_exn ~prefix:"  " t.indent ^ s) :: t.code
-    in
-    Printf.ksprintf emit fmt
-
-  let dump t =
-    eprintf "===============\n";
-    eprintf "File: %s\n" t.filename;
-    List.iter ~f:(eprintf "%s\n") (List.rev t.code);
-    eprintf "===============\n";
-    ()
-end
 
 let log fmt = eprintf (fmt ^^ "\n%!")
 
-let emit_enum_type t Spec.Descriptor.{ name;
-                                       value;
-                                       options = _;
-                                       reserved_range = _;
-                                       reserved_name = _ } =
-
-  Code.emit t `Begin "module %s = struct" (module_name name);
+let emit_enum_type Spec.Descriptor.{ name;
+                                     value;
+                                     options = _;
+                                     reserved_range = _;
+                                     reserved_name = _ } : message =
+  let module_name = module_name name in
+  let signature = Code.init () in
+  let implementation = Code.init () in
+  let t = Code.init () in
   Code.emit t `None "type t = %s"
     (List.map ~f:constructor_name value |> String.concat ~sep:" | ");
-  Code.emit t `End "end";
-  ()
+  Code.append signature t;
+  Code.append implementation t;
+  { module_name; signature; implementation }
 
 (* Message type should have a name a signature and an implementation. These should then be declared recursivly.
    But at this point its not possible to join them.
@@ -182,22 +115,52 @@ let emit_field t scope Spec.Descriptor.{ name;
   Code.emit t `None "%s: %s;" (field_name name) (type_spec)
 
 (* This should return: (module name, sig, impl) *)
-let rec emit_message_type t scope Spec.Descriptor.{ name;
-                                              field = fields;
-                                              extension = _;
-                                              nested_type = nested_types;
-                                              enum_type = enum_types;
-                                              extension_range = _;
-                                              oneof_decl = _;
-                                              options = _;
-                                              reserved_range = _;
-                                              reserved_name = _;
-                                            } =
-  Code.emit t `Begin "module rec %s : sig" (module_name name);
-  let scope = Scope.push scope (module_name name) in
+let rec emit_message_type scope Spec.Descriptor.{ name;
+                                                  field = fields;
+                                                  extension = _;
+                                                  nested_type = nested_types;
+                                                  enum_type = enum_types;
+                                                  extension_range = _;
+                                                  oneof_decl = _;
+                                                  options = _;
+                                                  reserved_range = _;
+                                                  reserved_name = _;
+                                                } : message =
 
-  List.iter ~f:(emit_enum_type t) enum_types;
-  List.iter ~f:(emit_message_type t scope) nested_types;
+  let rec emit_nested_types ~signature ~implementation ?(is_first=true) nested_types =
+    let emit_sub dest { module_name; signature; implementation } ~is_first ~is_implementation =
+      let () = match is_first with
+        | true ->
+          Code.emit dest `Begin "module rec %s : sig" module_name;
+        | false ->
+          Code.emit dest `Begin "and %s : sig" module_name;
+      in
+      Code.append dest signature;
+      let () = match is_implementation with
+        | false -> ()
+        | true ->
+          Code.emit dest `EndBegin "end = struct ";
+          Code.append dest implementation
+      in
+      Code.emit dest `End "end";
+      ()
+    in
+    match nested_types with
+    | [] -> ()
+    | sub :: subs ->
+      emit_sub signature ~is_first ~is_implementation:false sub;
+      emit_sub implementation ~is_first ~is_implementation:true sub;
+      emit_nested_types ~signature ~implementation ~is_first:false subs
+  in
+
+  let signature = Code.init () in
+  let implementation = Code.init () in
+  let module_name = module_name name in
+  let scope = Scope.push scope module_name in
+  List.map ~f:emit_enum_type enum_types @ List.map ~f:(emit_message_type scope) nested_types
+  |> emit_nested_types ~signature ~implementation;
+
+  let t = Code.init () in
   let () = match fields with
     | [] -> ()
     | fields ->
@@ -205,50 +168,56 @@ let rec emit_message_type t scope Spec.Descriptor.{ name;
       List.iter ~f:(emit_field t scope) fields;
       Code.emit t `End  "}"
   in
-  Code.emit t `EndBegin "end = struct";
-  List.iter ~f:(emit_enum_type t) enum_types;
-  List.iter ~f:(emit_message_type t scope) nested_types;
-  let () = match fields with
-    | [] -> ()
-    | fields ->
-      Code.emit t `Begin "type t = {";
-      List.iter ~f:(emit_field t scope) fields;
-      Code.emit t `End  "}"
-  in
-  Code.emit t `End "end";
-  ()
+
+  Code.append signature t;
+  Code.append implementation t;
+  { module_name; signature; implementation }
 
 
-let parse_proto_file t { Spec.Descriptor.name;
-                         package = package;
-                         dependency = _;
-                         public_dependency = _;
-                         weak_dependency = _;
-                         message_type = message_types;
-                         enum_type = enum_types;
-                         service = _;
-                         extension = _;
-                         options = _;
-                         source_code_info = _;
-                         syntax;
-                       } =
+
+let parse_proto_file { Spec.Descriptor.name;
+                       package = package;
+                       dependency = _;
+                       public_dependency = _;
+                       weak_dependency = _;
+                       message_type = message_types;
+                       enum_type = enum_types;
+                       service = _;
+                       extension = _;
+                       options = _;
+                       source_code_info = _;
+                       syntax;
+                     } =
   log "parse_proto_file: Name = %s. Package=%s, syntax=%s. enums: %d"
     (to_string_opt name)
     (to_string_opt package)
     (to_string_opt syntax)
     (List.length enum_types)
   ;
-  let scope = Scope.init ~package in
-  List.iter ~f:(emit_enum_type t) enum_types;
-  List.iter ~f:(emit_message_type t scope) message_types;
-  ()
+
+  (* Artificially create messages to emulate package scope *)
+  let message_type =
+    Option.value_map ~default:[] ~f:(String.split ~on:'.') package
+    |> (fun l -> "" :: l)
+    |> List.rev
+    |> List.fold_left
+         ~init:(message_types, enum_types)
+         ~f:(fun (nested_types, enum_types) name ->
+           eprintf "Enclose in module: %s (%d)\n" name (List.length nested_types);
+           let message_type = Spec.Descriptor.default_descriptor_proto ~name:(Some name) ~nested_type:nested_types ~enum_type:enum_types () in
+           ([message_type], [])
+         )
+    |> function ([message_type], []) -> message_type
+              | _ -> failwith "Invariant broken"
+  in
+  let scope = Scope.init () in
+  let { module_name = _; signature = _; implementation } = emit_message_type scope message_type in
+  implementation
 
 let parse_request { Spec.Plugin.file_to_generate; parameter; proto_file; compiler_version=_ } =
   log "Request to parse proto_files: %s. Parameter: %s"
     (String.concat ~sep:"; " file_to_generate)
     (Option.value ~default:"<None>" parameter);
 
-  let t = Code.init "some file" in
-  List.iter ~f:(parse_proto_file t) proto_file;
-  Code.dump t;
-  ()
+  List.map ~f:parse_proto_file proto_file
+  |> List.iter ~f:(Code.dump)
