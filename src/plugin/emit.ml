@@ -128,7 +128,7 @@ let rec emit_message_type scope Spec.Descriptor.{ name;
                                                 } : message =
 
   let rec emit_nested_types ~signature ~implementation ?(is_first=true) nested_types =
-    let emit_sub dest { module_name; signature; implementation } ~is_first ~is_implementation =
+    let emit_sub dest ~is_implementation ~is_first { module_name; signature; implementation } =
       let () = match is_first with
         | true ->
           Code.emit dest `Begin "module rec %s : sig" module_name;
@@ -148,8 +148,8 @@ let rec emit_message_type scope Spec.Descriptor.{ name;
     match nested_types with
     | [] -> ()
     | sub :: subs ->
-      emit_sub signature ~is_first ~is_implementation:false sub;
-      emit_sub implementation ~is_first ~is_implementation:true sub;
+      emit_sub ~is_implementation:false signature ~is_first sub;
+      emit_sub ~is_implementation:true implementation ~is_first sub;
       emit_nested_types ~signature ~implementation ~is_first:false subs
   in
 
