@@ -17,10 +17,14 @@ let get_scoped_name t = function
       match String.split ~on:'.' name with
       | "" :: xs ->
         let rec inner = function
-          | x :: xs, y :: ys when String.equal x y -> inner (xs, ys)
+          | x :: xs, y :: ys when String.Caseless.equal x y -> inner (xs, ys)
           | xs, _ -> List.map ~f:String.capitalize xs |> List.map ~f:(sprintf "%s.") |> String.concat ~sep:"" |> sprintf "%st"
         in
         inner (xs, List.rev t)
       | _ -> failwith "Expected name to start with a '.'"
     end
   | None -> failwith "Does not contain a name"
+
+
+let get_current_scope t =
+  String.concat ~sep:"." (List.rev t)

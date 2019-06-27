@@ -23,11 +23,35 @@ open Core
 
    User code could then implement something like:
    val create_service: (module F : Service_type) -> ~handler:(F.request -> F.response Deferred.Result.t) -> string -> string Deferred.Result.t
+
+
+   Oneof types are mapped to polymorphic types:
+
+   message X {
+     oneof oneof_field {
+       int32 field1 = 1;
+     };
+     int32 field2 = 2;
+   };
+
+   module X = struct
+     type t = {
+       oneof_field : [ `field1 of int ]
+       field2 : int;
+     }
 *)
 
-(* Remember to mangle reserved keywords *)
-let type_name name =
-  String.uncapitalize (Option.value_exn name)
+(** Taken from: https://caml.inria.fr/pub/docs/manual-ocaml/lex.html *)
+let is_reserved = function
+  | "and" | "as" | "assert" | "asr" | "begin" | "class" | "constraint" | "do"
+  | "done" | "downto" | "else" | "end" | "exception" | "external" | "false"
+  | "for" | "fun" | "function" | "functor" | "if" | "in" | "include" | "inherit"
+  | "initializer" | "land" | "lazy" | "let" | "lor" | "lsl" | "lsr" | "lxor" | "match"
+  | "method" | "mod" | "module" | "mutable" | "new" | "nonrec" | "object" | "of" | "open"
+  | "or" | "private" | "rec" | "sig" | "struct" | "then" | "to" | "true" | "try" | "type"
+  | "val" | "virtual" | "when" | "while" | "with" -> true
+  | "from_proto" | "to_proto" -> true
+  | _ -> false
 
 (* Remember to mangle reserved keywords *)
 let module_name name =
@@ -35,7 +59,9 @@ let module_name name =
 
 (* Remember to mangle reserved keywords *)
 let field_name name =
-  String.uncapitalize (Option.value_exn name)
+  match String.uncapitalize (Option.value_exn name) with
+  | name when is_reserved name -> name ^ "'"
+  | name -> name
 
 let constructor_name { Spec.Descriptor.name; number = _; options = _} =
   String.capitalize (Option.value_exn name)
@@ -121,11 +147,16 @@ let rec emit_message_type scope Spec.Descriptor.{ name;
                                                   nested_type = nested_types;
                                                   enum_type = enum_types;
                                                   extension_range = _;
-                                                  oneof_decl = _;
+                                                  oneof_decl;
                                                   options = _;
                                                   reserved_range = _;
                                                   reserved_name = _;
                                                 } : message =
+
+
+  (* Filter fields which are part of the oneofs *)
+
+  let _oneof = List.hd oneof_decl in
 
   let rec emit_nested_types ~signature ~implementation ?(is_first=true) nested_types =
     let emit_sub dest ~is_implementation ~is_first { module_name; signature; implementation } =
@@ -155,8 +186,15 @@ let rec emit_message_type scope Spec.Descriptor.{ name;
 
   let signature = Code.init () in
   let implementation = Code.init () in
-  let module_name = module_name name in
-  let scope = Scope.push scope module_name in
+  (* Ignore empty modules *)
+  let module_name, scope = match name with
+    | None | Some "" ->
+      "", scope
+    | Some _ ->
+      let module_name = module_name name in
+      module_name, Scope.push scope module_name
+  in
+  eprintf "Current scope in %s: %s\n" module_name (Scope.get_current_scope scope);
   List.map ~f:emit_enum_type enum_types @ List.map ~f:(emit_message_type scope) nested_types
   |> emit_nested_types ~signature ~implementation;
 

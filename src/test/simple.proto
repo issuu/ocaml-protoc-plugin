@@ -11,6 +11,7 @@ enum Enum {
 message A {
   B b = 1;
   A a = 2;
+  int32 x = 3;
 }
 
 message B {
@@ -18,5 +19,14 @@ message B {
 }
 
 message C {
-  C c = 1;
+  int32 type_1 = 100;
+  oneof type {
+    C field1 = 2;
+    C field2 = 3;
+  };
+
+  oneof type_ {
+      C field3 = 20;
+      C field4 = 30;
+  };
 }
