@@ -63,6 +63,8 @@ let field_name name =
   | name when is_reserved name -> name ^ "'"
   | name -> name
 
+let variant_name name = module_name name
+
 let constructor_name { Spec.Descriptor.name; number = _; options = _} =
   String.capitalize (Option.value_exn name)
 
@@ -106,39 +108,51 @@ let emit_enum_type Spec.Descriptor.{ name;
    Service descriptions should be a functor over the io monad.
 
 *)
-let emit_field t scope Spec.Descriptor.{ name;
-                                         number = _;
-                                         label = _;
-                                         type_;
-                                         type_name = t_name;
-                                         extendee = _; (* Extensions are not supported *)
-                                         default_value = _;
-                                         oneof_index = _;
-                                         json_name = _;
-                                         options = _;
-                                       } =
-  let type_spec =
-    match Option.value_exn type_ with
-    | Spec.Descriptor.Type_double
-    | Spec.Descriptor.Type_float -> "float"
-    | Spec.Descriptor.Type_int64
-    | Spec.Descriptor.Type_uint64
-    | Spec.Descriptor.Type_int32
-    | Spec.Descriptor.Type_fixed64
-    | Spec.Descriptor.Type_fixed32
-    | Spec.Descriptor.Type_sfixed32
-    | Spec.Descriptor.Type_sfixed64
-    | Spec.Descriptor.Type_sint32
-    | Spec.Descriptor.Type_sint64
-    | Spec.Descriptor.Type_uint32 -> "int"
-    | Spec.Descriptor.Type_bool -> "bool"
-    | Spec.Descriptor.Type_string -> "string"
-    | Spec.Descriptor.Type_group -> failwith "Deprecated"
-    | Spec.Descriptor.Type_message ->  Scope.get_scoped_name scope t_name ^ " option"
-    | Spec.Descriptor.Type_bytes -> "bytes"
-    | Spec.Descriptor.Type_enum -> Scope.get_scoped_name scope t_name
+let type_of_field scope = function
+  | Spec.Descriptor.{ type_ = Some Type_double; _ }
+  | Spec.Descriptor.{ type_ = Some Type_float; _ } -> "float"
+  | Spec.Descriptor.{ type_ = Some Type_int64; _ }
+  | Spec.Descriptor.{ type_ = Some Type_uint64; _ }
+  | Spec.Descriptor.{ type_ = Some Type_int32; _ }
+  | Spec.Descriptor.{ type_ = Some Type_fixed64; _ }
+  | Spec.Descriptor.{ type_ = Some Type_fixed32; _ }
+  | Spec.Descriptor.{ type_ = Some Type_sfixed32; _ }
+  | Spec.Descriptor.{ type_ = Some Type_sfixed64; _ }
+  | Spec.Descriptor.{ type_ = Some Type_sint32; _ }
+  | Spec.Descriptor.{ type_ = Some Type_sint64; _ }
+  | Spec.Descriptor.{ type_ = Some Type_uint32; _ } -> "int"
+  | Spec.Descriptor.{ type_ = Some Type_bool; _ } -> "bool"
+  | Spec.Descriptor.{ type_ = Some Type_string; _ } -> "string"
+  | Spec.Descriptor.{ type_ = Some Type_group; _ } -> failwith "Deprecated"
+  | Spec.Descriptor.{ type_ = Some Type_message; type_name; _ } -> Scope.get_scoped_name scope type_name ^ " option"
+  | Spec.Descriptor.{ type_ = Some Type_bytes; _ } -> "bytes"
+  | Spec.Descriptor.{ type_ = Some Type_enum; type_name; _ } -> Scope.get_scoped_name scope type_name
+  | Spec.Descriptor.{ type_ = None; _ } -> failwith "Abstract types cannot be"
+
+let emit_field t scope (field : Spec.Descriptor.field_descriptor_proto) =
+  Code.emit t `None "%s: %s;" (field_name field.name) (type_of_field scope field)
+
+let emit_oneof_fields t scope ( (oneof_decl : Spec.Descriptor.oneof_descriptor_proto), fields ) =
+  (* Emit a polymorphic variant type *)
+  let variants = List.map ~f:(fun field ->
+      let type_ = type_of_field scope field in
+      let name = variant_name field.name in
+      sprintf "`%s of %s" name type_
+    ) fields
   in
-  Code.emit t `None "%s: %s;" (field_name name) (type_spec)
+  Code.emit t `None "%s: [ %s ];" (field_name oneof_decl.name) (String.concat ~sep: " | " variants)
+
+(** Return a list of plain fields + a list of fields per oneof_decl *)
+let split_oneof_decl fields oneof_decls =
+  List.foldi ~init:(fields, []) ~f:(fun i (fields, oneof_decls) oneof_decl ->
+      let (oneof_fields, rest) =
+        List.partition_tf ~f:(function
+            | { Spec.Descriptor.oneof_index = Some i'; _ } -> i = i'
+            | { Spec.Descriptor.oneof_index = None; _ } -> false
+          ) fields
+      in
+      (rest, (oneof_decl, oneof_fields) :: oneof_decls)
+    ) oneof_decls
 
 (* This should return: (module name, sig, impl) *)
 let rec emit_message_type scope Spec.Descriptor.{ name;
@@ -147,7 +161,7 @@ let rec emit_message_type scope Spec.Descriptor.{ name;
                                                   nested_type = nested_types;
                                                   enum_type = enum_types;
                                                   extension_range = _;
-                                                  oneof_decl;
+                                                  oneof_decl = oneof_decls;
                                                   options = _;
                                                   reserved_range = _;
                                                   reserved_name = _;
@@ -155,9 +169,7 @@ let rec emit_message_type scope Spec.Descriptor.{ name;
 
 
   (* Filter fields which are part of the oneofs *)
-
-  let _oneof = List.hd oneof_decl in
-
+  let (fields, oneof_decls) = split_oneof_decl fields oneof_decls in
   let rec emit_nested_types ~signature ~implementation ?(is_first=true) nested_types =
     let emit_sub dest ~is_implementation ~is_first { module_name; signature; implementation } =
       let () = match is_first with
@@ -204,6 +216,7 @@ let rec emit_message_type scope Spec.Descriptor.{ name;
     | fields ->
       Code.emit t `Begin "type t = {";
       List.iter ~f:(emit_field t scope) fields;
+      List.iter ~f:(emit_oneof_fields t scope) oneof_decls;
       Code.emit t `End  "}"
   in
 
