@@ -124,7 +124,8 @@ let type_of_field scope = function
   | Spec.Descriptor.{ type_ = Some Type_bool; _ } -> "bool"
   | Spec.Descriptor.{ type_ = Some Type_string; _ } -> "string"
   | Spec.Descriptor.{ type_ = Some Type_group; _ } -> failwith "Deprecated"
-  | Spec.Descriptor.{ type_ = Some Type_message; type_name; _ } -> Scope.get_scoped_name scope type_name ^ " option"
+  | Spec.Descriptor.{ type_ = Some Type_message; type_name; oneof_index = Some _; _ } -> Scope.get_scoped_name scope type_name
+  | Spec.Descriptor.{ type_ = Some Type_message; type_name; oneof_index = None;_ } -> Scope.get_scoped_name scope type_name ^ " option"
   | Spec.Descriptor.{ type_ = Some Type_bytes; _ } -> "bytes"
   | Spec.Descriptor.{ type_ = Some Type_enum; type_name; _ } -> Scope.get_scoped_name scope type_name
   | Spec.Descriptor.{ type_ = None; _ } -> failwith "Abstract types cannot be"
@@ -140,7 +141,7 @@ let emit_oneof_fields t scope ( (oneof_decl : Spec.Descriptor.oneof_descriptor_p
       sprintf "`%s of %s" name type_
     ) fields
   in
-  Code.emit t `None "%s: [ %s ];" (field_name oneof_decl.name) (String.concat ~sep: " | " variants)
+  Code.emit t `None "%s: [ %s ] option;" (field_name oneof_decl.name) (String.concat ~sep: " | " variants)
 
 (** Return a list of plain fields + a list of fields per oneof_decl *)
 let split_oneof_decl fields oneof_decls =

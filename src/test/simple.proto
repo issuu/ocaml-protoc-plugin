@@ -27,6 +27,6 @@ message C {
 
   oneof type_ {
       C field3 = 20;
-      C field4 = 30;
+      int32 field4 = 30;
   };
 }
