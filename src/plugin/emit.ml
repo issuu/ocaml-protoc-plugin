@@ -190,7 +190,7 @@ let split_oneof_decl fields oneof_decls =
 
 (* This should return: (module name, sig, impl) *)
 let rec emit_message_type scope Spec.Descriptor.{ name;
-                                                  field = fields;
+                                                  field = all_fields;
                                                   extension = _;
                                                   nested_type = nested_types;
                                                   enum_type = enum_types;
@@ -203,7 +203,8 @@ let rec emit_message_type scope Spec.Descriptor.{ name;
 
 
   (* Filter fields which are part of the oneofs *)
-  let (fields, oneof_decls) = split_oneof_decl fields oneof_decls in
+  eprintf "%s: Fields: %d - oneofs: %d\n" (module_name name) (List.length all_fields) (List.length oneof_decls);
+  let (fields, oneof_decls) = split_oneof_decl all_fields oneof_decls in
   let rec emit_nested_types ~signature ~implementation ?(is_first=true) nested_types =
     let emit_sub dest ~is_implementation ~is_first { module_name; signature; implementation } =
       let () = match is_first with
@@ -245,9 +246,9 @@ let rec emit_message_type scope Spec.Descriptor.{ name;
   |> emit_nested_types ~signature ~implementation;
 
   let t = Code.init () in
-  let () = match fields with
+  let () = match all_fields with
     | [] -> ()
-    | fields ->
+    | _ ->
       Code.emit t `Begin "type t = {";
       List.iter ~f:(emit_field t scope) fields;
       List.iter ~f:(emit_oneof_fields t scope) oneof_decls;
