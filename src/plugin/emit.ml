@@ -39,6 +39,39 @@ open Core
        oneof_field : [ `field1 of int ]
        field2 : int;
      }
+
+   for each message, serialization and deserialization function are created:
+   - of_proto : deserialization
+   - to_proto : serialization
+
+
+   serialization function for a structure:
+   message X {
+     field1: int = 1;
+     field2: X = 2;
+     repeated field2: int = 3;
+   }
+
+   let rec to_proto: t -> string = fun { field1; field2 } ->
+     let field1 = Runtime.serialize_int field1 in
+     let field2 = Runtime.serialize_message to_proto field2 in
+     let field3 = Runtime.serialize_list Runtime.serialize_int field3 in
+     Runtime.serialize_fields [1, field1; 2, field2; 3, field3]
+
+   let rec of_proto: string -> t = fun message ->
+     let field1, get_field1 = Runtime.deserialize_int () in
+     let field2, get_field2 = Runtime.deserialize_message of_proto
+     let field3, get_field3 = Runtime.deserialize_list Runtime.deserialize_int in
+     match Runtime.deserialize_message_spec [1,field1; 2, field2; 3, field3] with
+     | Error e -> Error e
+     | Ok () -> { field1 = get_field1 (); field2 = get_field2 (); field3 = get_field3 () }
+
+   The types:
+      Runtime.deserialize_int: unit -> (field -> unit result.t) * (unit -> int)
+      Runtime.deserialize_message: (string -> 'a) -> (field -> unit result.t) * (unit -> 'a option)
+      Runtime.deserialize_list: (field -> unit result.t) * (unit -> 'a) -> (field -> unit result) * (unit -> 'a list)
+      (* List of fields??? *)
+
 *)
 
 (** Taken from: https://caml.inria.fr/pub/docs/manual-ocaml/lex.html *)
