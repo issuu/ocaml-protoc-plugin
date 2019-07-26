@@ -1,4 +1,4 @@
-open Core
+open Core_kernel
 
 (* TODO: Make all module recursive. This is a bit tricky, as we need to construct the signature of the module,
    but for now we dont care - But we do need to handle it!*)

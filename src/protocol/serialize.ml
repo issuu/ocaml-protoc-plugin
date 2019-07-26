@@ -1,4 +1,4 @@
-open Base
+open Core_kernel
 
 (* Everything is encapsulated in messages,
    so everything will have a field id and a type assigned to it.
@@ -16,7 +16,7 @@ module Buffer = struct
              mutable data: Bytes.t;
            }
 
-  let init ?(length=incr) =
+  let init ?(length=incr) () =
     { data = Bytes.create length;
       offset = 0;
     }
@@ -32,11 +32,11 @@ module Buffer = struct
 
   let add_byte t v =
     ensure_capacity t;
-    t.data.[t.offset] <- Char.of_int_exn v;
+    Bytes.set t.data t.offset @@ Char.of_int_exn v;
     t.offset <- t.offset + 1
 
-  let write: t -> int -> field -> unit = fun t index v =
-    let (type_id, write_f) = match v with
+  let write: t -> int -> field -> unit = fun t _index v ->
+    let _ = match v with
       | Varint v ->
         let rec write_varint v =
           match v land 0x7F, v lsr 7 with
@@ -46,12 +46,13 @@ module Buffer = struct
             write_varint rem
         in
         write_varint v
-      | Length_delimited (len, s) ->
+      | Length_delimited s ->
 
-        ignore (len, s); failwith "Not implemented"
+        ignore s; failwith "Not implemented"
       | Fixed_32_bit f -> ignore f; failwith "Not implemented"
       | Fixed_64_bit f -> ignore f; failwith "Not implemented"
     in
+    ()
 
 
   let rec write_varint t v =
@@ -89,9 +90,12 @@ end
 
 let serialize_field: int -> field -> unit = fun _ -> function
   | Varint v -> ignore v; failwith "Not implemented"
-  | Length_delimited (len, s) -> ignore (len, s); failwith "Not implemented"
+  | Length_delimited s -> ignore s; failwith "Not implemented"
   | Fixed_32_bit f -> ignore f; failwith "Not implemented"
   | Fixed_64_bit f -> ignore f; failwith "Not implemented"
+
+
+(*
 
 (* And functions to serialize individual elements *)
 
@@ -160,5 +164,9 @@ to_protobuf = function
 
 to_protobuf: ... -> field
 
+
+*)
+
+*)
 
 *)

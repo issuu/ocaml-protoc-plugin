@@ -11,8 +11,11 @@ build: [
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 depends: [
-  "ocaml" {>= "4.05.0"}
+  "core_kernel"
   "dune" {build}
+  "ocaml" {>= "4.05.0"}
+  "ocaml-protoc"
+  "ocplib-endian"
 ]
 synopsis: "Plugin for protoc protobuf compiler to generate ocaml definitions from a .proto file"
 description: """

@@ -1,29 +1,5 @@
 (library
   (name spec)
   (public_name ocaml-protoc-plugin.spec)
-  (libraries ocaml-protoc core)
+  (libraries ocaml-protoc core_kernel)
   (preprocess (pps ppx_let ppx_deriving.show)))
-
-(rule
- (targets
-   plugin_types.mli
-   plugin_types.ml
-   plugin_pb.mli
-   plugin_pb.ml
-   plugin_pp.mli
-   plugin_pp.ml)
- (deps (:proto /usr/include/google/protobuf/compiler/plugin.proto))
- (action (run ocaml-protoc -I /usr/include/ -int32_type int_t -int64_type int_t -ml_out . %{proto}))
-)
-
-(rule
- (targets
-   descriptor_types.mli
-   descriptor_types.ml
-   descriptor_pb.mli
-   descriptor_pb.ml
-   descriptor_pp.mli
-   descriptor_pp.ml)
- (deps (:proto /usr/include/google/protobuf/descriptor.proto))
- (action (run ocaml-protoc -I /usr/include/ -int32_type int_t -int64_type int_t -ml_out . %{proto}))
-)
