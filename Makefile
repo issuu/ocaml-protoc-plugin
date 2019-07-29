@@ -37,7 +37,6 @@ update-protobuf: ## Update generated code for interfacing with protoc
 	fi
 	$(RUN_OCAML_PROTOC) "$(GOOGLE_PROTOBUF_FOLDER)/compiler/plugin.proto"
 	$(RUN_OCAML_PROTOC) "$(GOOGLE_PROTOBUF_FOLDER)/descriptor.proto"
-	dune exec -- ocamlformat --inplace src/spec/{plugin,descriptor}_{pb,pp,types}.{ml,mli}
 
 .PHONY: help
 help: ## Show this help
