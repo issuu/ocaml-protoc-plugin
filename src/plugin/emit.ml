@@ -328,7 +328,15 @@ let parse_proto_file
   let {module_name = _; signature = _; implementation} =
     emit_message_type scope message_type
   in
-  implementation
+  let out_name =
+    name
+    |> Option.map ~f:(fun proto_file_name ->
+           (match String.chop_suffix ~suffix:".proto" proto_file_name with
+           | None -> proto_file_name
+           | Some stem -> stem)
+           |> Printf.sprintf "%s.ml")
+  in
+  out_name, implementation
 
 let parse_request
     {Spec.Plugin.file_to_generate; parameter; proto_file; compiler_version = _}
@@ -337,4 +345,4 @@ let parse_request
     "Request to parse proto_files: %s. Parameter: %s"
     (String.concat ~sep:"; " file_to_generate)
     (Option.value ~default:"<None>" parameter);
-  List.map ~f:parse_proto_file proto_file |> List.iter ~f:Code.dump
+  List.map ~f:parse_proto_file proto_file

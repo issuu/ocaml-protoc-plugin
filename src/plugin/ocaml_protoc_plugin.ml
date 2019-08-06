@@ -21,6 +21,13 @@ let write response =
 
 let () =
   let request = read () in
-  Emit.parse_request request;
-  let response = Spec.Plugin.default_code_generator_response () in
+  let outputs = Emit.parse_request request in
+  let response_of_output (name, code) =
+    let insertion_point = None in
+    let content = Some (Code.dumps code) in
+    Spec.Plugin.{name; insertion_point; content}
+  in
+  let response : Spec.Plugin.code_generator_response =
+    {error = None; file = List.map ~f:response_of_output outputs}
+  in
   write response

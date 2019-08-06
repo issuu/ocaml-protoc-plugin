@@ -5,3 +5,19 @@
  (name runtest)
  (action
   (run ./test.exe)))
+
+(rule
+ (targets basic.ml)
+ (deps
+  (:plugin ../plugin/ocaml_protoc_plugin.exe)
+  (:proto basic.proto))
+ (action
+  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} --ocaml_out . %{proto})))
+
+(rule
+ (targets simple.ml)
+ (deps
+  (:plugin ../plugin/ocaml_protoc_plugin.exe)
+  (:proto simple.proto))
+ (action
+  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} --ocaml_out . %{proto})))
