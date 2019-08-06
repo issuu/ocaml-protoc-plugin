@@ -7,16 +7,9 @@ clean: ## Clean
 	dune clean
 
 .PHONY: test
-PROTO_FILES = $(wildcard src/test/*.proto)
-PLUGIN=_build/default/src/plugin/ocaml_protoc_plugin.exe
-$(PLUGIN): force
-	dune build src/plugin/ocaml_protoc_plugin.exe
-
-src/test/%.ml: src/test/%.proto $(PLUGIN)
-	protoc -I $(dir $<) --plugin=protoc-gen-ocaml=$(PLUGIN) --ocaml_out $(dir $@) $<
-
-test: $(patsubst %.proto,%.ml,$(PROTO_FILES)) ## Run tests
-	@dune runtest
+test: build
+test: ## Run tests
+	@dune runtest --force
 
 .PHONY: format
 format: ## Reformat the code
@@ -41,6 +34,3 @@ update-protobuf: ## Update generated code for interfacing with protoc
 .PHONY: help
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-
-.PHONY: force
-force:
