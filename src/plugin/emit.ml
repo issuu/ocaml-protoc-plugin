@@ -247,7 +247,9 @@ let emit_serialization_function () =
 
   (signature, implementation)
 
-let emit_message_type scope all_fields fields oneof_decls =
+let emit_message_type scope all_fields oneof_decls =
+  let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
+
   let t = Code.init () in
   let () =
     match all_fields with
@@ -324,7 +326,7 @@ let emit_message_type scope all_fields fields oneof_decls =
 let rec emit_message scope
     Spec.Descriptor.
       { name;
-        field = all_fields;
+        field = fields;
         extension = _;
         nested_type = nested_types;
         enum_type = enum_types;
@@ -335,7 +337,6 @@ let rec emit_message scope
         reserved_name = _ }
     : message
   =
-  let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
   let rec emit_nested_types ~signature ~implementation ?(is_first = true) nested_types =
     let emit_sub dest ~is_implementation ~is_first
         {module_name; signature; implementation}
@@ -384,7 +385,7 @@ let rec emit_message scope
 
   let () = match name with
     | Some _ ->
-      let t = emit_message_type scope all_fields fields oneof_decls in
+      let t = emit_message_type scope fields oneof_decls in
       Code.append signature t;
       Code.append implementation t;
       inject (emit_serialization_function ()) signature implementation;
