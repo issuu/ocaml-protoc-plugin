@@ -98,6 +98,8 @@ let serialize_field : int -> field -> unit =
   | Fixed_32_bit f -> ignore f; failwith "Not implemented"
   | Fixed_64_bit f -> ignore f; failwith "Not implemented"
 
+
+
 (*
 
 (* And functions to serialize individual elements *)

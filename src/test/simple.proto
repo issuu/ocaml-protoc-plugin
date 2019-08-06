@@ -1,21 +1,9 @@
 syntax = "proto3";
 
-
-package outer_package.inner_package;
-
-enum Enum {
-    Test1 = 0;
-    Test2 = 1;
+message A {
+  int32 a = 1;
+  string b = 2;
 }
 
-message A {
-  A m = 1;
-  repeated A ms = 2;
-  int32 i = 3;
-  repeated int32 is = 4;
-  oneof union_type {
-    A oneof_field1 = 5;
-    int32 oneof_field2 = 6;
-  }
-  Enum e = 10;
+message B {
 }
