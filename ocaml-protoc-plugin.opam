@@ -15,6 +15,7 @@ depends: [
   "dune" {build}
   "ocaml" {>= "4.05.0"}
   "ocaml-protoc"
+  "ocamlformat" {build & >= "0.10"}
   "ocplib-endian"
 ]
 synopsis: "Plugin for protoc protobuf compiler to generate ocaml definitions from a .proto file"

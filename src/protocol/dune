@@ -1,5 +1,5 @@
 (library
- (name        protocol)
+ (name protocol)
  (public_name ocaml-protoc-plugin.protocol)
- (libraries   core_kernel ocplib-endian)
+ (libraries core_kernel ocplib-endian)
  (synopsis "Serialization and deserialization of protobuf types"))
