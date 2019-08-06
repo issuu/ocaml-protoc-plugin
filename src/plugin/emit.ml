@@ -1,7 +1,8 @@
 open Core_kernel
 
-(* TODO: Make all module recursive. This is a bit tricky, as we need to construct the signature of the module,
-   but for now we dont care - But we do need to handle it!*)
+(* TODO: Package should be embeded in the constructed file.
+   - Another way is to make a outer module with the filename again
+*)
 
 (* All fields will have a value - or be set to a default value.
    This means that only fields referencing other messages will be optional.
@@ -49,28 +50,41 @@ open Core_kernel
    message X {
      field1: int = 1;
      field2: X = 2;
-     repeated field2: int = 3;
+     repeated field3: int = 3;
+     repeated field4: X = 4;
+     oneof ofield {
+       field5 int32 = 5;
+       field6 int32 = 6;
+     }
    }
 
-   let rec to_proto: t -> string = fun { field1; field2 } ->
-     let field1 = Runtime.serialize_int field1 in
-     let field2 = Runtime.serialize_message to_proto field2 in
-     let field3 = Runtime.serialize_list Runtime.serialize_int field3 in
-     Runtime.serialize_fields [1, field1; 2, field2; 3, field3]
+   let rec to_proto: t -> string = fun { field1; field2; field3; field4; ofield } ->
+     let field1 = 1, Runtime.serialize_int field1 in
+     let field2 = 2, Runtime.serialize_message to_proto field2 in
+     let field3 = 3, Runtime.serialize_list Runtime.serialize_int field3 in
+     let field4 = 4, Runtime.serialize_list (Runtime.serialize_message to_proto) field4 in
+     let ofield =
+       match ofield with
+       | `Field5 v -> 5, Runtime.serialize_int32 v
+       | `Field6 v -> 6, Runtime.serialize_int32 v
+     in
+     Runtime.serialize_fields [field1; field2; field3; field4; ofield]
+
+   -- To deserialize a oneof, we need to pass the id of the message to the deserialization function.
 
    let rec of_proto: string -> t = fun message ->
      let field1, get_field1 = Runtime.deserialize_int () in
      let field2, get_field2 = Runtime.deserialize_message of_proto
      let field3, get_field3 = Runtime.deserialize_list Runtime.deserialize_int in
-     match Runtime.deserialize_message_spec [1,field1; 2, field2; 3, field3] with
+     let field4, get_field4 = Runtime.deserialize_list (Rumtime.deserialize_message of_proto) in
+     match Runtime.deserialize_message_spec [1, field1; 2, field2; 3, field3; 4, field4] with
      | Error e -> Error e
-     | Ok () -> { field1 = get_field1 (); field2 = get_field2 (); field3 = get_field3 () }
+     | Ok () -> { field1 = get_field1 (); field2 = get_field2 (); field3 = get_field3 (); field4 = get_field4 }
 
    The types:
       Runtime.deserialize_int: unit -> (field -> unit result.t) * (unit -> int)
       Runtime.deserialize_message: (string -> 'a) -> (field -> unit result.t) * (unit -> 'a option)
       Runtime.deserialize_list: (field -> unit result.t) * (unit -> 'a) -> (field -> unit result) * (unit -> 'a list)
-      (* List of fields??? *)
 
 *)
 
@@ -91,8 +105,8 @@ let is_reserved = function
 let module_name name = String.capitalize (Option.value_exn name)
 
 (* Remember to mangle reserved keywords *)
-let field_name name =
-  match String.uncapitalize (Option.value_exn name) with
+let field_name (field : Spec.Descriptor.field_descriptor_proto) =
+  match String.uncapitalize (Option.value_exn field.name) with
   | name when is_reserved name -> name ^ "'"
   | name -> name
 
@@ -142,35 +156,41 @@ let emit_enum_type
    Service descriptions should be a functor over the io monad.
 
 *)
-let type_of_field scope = function
-  | Spec.Descriptor.{type_ = Some Type_double; _}
-  | Spec.Descriptor.{type_ = Some Type_float; _} ->
-      "float"
-  | Spec.Descriptor.{type_ = Some Type_int64; _}
-  | Spec.Descriptor.{type_ = Some Type_uint64; _}
-  | Spec.Descriptor.{type_ = Some Type_int32; _}
-  | Spec.Descriptor.{type_ = Some Type_fixed64; _}
-  | Spec.Descriptor.{type_ = Some Type_fixed32; _}
-  | Spec.Descriptor.{type_ = Some Type_sfixed32; _}
-  | Spec.Descriptor.{type_ = Some Type_sfixed64; _}
-  | Spec.Descriptor.{type_ = Some Type_sint32; _}
-  | Spec.Descriptor.{type_ = Some Type_sint64; _}
-  | Spec.Descriptor.{type_ = Some Type_uint32; _} ->
-      "int"
-  | Spec.Descriptor.{type_ = Some Type_bool; _} -> "bool"
-  | Spec.Descriptor.{type_ = Some Type_string; _} -> "string"
-  | Spec.Descriptor.{type_ = Some Type_group; _} -> failwith "Deprecated"
-  | Spec.Descriptor.{type_ = Some Type_message; type_name; oneof_index = Some _; _} ->
+
+let type_of_field scope field_descriptor =
+  let open Spec.Descriptor in
+  let base_type = match field_descriptor with
+    | { type_ = Some Type_double; _ }
+    | { type_ = Some Type_float; _ } -> "float"
+    | { type_ = Some Type_int64; _ }
+    | { type_ = Some Type_uint64; _ }
+    | { type_ = Some Type_int32; _ }
+    | { type_ = Some Type_fixed64; _ }
+    | { type_ = Some Type_fixed32; _ }
+    | { type_ = Some Type_sfixed32; _ }
+    | { type_ = Some Type_sfixed64; _ }
+    | { type_ = Some Type_sint32; _ }
+    | { type_ = Some Type_sint64; _ }
+    | { type_ = Some Type_uint32; _ } -> "int"
+    | { type_ = Some Type_bool; _ } -> "bool"
+    | { type_ = Some Type_string; _ } -> "string"
+    | { type_ = Some Type_group; _ } -> failwith "Groups are deprecated"
+    | { type_ = Some Type_message; type_name; oneof_index = Some _; _ } ->
       Scope.get_scoped_name scope type_name
-  | Spec.Descriptor.{type_ = Some Type_message; type_name; oneof_index = None; _} ->
-      Scope.get_scoped_name scope type_name ^ " option"
-  | Spec.Descriptor.{type_ = Some Type_bytes; _} -> "bytes"
-  | Spec.Descriptor.{type_ = Some Type_enum; type_name; _} ->
+    | { type_ = Some Type_message; type_name; oneof_index = None;_ } ->
       Scope.get_scoped_name scope type_name
-  | Spec.Descriptor.{type_ = None; _} -> failwith "Abstract types cannot be"
+    | { type_ = Some Type_bytes; _ } -> "bytes"
+    | { type_ = Some Type_enum; type_name; _ } ->
+      Scope.get_scoped_name scope type_name
+    | { type_ = None; _ } -> failwith "Abstract types cannot be"
+  in
+  match field_descriptor with
+  | { label = Some Label_repeated; _ } -> base_type ^ " list"
+  | { oneof_index = None; type_ = Some Type_message; _ } -> base_type ^ " option"
+  | _ -> base_type
 
 let emit_field t scope (field : Spec.Descriptor.field_descriptor_proto) =
-  Code.emit t `None "%s: %s;" (field_name field.name) (type_of_field scope field)
+  Code.emit t `None "%s: %s;" (field_name field) (type_of_field scope field)
 
 let emit_oneof_fields t scope
     ((oneof_decl : Spec.Descriptor.oneof_descriptor_proto), fields)
@@ -279,6 +299,54 @@ let rec emit_message_type scope
         List.iter ~f:(emit_oneof_fields t scope) oneof_decls;
         Code.emit t `End "}"
   in
+
+  (* Lets emit code for the implementaton *)
+  let destruct = match fields with
+    | [] -> "()"
+    | _ ->
+      List.map ~f:field_name fields
+      |> String.concat ~sep:"; "
+      |> sprintf "{ %s }"
+  in
+  Code.emit t `Begin "let rec to_proto %s = " destruct;
+  let emit_serialize_field (field : Spec.Descriptor.field_descriptor_proto) =
+    let name = field_name field in
+    (* What if its oneof? Then we needs to make a special deserialization function I gather *)
+    let serialize_fun = match Option.value_exn field.type_ with
+      | Spec.Descriptor.Type_double -> "serialize_double"
+      | Type_float -> "serialize_float"
+      | Type_uint64 -> "serialize_uint64"
+      | Type_int32 -> "serialize_int32"
+      | Type_fixed64 -> "serialize_fixed64"
+      | Type_fixed32 -> "serialize_fixed32"
+      | Type_sfixed32 -> "serialize_sfixed32"
+      | Type_sfixed64 -> "serialize_sfixed64"
+      | Type_sint32 -> "serialize_sint32"
+      | Type_sint64 -> "serialize_sint64"
+      | Type_uint32 -> "serialize_uint32" -> "int"
+      | Type_bool -> "serialize_bool" -> "bool"
+      | Type_string -> "serialize_string" -> "string"
+      | Type_group -> failwith "Groups are deprecated"
+      | { type_ = Some Type_message; type_name; oneof_index = Some _; _ } ->
+      Scope.get_scoped_name scope type_name
+    | { type_ = Some Type_message; type_name; oneof_index = None;_ } ->
+      Scope.get_scoped_name scope type_name
+    | { type_ = Some Type_bytes; _ } -> "bytes"
+    | { type_ = Some Type_enum; type_name; _ } ->
+      Scope.get_scoped_name scope type_name
+    | { type_ = None; _ } -> failwith "Abstract types cannot be"
+    match field with
+    | { name; number; label; type_; type_name; extendee; default_value;
+        oneof_index; json_name; options } -> (??)
+  let field1 = Runtime.serialize_int field1 in
+  let field2 = Runtime.serialize_message to_proto field2 in
+  let field3 = Runtime.serialize_list Runtime.serialize_int field3 in
+  let field4 = Runtime.serialize_list (Runtime.serialize_message to_proto) field4 in
+  Runtime.serialize_fields [1, field1; 2, field2; 3, field3; 4, field4]
+
+
+
+
   Code.append signature t;
   Code.append implementation t;
   {module_name; signature; implementation}
@@ -327,7 +395,7 @@ let parse_proto_file
   let scope = Scope.init () in
   let {module_name = _; signature = _; implementation} =
     emit_message_type scope message_type
-  in
+xs  in
   let out_name =
     name
     |> Option.map ~f:(fun proto_file_name ->

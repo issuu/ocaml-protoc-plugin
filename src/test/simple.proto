@@ -9,24 +9,13 @@ enum Enum {
 }
 
 message A {
-  B b = 1;
-  A a = 2;
-  int32 x = 3;
-}
-
-message B {
-  A a = 1;
-}
-
-message C {
-  int32 type_1 = 100;
-  oneof type {
-    C field1 = 2;
-    C field2 = 3;
-  };
-
-  oneof type_ {
-      C field3 = 20;
-      int32 field4 = 30;
-  };
+  A m = 1;
+  repeated A ms = 2;
+  int32 i = 3;
+  repeated int32 is = 4;
+  oneof union_type {
+    A oneof_field1 = 5;
+    int32 oneof_field2 = 6;
+  }
+  Enum e = 10;
 }
