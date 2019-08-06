@@ -1,4 +1,4 @@
-open Core
+open Core_kernel
 module T = Spec.Plugin
 
 let tap ~f x = f x; x
