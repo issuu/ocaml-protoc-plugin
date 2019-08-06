@@ -1,0 +1,16 @@
+Handle packages:
+* Suggestion is to create packages as modules. This
+  requires a map between type -> filename, so the type can be prefixed
+  with the name of the file (module)
+
+* Possibly add parameter to have full resolution on integer types, rather than mapping all to int
+
+* Test for basic serialization / deserialization. Need to conjure a skeleton for this.
+* Test module inclusion
+* Test packages - esp. packages augmented by multiple included files
+
+
+* Determine a suitable Polymorphic data type for errors - which allows for debugability
+
+* 32 bit integers needs to be handled better.
+* int32 and int64 have problems.

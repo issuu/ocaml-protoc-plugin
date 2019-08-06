@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 message A {
-  int32 a = 1;
+  sint64 a = 1;
   string b = 2;
 }
 

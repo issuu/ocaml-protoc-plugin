@@ -110,7 +110,6 @@ let field_name (field_name : string option) =
   | name when is_reserved name -> name ^ "'"
   | name -> name
 
-
 let variant_name name = module_name name
 
 let constructor_name {Spec.Descriptor.name; number = _; options = _} =
@@ -158,36 +157,73 @@ let emit_enum_type
 
 *)
 
-let type_of_field scope field_descriptor =
+let protobuf_type_of_field scope field_descriptor =
   let open Spec.Descriptor in
-  let base_type = match field_descriptor with
-    | { type_ = Some Type_double; _ }
-    | { type_ = Some Type_float; _ } -> "float"
-    | { type_ = Some Type_int64; _ }
-    | { type_ = Some Type_uint64; _ }
-    | { type_ = Some Type_int32; _ }
-    | { type_ = Some Type_fixed64; _ }
-    | { type_ = Some Type_fixed32; _ }
-    | { type_ = Some Type_sfixed32; _ }
-    | { type_ = Some Type_sfixed64; _ }
-    | { type_ = Some Type_sint32; _ }
-    | { type_ = Some Type_sint64; _ }
-    | { type_ = Some Type_uint32; _ } -> "int"
-    | { type_ = Some Type_bool; _ } -> "bool"
-    | { type_ = Some Type_string; _ } -> "string"
-    | { type_ = Some Type_group; _ } -> failwith "Groups are deprecated"
-    | { type_ = Some Type_message; type_name; oneof_index = Some _; _ } ->
-      Scope.get_scoped_name scope type_name
-    | { type_ = Some Type_message; type_name; oneof_index = None;_ } ->
-      Scope.get_scoped_name scope type_name
-    | { type_ = Some Type_bytes; _ } -> "bytes"
-    | { type_ = Some Type_enum; type_name; _ } ->
-      Scope.get_scoped_name scope type_name
-    | { type_ = None; _ } -> failwith "Abstract types cannot be"
+  let base_type =
+    match field_descriptor with
+    | {type_ = Some Type_double; _} -> "Double"
+    | {type_ = Some Type_float; _} -> "Float"
+    | {type_ = Some Type_int64; _} -> "Int64"
+    | {type_ = Some Type_uint64; _} -> "UInt64"
+    | {type_ = Some Type_int32; _} -> "Int32"
+    | {type_ = Some Type_fixed64; _} -> "Fixed64"
+    | {type_ = Some Type_fixed32; _} -> "Fixed32"
+    | {type_ = Some Type_sfixed32; _} -> "SFixed32"
+    | {type_ = Some Type_sfixed64; _} -> "SFixed64"
+    | {type_ = Some Type_sint32; _} -> "SInt32"
+    | {type_ = Some Type_sint64; _} -> "SInt64"
+    | {type_ = Some Type_uint32; _} -> "UInt32"
+    | {type_ = Some Type_bool; _} -> "Bool"
+    | {type_ = Some Type_string; _} -> "String"
+    | {type_ = Some Type_bytes; _} -> "bytes"
+    | {type_ = Some Type_group; _} -> failwith "Groups are deprecated"
+    | {type_ = Some Type_message; type_name; _} ->
+        let to_proto_func = Scope.get_scoped_name ~postfix:"to_proto" scope type_name in
+        sprintf "Message %s" to_proto_func
+    | {type_ = Some Type_enum; type_name; _} ->
+        let to_int_func = Scope.get_scoped_name ~postfix:"to_int" scope type_name in
+        sprintf "Enum %s" to_int_func
+    | {type_ = None; _} -> failwith "Abstract types cannot be"
   in
   match field_descriptor with
-  | { label = Some Label_repeated; _ } -> base_type ^ " list"
-  | { oneof_index = None; type_ = Some Type_message; _ } -> base_type ^ " option"
+  | {label = Some Label_repeated; _} -> sprintf "Repeated (%s)" base_type
+  | _ -> base_type
+
+(** Get the stringified name of a type.
+    Consider moving this to Protocol somewhere. So types are next to each other.
+    Currently this needs to be in sync with the Protocol.Serialize.protobuf_type
+*)
+let type_of_field scope field_descriptor =
+  let open Spec.Descriptor in
+  let base_type =
+    match field_descriptor with
+    | {type_ = Some Type_double; _} | {type_ = Some Type_float; _} -> "float"
+    | {type_ = Some Type_int64; _}
+    | {type_ = Some Type_uint64; _}
+    | {type_ = Some Type_int32; _}
+    | {type_ = Some Type_fixed64; _}
+    | {type_ = Some Type_fixed32; _}
+    | {type_ = Some Type_sfixed32; _}
+    | {type_ = Some Type_sfixed64; _}
+    | {type_ = Some Type_sint32; _}
+    | {type_ = Some Type_sint64; _}
+    | {type_ = Some Type_uint32; _} ->
+        "int"
+    | {type_ = Some Type_bool; _} -> "bool"
+    | {type_ = Some Type_string; _} -> "string"
+    | {type_ = Some Type_group; _} -> failwith "Groups are deprecated"
+    | {type_ = Some Type_message; type_name; oneof_index = Some _; _} ->
+        Scope.get_scoped_name scope ~postfix:"t" type_name
+    | {type_ = Some Type_message; type_name; oneof_index = None; _} ->
+        Scope.get_scoped_name ~postfix:"t" scope type_name
+    | {type_ = Some Type_bytes; _} -> "bytes"
+    | {type_ = Some Type_enum; type_name; _} ->
+        Scope.get_scoped_name ~postfix:"t" scope type_name
+    | {type_ = None; _} -> failwith "Abstract types cannot be"
+  in
+  match field_descriptor with
+  | {label = Some Label_repeated; _} -> base_type ^ " list"
+  | {oneof_index = None; type_ = Some Type_message; _} -> base_type ^ " option"
   | _ -> base_type
 
 let emit_field t scope (field : Spec.Descriptor.field_descriptor_proto) =
@@ -231,36 +267,53 @@ let inject (signature', implementation') signature implementation =
   Code.append signature signature';
   Code.append implementation implementation'
 
-
 (* Return code for signature and implementation *)
-let emit_serialization_function () =
-  log "Emit serialization function";
+let emit_serialization_function scope all_fields oneof_decls =
+  let fields, _oneof_decls = split_oneof_decl all_fields oneof_decls in
   let signature = Code.init () in
   let implementation = Code.init () in
-
   (* What is the return type of to_proto???? *)
   (* What should go in??? *)
-
-  Code.emit signature `None "val to_proto: t -> Protocol.Serialize.field";
-  Code.emit implementation `None "let to_proto _t = failwith \"Not implemented\"";
-
-
-  (signature, implementation)
+  Code.emit signature `None "val to_proto: t -> string";
+  (* Create a list of protobuf_types *)
+  (* to_proto should destruct the type and pass to the function.  *)
+  let protocol_field_spec =
+    List.map ~f:(fun field -> field.number, protobuf_type_of_field scope field) fields
+    |> List.map ~f:(fun (index, tpe) ->
+           sprintf "(%d, %s) ^:: " (Option.value_exn index) tpe)
+    |> String.concat
+  in
+  (* Destruct the type.... *)
+  let field_names = List.map ~f:(fun field -> field_name field.name) fields in
+  let destruct =
+    match fields with
+    | [] -> "()"
+    | _ -> String.concat ~sep:"; " field_names |> sprintf "{ %s }"
+  in
+  Code.emit implementation `Begin "let to_proto %s = " destruct;
+  Code.emit implementation `None "let open Protocol.Serialize in";
+  Code.emit
+    implementation
+    `End
+    "serialize (%sNil) %s"
+    protocol_field_spec
+    (String.concat ~sep:" " field_names);
+  signature, implementation
 
 let emit_message_type scope all_fields oneof_decls =
   let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
-
   let t = Code.init () in
   let () =
     match all_fields with
     | [] -> Code.emit t `None "type t = ()"
     | _ ->
-      Code.emit t `Begin "type t = {";
-      List.iter ~f:(emit_field t scope) fields;
-      List.iter ~f:(emit_oneof_fields t scope) oneof_decls;
-      Code.emit t `End "}"
+        Code.emit t `Begin "type t = {";
+        List.iter ~f:(emit_field t scope) fields;
+        List.iter ~f:(emit_oneof_fields t scope) oneof_decls;
+        Code.emit t `End "}"
   in
   t
+
 (*
   (* Lets emit code for the implementaton *)
   let destruct = match fields with
@@ -320,8 +373,6 @@ let emit_message_type scope all_fields oneof_decls =
 
 *)
 
-
-
 (* This should return: (module name, sig, impl) *)
 let rec emit_message scope
     Spec.Descriptor.
@@ -369,64 +420,62 @@ let rec emit_message scope
   (* Ignore empty modules *)
   let module_name, scope =
     match name with
-    | None | Some "" -> "", scope
+    | None -> "", scope
     | Some _ ->
         let module_name = module_name name in
         module_name, Scope.push scope module_name
   in
-  List.map ~f:emit_enum_type enum_types
-  @ List.map ~f:(emit_message scope) nested_types
+  List.map ~f:emit_enum_type enum_types @ List.map ~f:(emit_message scope) nested_types
   |> emit_nested_types ~signature ~implementation;
-
-
   (* Only messages with actual names get a type and serialization functions.
      If the name is None, its because its created by us as placeholder for a package.
   *)
-
-  let () = match name with
+  let () =
+    match name with
     | Some _ ->
-      let t = emit_message_type scope fields oneof_decls in
-      Code.append signature t;
-      Code.append implementation t;
-      inject (emit_serialization_function ()) signature implementation;
+        let t = emit_message_type scope fields oneof_decls in
+        Code.append signature t;
+        Code.append implementation t;
+        inject
+          (emit_serialization_function scope fields oneof_decls)
+          signature
+          implementation
     | None -> ()
   in
-
   {module_name; signature; implementation}
 
 let rec wrap_packages scope message_type = function
   | [] ->
-    let {module_name = _; signature; implementation} =
-      emit_message scope message_type
-    in
-    (signature, implementation)
-
-  | package :: [] ->
-    let signature = Code.init () in
-    let implementation = Code.init () in
-    let package_name = module_name (Some package) in
-    let { module_name = _; signature = signature'; implementation = implementation' } =
-      emit_message scope message_type
-    in
-    Code.emit signature `Begin "module %s : sig" package_name;
-    Code.emit implementation `Begin "module %s = struct" package_name;
-    inject (signature', implementation') signature implementation;
-    Code.emit signature `End "end";
-    Code.emit implementation `End "end";
-    (signature, implementation)
-
+      let {module_name = _; signature; implementation} =
+        emit_message scope message_type
+      in
+      signature, implementation
+  | [package] ->
+      let signature = Code.init () in
+      let implementation = Code.init () in
+      let package_name = module_name (Some package) in
+      let {module_name = _; signature = signature'; implementation = implementation'} =
+        emit_message scope message_type
+      in
+      Code.emit signature `Begin "module %s : sig" package_name;
+      Code.emit implementation `Begin "module %s = struct" package_name;
+      inject (signature', implementation') signature implementation;
+      Code.emit signature `End "end";
+      Code.emit implementation `End "end";
+      signature, implementation
   | package :: packages ->
-    let signature = Code.init () in
-    let implementation = Code.init () in
-    let package_name = module_name (Some package) in
-    let (signature', implementation') = wrap_packages (Scope.push scope package_name) message_type packages in
-    Code.emit signature `Begin "module %s : sig" package_name;
-    Code.emit implementation `Begin "module %s = struct" package_name;
-    inject (signature', implementation') signature implementation;
-    Code.emit signature `End "end";
-    Code.emit implementation `End "end";
-    (signature, implementation)
-
+      let signature = Code.init () in
+      let implementation = Code.init () in
+      let package_name = module_name (Some package) in
+      let signature', implementation' =
+        wrap_packages (Scope.push scope package_name) message_type packages
+      in
+      Code.emit signature `Begin "module %s : sig" package_name;
+      Code.emit implementation `Begin "module %s = struct" package_name;
+      inject (signature', implementation') signature implementation;
+      Code.emit signature `End "end";
+      Code.emit implementation `End "end";
+      signature, implementation
 
 let parse_proto_file
     { Spec.Descriptor.name;
@@ -448,7 +497,6 @@ let parse_proto_file
     (to_string_opt package)
     (to_string_opt syntax)
     (List.length enum_types);
-
   let message_type =
     Spec.Descriptor.default_descriptor_proto
       ~name:None
@@ -456,11 +504,12 @@ let parse_proto_file
       ~enum_type:enum_types
       ()
   in
-
   let _, implementation =
-    wrap_packages (Scope.init ()) message_type (Option.value_map ~default:[] ~f:(String.split ~on:'.') package)
+    wrap_packages
+      (Scope.init ())
+      message_type
+      (Option.value_map ~default:[] ~f:(String.split ~on:'.') package)
   in
-
   let out_name =
     name
     |> Option.map ~f:(fun proto_file_name ->

@@ -1,7 +1,7 @@
 (executable
  (name test)
- (libraries protocol)
-)
+ (libraries core protocol))
+
 (alias
  (name runtest)
  (action
