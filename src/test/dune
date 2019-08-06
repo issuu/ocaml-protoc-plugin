@@ -1,6 +1,7 @@
 (executable
- (name        test))
+ (name test))
 
 (alias
- (name   runtest)
- (action (run ./test.exe)))
+ (name runtest)
+ (action
+  (run ./test.exe)))

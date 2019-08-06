@@ -6,64 +6,69 @@ open Core_kernel
 type field =
   | Varint of int (* int32, int64, uint32, uint64, sint32, sint64, bool, enum *)
   | Fixed_64_bit of float (* fixed64, sfixed64, double *)
-  | Length_delimited  of string (* string, bytes, embedded messages, packed repeated fields *)
-  | Fixed_32_bit of float (* fixed32, sfixed32, float *)
+  | Length_delimited of string (* string, bytes, embedded messages, packed repeated fields *)
+  | Fixed_32_bit of float
+
+(* fixed32, sfixed32, float *)
 
 (** Some buffer to hold data, and to read and write data *)
 module Buffer = struct
   let incr = 128
-  type t = { mutable offset: int;
-             mutable data: Bytes.t;
-           }
 
-  let init ?(length=incr) () =
-    { data = Bytes.create length;
-      offset = 0;
-    }
-  let ensure_capacity ?(cap=1) t =
+  type t = {
+    mutable offset : int;
+    mutable data : Bytes.t;
+  }
+
+  let init ?(length = incr) () = {data = Bytes.create length; offset = 0}
+
+  let ensure_capacity ?(cap = 1) t =
     let length = Bytes.length t.data in
-    let remain = (length - t.offset) in
+    let remain = length - t.offset in
     match cap - remain with
     | n when n <= 0 -> ()
     | n ->
-      let data' = Bytes.create (length + (max n incr)) in
-      Bytes.blit ~src:t.data ~src_pos:0 ~dst:data' ~dst_pos:0 ~len:length;
-      t.data <- data'
+        let data' = Bytes.create (length + max n incr) in
+        Bytes.blit ~src:t.data ~src_pos:0 ~dst:data' ~dst_pos:0 ~len:length;
+        t.data <- data'
 
   let add_byte t v =
     ensure_capacity t;
     Bytes.set t.data t.offset @@ Char.of_int_exn v;
     t.offset <- t.offset + 1
 
-  let write: t -> int -> field -> unit = fun t _index v ->
-    let _ = match v with
+  let write : t -> int -> field -> unit =
+   fun t _index v ->
+    let _ =
+      match v with
       | Varint v ->
-        let rec write_varint v =
-          match v land 0x7F, v lsr 7 with
-          | v, 0 -> add_byte t v
-          | v, rem ->
-            add_byte t (v lor 0x80);
-            write_varint rem
-        in
-        write_varint v
-      | Length_delimited s ->
-
-        ignore s; failwith "Not implemented"
+          let rec write_varint v =
+            match v land 0x7F, v lsr 7 with
+            | v, 0 -> add_byte t v
+            | v, rem ->
+                add_byte t (v lor 0x80);
+                write_varint rem
+          in
+          write_varint v
+      | Length_delimited s -> ignore s; failwith "Not implemented"
       | Fixed_32_bit f -> ignore f; failwith "Not implemented"
       | Fixed_64_bit f -> ignore f; failwith "Not implemented"
     in
     ()
 
-
   let rec write_varint t v =
     match v land 0x7F, v lsr 7 with
     | v, 0 -> add_byte t v
     | v, rem ->
-      add_byte t (v lor 0x80);
-      write_varint t rem
+        add_byte t (v lor 0x80);
+        write_varint t rem
 
   let write_varint_signed t v =
-    let v = match v with v when v < 0 -> (v * (-1) -1) * 2 +1 | v -> v * 2 in
+    let v =
+      match v with
+      | v when v < 0 -> (((v * -1) - 1) * 2) + 1
+      | v -> v * 2
+    in
     write_varint t v
 
   (** Dont really know how to write an unsiged 32 bit *)
@@ -88,12 +93,12 @@ module Buffer = struct
     t.offset <- t.offset + 4
 end
 
-let serialize_field: int -> field -> unit = fun _ -> function
+let serialize_field : int -> field -> unit =
+ fun _ -> function
   | Varint v -> ignore v; failwith "Not implemented"
   | Length_delimited s -> ignore s; failwith "Not implemented"
   | Fixed_32_bit f -> ignore f; failwith "Not implemented"
   | Fixed_64_bit f -> ignore f; failwith "Not implemented"
-
 
 (*
 
