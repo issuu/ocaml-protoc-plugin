@@ -1,24 +1,22 @@
-(executable
+(library
  (name test)
- (libraries core protocol))
-
-(alias
- (name runtest)
- (action
-  (run ./test.exe)))
+ (libraries core protocol)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect)))
 
 (rule
  (targets basic.ml)
  (deps
-  (:plugin ../plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
   (:proto basic.proto))
  (action
   (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} --ocaml_out . %{proto})))
 
 (rule
- (targets simple.ml)
+ (targets primitive_types.ml)
  (deps
-  (:plugin ../plugin/ocaml_protoc_plugin.exe)
-  (:proto simple.proto))
+  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:proto primitive_types.proto))
  (action
   (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} --ocaml_out . %{proto})))

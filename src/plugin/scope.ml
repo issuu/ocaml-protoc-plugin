@@ -16,13 +16,13 @@ let get_scoped_name ~postfix t = function
   | Some name -> (
     match String.split ~on:'.' name with
     | "" :: xs ->
-        let rec inner = function
-          | x :: xs, y :: ys when String.Caseless.equal x y -> inner (xs, ys)
-          | xs, _ ->
-              List.map ~f:String.capitalize xs |> fun l ->
-              l @ [postfix] |> String.concat ~sep:"."
-        in
-        inner (xs, List.rev t)
+      let rec inner = function
+        | x :: xs, y :: ys when String.Caseless.equal x y -> inner (xs, ys)
+        | xs, _ ->
+          List.map ~f:String.capitalize xs |> fun l ->
+          l @ [postfix] |> String.concat ~sep:"."
+      in
+      inner (xs, List.rev t)
     | _ -> failwith "Expected name to start with a '.'")
   | None -> failwith "Does not contain a name"
 

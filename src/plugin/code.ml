@@ -15,12 +15,12 @@ let emit t indent fmt =
   let emit s =
     match indent with
     | `Begin ->
-        t.code <- (t.indent ^ s) :: t.code;
-        incr t
+      t.code <- (t.indent ^ s) :: t.code;
+      incr t
     | `None -> t.code <- (t.indent ^ s) :: t.code
     | `End ->
-        decr t;
-        t.code <- (t.indent ^ s) :: t.code
+      decr t;
+      t.code <- (t.indent ^ s) :: t.code
     | `EndBegin -> t.code <- (String.chop_prefix_exn ~prefix:"  " t.indent ^ s) :: t.code
   in
   Printf.ksprintf emit fmt

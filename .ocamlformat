@@ -1,6 +1,5 @@
 break-cases=toplevel
 break-infix=fit-or-vertical
-break-string-literals=wrap
 doc-comments=before
 extension-sugar=preserve
 field-space=loose
@@ -27,3 +26,4 @@ align-variants-decl=false
 sequence-blank-line=compact
 indent-after-in=0
 indicate-multiline-delimiters=no
+cases-exp-indent=2

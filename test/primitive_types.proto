@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+message Types {
+  int64 int64 = 1;
+  sint64 sint64 = 2;
+  uint64 uint64 = 3;
+  int32 int32 = 4;
+  sint32 sint32 = 5;
+  uint32 uint32 = 6;
+  double double = 7;
+  float float = 8;
+  fixed64 fixed64 = 9;
+  fixed32 fixed32 = 10;
+  sfixed64 sfixed64 = 11;
+  sfixed32 sfixed32 = 12;
+  bool bool = 13;
+  string string = 14;
+  bytes bytes = 15;
+}
+
+message Int64 {
+  int64 i1 = 1;
+  int64 i2 = 2;
+  int64 i3 = 3;
+  int64 i4 = 4;
+}
+
+message Int32 {
+  int32 i1 = 1;
+  int32 i2 = 2;
+  int32 i3 = 3;
+  int32 i4 = 4;
+}

@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-message A {
-  sint64 a = 1;
-  string b = 2;
-}
-
-message B {
-}
