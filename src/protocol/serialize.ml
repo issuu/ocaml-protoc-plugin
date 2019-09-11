@@ -1,6 +1,28 @@
 open Core_kernel
 open Spec
 
+type _ spec =
+  | Double : float spec
+  | Float : float spec
+  | Int32 : int spec
+  | Int64 : int spec
+  | UInt32 : int spec
+  | UInt64 : int spec
+  | SInt32 : int spec
+  | SInt64 : int spec
+  | Fixed32 : int spec
+  | Fixed64 : int spec
+  | SFixed32 : int spec
+  | SFixed64 : int spec
+  | Bool : bool spec
+  | String : string spec
+  | Bytes : bytes spec
+  | Message : ('a -> string) -> 'a option spec
+  | Enum : ('a -> int) -> 'a spec
+  | Repeated : 'a spec -> 'a list spec
+  | Oneof : ('a -> int * field) -> 'a spec
+
+
 (** Some buffer to hold data, and to read and write data *)
 module Buffer = struct
   let incr = 128
@@ -101,7 +123,7 @@ let serialize_message : (int * field) list -> string =
 type (_, _) protobuf_type_list =
   | Nil : ('a, 'a) protobuf_type_list
   | Cons :
-      (int * 'a protobuf_type) * ('b, 'c) protobuf_type_list
+      (int * 'a spec) * ('b, 'c) protobuf_type_list
       -> ('a -> 'b, 'c) protobuf_type_list
 
 let ( ^:: ) a b = Cons (a, b)

@@ -1,22 +1,49 @@
 open Core
 open Result.Let_syntax
 
-(** Module for deserializing values *)
+type error =
+  [ `Wrong_field_type of string * Spec.field
+  | `Illegal_value of string * Spec.field
+  | `Not_implemented ]
 
-let error_wrong_field str field : _ Spec.deser_result =
+(** Module for deserializing values *)
+type nonrec 'a result = ('a, error) result
+
+type _ spec =
+  | Double : float spec
+  | Float : float spec
+  | Int32 : int spec
+  | Int64 : int spec
+  | UInt32 : int spec
+  | UInt64 : int spec
+  | SInt32 : int spec
+  | SInt64 : int spec
+  | Fixed32 : int spec (* unsigned *)
+  | Fixed64 : int spec
+  | SFixed32 : int spec
+  | SFixed64 : int spec
+  | Bool : bool spec
+  | String : string spec
+  | Bytes : bytes spec
+  | Message : (string -> 'a result) -> 'a option spec
+  | Enum : (int -> 'a result) -> 'a spec
+  | Repeated : 'a spec -> 'a list spec
+
+
+let error_wrong_field str field : _ result =
   `Wrong_field_type (str, field) |> Result.fail
 
-let error_illegal_value str field : _ Spec.deser_result =
+let error_illegal_value str field : _ result =
   `Illegal_value (str, field) |> Result.fail
 
 (** Serialize a buffer. Maybe we should share the buffer implementation
     with serialization. A streaming interface would be nicer, so we dont need to hold all data in memory at this time.  *)
-let read_fields : Buffer.t -> ((int * Spec.field) list, 'a) result =
+let read_fields : Buffer.t -> ((int * Spec.field) list) result =
  fun b -> ignore b; Result.return []
 
 type 'a sentinal = unit -> 'a
 
-type decoder = Spec.field -> (unit, Spec.error) result
+type decoder = Spec.field -> unit result
 
 module Defaults = struct
   let bool = false
@@ -42,7 +69,7 @@ end
 
     A helper function exists to create sentinals
 *)
-let deserialize : (int * decoder) list -> Buffer.t -> (unit, 'a) result =
+let deserialize : (int * decoder) list -> Buffer.t -> unit result =
  fun spec buffer ->
   (* Exceptions here is an error in code-generation. Crash hard on that! *)
   let decoder_map = Map.of_alist_exn (module Int) spec in
@@ -204,7 +231,7 @@ let repeated_sentinal (get, read) =
       value := get () :: !value;
       return () )
 
-let rec sentinal : type a. a Spec.deser -> a sentinal * decoder = function
+let rec sentinal : type a. a spec -> a sentinal * decoder = function
   | Double -> double_sentinal ()
   | Float -> float_sentinal ()
   | Int32 -> int32_sentinal ()

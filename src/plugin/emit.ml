@@ -267,6 +267,13 @@ let inject (signature', implementation') signature implementation =
   Code.append signature signature';
   Code.append implementation implementation'
 
+let emit_deserialization_function _scope _all_fields _oneof_decls =
+  let signature = Code.init () in
+  let implementation = Code.init () in
+  Code.emit signature `None "val from_proto: string -> (t, Protocol.Spec.error) result";
+  Code.emit implementation `None "let from_proto _ = Error `Not_implemented";
+  signature, implementation
+
 (* Return code for signature and implementation *)
 let emit_serialization_function scope all_fields oneof_decls =
   let fields, _oneof_decls = split_oneof_decl all_fields oneof_decls in
@@ -275,7 +282,6 @@ let emit_serialization_function scope all_fields oneof_decls =
   (* What is the return type of to_proto???? *)
   (* What should go in??? *)
   Code.emit signature `None "val to_proto: t -> string";
-  Code.emit signature `None "val from_proto: string -> (t, Protocol.Spec.error) result";
   (* Create a list of protobuf_types *)
   (* to_proto should destruct the type and pass to the function.  *)
   let protocol_field_spec =
@@ -291,7 +297,6 @@ let emit_serialization_function scope all_fields oneof_decls =
     | [] -> "()"
     | _ -> String.concat ~sep:"; " field_names |> sprintf "{ %s }"
   in
-  Code.emit implementation `None "let from_proto _ = Error `Not_implemented";
   Code.emit implementation `Begin "let to_proto %s = " destruct;
   Code.emit implementation `None "let open Protocol.Serialize in";
   Code.emit
@@ -449,6 +454,10 @@ let rec emit_message scope
       Code.append implementation t;
       inject
         (emit_serialization_function scope fields oneof_decls)
+        signature
+        implementation;
+      inject
+        (emit_deserialization_function scope fields oneof_decls)
         signature
         implementation
     | None -> ()
