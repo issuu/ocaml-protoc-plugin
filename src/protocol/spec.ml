@@ -3,3 +3,4 @@ type field =
   | Fixed_64_bit of Int64.t (* fixed64, sfixed64, double *)
   | Length_delimited of string (* string, bytes, embedded messages, packed repeated fields *)
   | Fixed_32_bit of Int32.t (* fixed32, sfixed32, float *)
+[@@deriving show]

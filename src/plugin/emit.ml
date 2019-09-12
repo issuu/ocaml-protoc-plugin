@@ -267,11 +267,46 @@ let inject (signature', implementation') signature implementation =
   Code.append signature signature';
   Code.append implementation implementation'
 
-let emit_deserialization_function _scope _all_fields _oneof_decls =
+let emit_deserialization_function scope all_fields oneof_decls =
+  let fields, _oneof_decls = split_oneof_decl all_fields oneof_decls in
+
   let signature = Code.init () in
   let implementation = Code.init () in
-  Code.emit signature `None "val from_proto: string -> (t, Protocol.Spec.error) result";
-  Code.emit implementation `None "let from_proto _ = Error `Not_implemented";
+  Code.emit signature `None "val from_proto: Protocol.Protobuffer.t -> (t, Protocol.Deserialize.error) result";
+
+  let _field_names = List.map ~f:(fun field -> field_name field.name) fields in
+  (* We should call Deserialize with something *)
+  Code.emit implementation `Begin "let from_proto data =";
+  Code.emit implementation `None "let open Base.Result.Monad_infix in";
+  List.iter ~f:(fun field ->
+      let index = Option.value_exn field.number in
+      let typ = protobuf_type_of_field scope field in (* Not correct *)
+      Code.emit implementation `None "let (sentinal_%d, deser_%d) = Protocol.Deserialize.sentinal %s in" index index typ;
+    ) fields;
+
+  let spec =
+    List.map ~f:(fun field -> sprintf "(%d, deser_%d)" (Option.value_exn field.number) (Option.value_exn field.number)) fields
+    |> String.concat ~sep:"; "
+  in
+  Code.emit implementation `None "let spec = [ %s ] in" spec;
+  Code.emit implementation `None "Protocol.Deserialize.deserialize spec data >>= fun () -> ";
+  (* Construct the record *)
+  let construct =
+    match List.is_empty fields with
+    | true -> "()"
+    | false ->
+      List.map ~f:(fun field ->
+          let name = field_name field.name in
+          let index = Option.value_exn field.number in
+          sprintf "%s = sentinal_%d ()" name index
+        ) fields
+      |> String.concat ~sep:"; "
+      |> sprintf "{ %s }"
+  in
+
+  Code.emit implementation `None "Base.Result.return %s" construct;
+  Code.emit implementation `End "";
+
   signature, implementation
 
 (* Return code for signature and implementation *)
@@ -279,9 +314,7 @@ let emit_serialization_function scope all_fields oneof_decls =
   let fields, _oneof_decls = split_oneof_decl all_fields oneof_decls in
   let signature = Code.init () in
   let implementation = Code.init () in
-  (* What is the return type of to_proto???? *)
-  (* What should go in??? *)
-  Code.emit signature `None "val to_proto: t -> string";
+  Code.emit signature `None "val to_proto: t -> Protocol.Protobuffer.t";
   (* Create a list of protobuf_types *)
   (* to_proto should destruct the type and pass to the function.  *)
   let protocol_field_spec =
@@ -290,7 +323,7 @@ let emit_serialization_function scope all_fields oneof_decls =
            sprintf "(%d, %s) ^:: " (Option.value_exn index) tpe)
     |> String.concat
   in
-  (* Destruct the type.... *)
+  (* Destruct the type. *)
   let field_names = List.map ~f:(fun field -> field_name field.name) fields in
   let destruct =
     match fields with
@@ -301,10 +334,13 @@ let emit_serialization_function scope all_fields oneof_decls =
   Code.emit implementation `None "let open Protocol.Serialize in";
   Code.emit
     implementation
-    `End
+    `None
     "serialize (%sNil) %s"
     protocol_field_spec
     (String.concat ~sep:" " field_names);
+
+  Code.emit implementation `End "";
+
   signature, implementation
 
 let emit_message_type scope all_fields oneof_decls =

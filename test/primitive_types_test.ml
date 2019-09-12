@@ -41,7 +41,7 @@ let%expect_test _ =
     string: "string"
     bytes: "bytes"
 
-    Decode failed |}]
+    Decode failed: `Wrong_field_type (("fixed64", (Spec.Fixed_64_bit 9L))) |}]
 
 let%expect_test _ =
   let module T = Primitive_types.Int64 in
@@ -52,7 +52,7 @@ let%expect_test _ =
     i3: -2
     i4: 8589934592
 
-    Decode failed |}]
+    Decode success |}]
 
 let%expect_test _ =
   let module T = Primitive_types.Int32 in
@@ -65,4 +65,17 @@ let%expect_test _ =
     i3: -1
     i4: -2
 
-    Decode failed |}]
+    Decode mismatch |}]
+
+let%expect_test _ =
+  let module T = Primitive_types.Int32 in
+  let t = T.{i1 = 5; i2 = 1000; i3 = 3; i4 = 7} in
+  Test_lib.test_encode "primitive_types.proto" (module T) t;
+  [%expect
+    {|
+    i1: 5
+    i2: 1000
+    i3: 3
+    i4: 7
+
+    Decode success |}]

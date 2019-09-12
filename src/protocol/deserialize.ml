@@ -2,9 +2,10 @@ open Core
 open Result.Let_syntax
 
 type error =
-  [ `Wrong_field_type of string * Spec.field
+  [ Protobuffer.error
+  | `Wrong_field_type of string * Spec.field
   | `Illegal_value of string * Spec.field
-  | `Not_implemented ]
+  | `Not_implemented ] [@@deriving show]
 
 (** Module for deserializing values *)
 type nonrec 'a result = ('a, error) result
@@ -36,30 +37,34 @@ let error_wrong_field str field : _ result =
 let error_illegal_value str field : _ result =
   `Illegal_value (str, field) |> Result.fail
 
-(** Serialize a buffer. Maybe we should share the buffer implementation
-    with serialization. A streaming interface would be nicer, so we dont need to hold all data in memory at this time.  *)
-let read_fields : Buffer.t -> ((int * Spec.field) list) result =
- fun b -> ignore b; Result.return []
-
 type 'a sentinal = unit -> 'a
 
 type decoder = Spec.field -> unit result
 
 module Defaults = struct
   let bool = false
-
   let int = 0
-
   let float = 0.0
-
   let string = ""
-
   let bytes = Bytes.create 0
-
   let enum = 0
-
   let message = None
 end
+
+(** Deserialize a buffer. *)
+let read_fields : Protobuffer.t -> ((int * Spec.field) list) result = fun t ->
+  let rec inner acc =
+    match Protobuffer.has_more t with
+    | false -> return (List.rev acc) (* Order must be preserved *)
+    | true ->
+      let%bind v = Protobuffer.read_field t in
+      inner (v :: acc)
+  in
+  match inner [] with
+  | Ok v -> return v
+  | Error `Premature_end_of_input -> Result.fail `Premature_end_of_input
+  | Error (`Unknown_field_type n) -> Result.fail (`Unknown_field_type n)
+
 
 (** Deserialize takes a list of field sentinals and a buffer for the
     data. Data is decoded into a list of tags, fields
@@ -69,11 +74,9 @@ end
 
     A helper function exists to create sentinals
 *)
-let deserialize : (int * decoder) list -> Buffer.t -> unit result =
- fun spec buffer ->
+let deserialize : (int * decoder) list -> Protobuffer.t -> unit result = fun spec buffer ->
   (* Exceptions here is an error in code-generation. Crash hard on that! *)
   let decoder_map = Map.of_alist_exn (module Int) spec in
-  let open Result.Let_syntax in
   let%bind fields = read_fields buffer in
   List.fold_left
     ~init:(Result.Ok ())
@@ -117,35 +120,22 @@ let int_sentinal ~signed ~type_name () =
       Result.ok_unit
     | field -> error_wrong_field type_name field )
 
-let int32_sentinal ~type_name =
+(* Take care of signedness here *)
+let varint_sentinal ~type_name =
   let value = ref Defaults.int in
   ( (fun () -> !value),
     function
-    | Spec.Fixed_32_bit v ->
-      value := Int32.to_int_exn v;
+    | Spec.Varint v ->
+      value := v;
       Result.ok_unit
     | field -> error_wrong_field type_name field )
 
-let uint32_sentinal () = int32_sentinal ~type_name:"uint32"
-
-let sint32_sentinal () = int32_sentinal ~type_name:"sint32"
-
-let int32_sentinal () = int32_sentinal ~type_name:"int32"
-
-let int64_sentinal ~type_name =
-  let value = ref Defaults.int in
-  ( (fun () -> !value),
-    function
-    | Spec.Fixed_64_bit v ->
-      value := Int64.to_int_exn v;
-      Result.ok_unit
-    | field -> error_wrong_field type_name field )
-
-let uint64_sentinal () = int64_sentinal ~type_name:"uint64"
-
-let sint64_sentinal () = int64_sentinal ~type_name:"sint64"
-
-let int64_sentinal () = int64_sentinal ~type_name:"int64"
+let uint32_sentinal () = varint_sentinal ~type_name:"uint32"
+let sint32_sentinal () = varint_sentinal ~type_name:"sint32"
+let int32_sentinal () = varint_sentinal ~type_name:"int32"
+let uint64_sentinal () = varint_sentinal ~type_name:"uint64"
+let sint64_sentinal () = varint_sentinal ~type_name:"sint64"
+let int64_sentinal () = varint_sentinal ~type_name:"int64"
 
 let fixed32_sentinal ~type_name =
   let value = ref Defaults.int in
@@ -249,6 +239,7 @@ let rec sentinal : type a. a spec -> a sentinal * decoder = function
   | Bytes -> bytes_sentinal ()
   | Message deser -> message_sentinal deser
   | Enum deser -> enum_sentinal deser
-  | Repeated deser ->
+  | Repeated deser -> (* I want a type here, as we need to understand if the field can be packed *)
+    (* varint, 32-bit, or 64-bit wire types. So bool and enum are included here *)
     let sentinal = sentinal deser in
     repeated_sentinal sentinal
