@@ -119,7 +119,8 @@ let to_string_opt = function
   | Some s -> s
   | None -> "<None>"
 
-(** Slightly overloaded name here. Its also used for all other types which would go into a module *)
+(** Slightly overloaded name here.
+    Its also used for all other types which would go into a module *)
 type message = {
   module_name : string;
   signature : Code.t;
@@ -139,7 +140,7 @@ let emit_enum_type
   Code.emit
     t
     `None
-    "type t = %s"
+    "type t = %s [@@deriving show]"
     (List.map ~f:constructor_name value |> String.concat ~sep:" | ");
   Code.append signature t;
   Code.append implementation t;
@@ -348,12 +349,12 @@ let emit_message_type scope all_fields oneof_decls =
   let t = Code.init () in
   let () =
     match all_fields with
-    | [] -> Code.emit t `None "type t = ()"
+    | [] -> Code.emit t `None "type t = () [@@deriving show]"
     | _ ->
       Code.emit t `Begin "type t = {";
       List.iter ~f:(emit_field t scope) fields;
       List.iter ~f:(emit_oneof_fields t scope) oneof_decls;
-      Code.emit t `End "}"
+      Code.emit t `End "} [@@deriving show]"
   in
   t
 

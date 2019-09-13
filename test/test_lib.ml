@@ -1,7 +1,7 @@
 open Core
 
 module type T = sig
-  type t
+  type t [@@deriving show]
   val to_proto : t -> Protocol.Protobuffer.t
   val from_proto : Protocol.Protobuffer.t -> (t, Protocol.Deserialize.error) result
   val name : string
@@ -22,7 +22,7 @@ let test_encode protobuf_file (type t) (module M : T with type t = t) (t : t) =
     (* Protocol.Protobuffer.dump in_data; *)
     match M.from_proto in_data with
     | Ok t' when t' = t -> "Decode success"
-    | Ok _ -> "Decode mismatch"
+    | Ok t' -> sprintf "%s\n   !=\n%s" ([%show: M.t] t) ([%show: M.t] t')
     | Error err -> sprintf "Decode failed: %s" (Protocol.Deserialize.show_error err)
   in
   printf "%s\n" result

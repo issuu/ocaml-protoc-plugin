@@ -121,21 +121,29 @@ let int_sentinal ~signed ~type_name () =
     | field -> error_wrong_field type_name field )
 
 (* Take care of signedness here *)
-let varint_sentinal ~type_name =
+let varint_sentinal ~signed ~type_name =
   let value = ref Defaults.int in
   ( (fun () -> !value),
     function
     | Spec.Varint v ->
+      let v = match signed with
+        | true when v mod 2 = 0 ->
+          v / 2
+        | true  ->
+          v / 2 * (-1) - 1
+        | false ->
+          v
+      in
       value := v;
       Result.ok_unit
     | field -> error_wrong_field type_name field )
 
-let uint32_sentinal () = varint_sentinal ~type_name:"uint32"
-let sint32_sentinal () = varint_sentinal ~type_name:"sint32"
-let int32_sentinal () = varint_sentinal ~type_name:"int32"
-let uint64_sentinal () = varint_sentinal ~type_name:"uint64"
-let sint64_sentinal () = varint_sentinal ~type_name:"sint64"
-let int64_sentinal () = varint_sentinal ~type_name:"int64"
+let uint32_sentinal () = varint_sentinal ~signed:false ~type_name:"uint32"
+let sint32_sentinal () = varint_sentinal ~signed:true ~type_name:"sint32"
+let int32_sentinal () = varint_sentinal ~signed:false ~type_name:"int32"
+let uint64_sentinal () = varint_sentinal ~signed:false ~type_name:"uint64"
+let sint64_sentinal () = varint_sentinal ~signed:true ~type_name:"sint64"
+let int64_sentinal () = varint_sentinal ~signed:false ~type_name:"int64"
 
 let fixed32_sentinal ~type_name =
   let value = ref Defaults.int in
