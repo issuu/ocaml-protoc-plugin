@@ -20,3 +20,11 @@
   (:proto primitive_types.proto))
  (action
   (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} --ocaml_out . %{proto})))
+
+(rule
+ (targets int_types.ml)
+ (deps
+  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:proto int_types.proto))
+ (action
+  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} --ocaml_out . %{proto})))
