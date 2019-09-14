@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+message UInt64 {
+  repeated uint64 i = 1;
+}
+
+message Double {
+  repeated double i = 1;
+}
+
+message Float {
+  repeated float i = 1;
+}
