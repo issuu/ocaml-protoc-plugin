@@ -14,8 +14,8 @@ let test_encode protobuf_file (type t) (module M : T with type t = t) (expect : 
   let data = M.to_proto expect in
   Out_channel.output_string cout (Protocol.Protobuffer.contents data);
   Out_channel.close_no_err cout;
-  Sys.command_exn (sprintf "protoc --decode=%s %s < %s" M.name protobuf_file filename);
-  (* Decode the message also. I really would like to pass a module. *)
+  Sys.command_exn (sprintf "protoc --decode=%s %s < %s | tr \"\\n\" \"; \"" M.name protobuf_file filename);
+  (* Decode the message *)
   let in_data = Protocol.Protobuffer.reset data in
   (* Protocol.Protobuffer.dump in_data; *)
   match M.from_proto in_data with

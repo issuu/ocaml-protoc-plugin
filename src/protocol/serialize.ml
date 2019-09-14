@@ -74,6 +74,14 @@ let field_of_sfixed32 v = Fixed_32_bit (Int32.of_int_exn v)
 let field_of_bool v = unsigned_varint (match v with true -> 1 | false -> 0)
 let field_of_string v = Length_delimited v
 let field_of_bytes v = Length_delimited (Bytes.to_string v)
+let field_of_message ~f v =
+  let data = match v with
+    | None -> ""
+    | Some v -> (f v)
+  in
+  Length_delimited data
+let field_of_enum ~f v =
+  field_of_uint64 (f v)
 
 (** Allow emitted code to present a protobuf specification. *)
 let rec serialize : type a. Protobuffer.t -> (a, Protobuffer.t) protobuf_type_list -> a =
@@ -132,17 +140,9 @@ let rec serialize : type a. Protobuffer.t -> (a, Protobuffer.t) protobuf_type_li
     | Cons ((index, Bytes), rest) ->
       write_field buffer ~index ~f:field_of_bytes rest
     | Cons ((index, Message to_string), rest) ->
-      fun v ->
-        (match v with
-         | None -> ()
-         | Some msg -> Protobuffer.write_field buffer index (Length_delimited (to_string msg)));
-        serialize buffer rest
+      write_field buffer ~index ~f:(field_of_message ~f:to_string) rest
     | Cons ((index, Enum to_int), rest) ->
-      fun v ->
-        (match to_int v with
-         | 0 -> ()
-         | n -> Protobuffer.write_field buffer index (unsigned_varint n));
-        serialize buffer rest
+      write_field buffer ~index ~f:(field_of_enum ~f:to_int) rest
     | Cons ((_index, Oneof f), rest) ->
       (* Oneof fields ignores the initial index *)
       fun v ->
