@@ -15,6 +15,7 @@ type error = [ `Premature_end_of_input
              ] [@@deriving show]
 
 let init ?(length = incr) () = {data = Bytes.create length; offset = 0}
+let create data = { data = Bytes.of_string data; offset = 0 }
 
 (** Seems to be two different types here *)
 let reset t =

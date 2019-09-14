@@ -1,5 +1,8 @@
 open Core_kernel
 
+(* This should be part of options sent to proc so its under user control *)
+let annot = "[@@deriving show { with_path = false }]"
+
 (* TODO: Package should be embeded in the constructed file.
    - Another way is to make a outer module with the filename again
 *)
@@ -140,8 +143,9 @@ let emit_enum_type
   Code.emit
     t
     `None
-    "type t = %s [@@deriving show]"
-    (List.map ~f:constructor_name value |> String.concat ~sep:" | ");
+    "type t = %s %s"
+    (List.map ~f:constructor_name value |> String.concat ~sep:" | ")
+    annot;
   Code.append signature t;
   Code.append implementation t;
   {module_name; signature; implementation}
@@ -349,12 +353,12 @@ let emit_message_type scope all_fields oneof_decls =
   let t = Code.init () in
   let () =
     match all_fields with
-    | [] -> Code.emit t `None "type t = () [@@deriving show]"
+    | [] -> Code.emit t `None "type t = () %s" annot
     | _ ->
       Code.emit t `Begin "type t = {";
       List.iter ~f:(emit_field t scope) fields;
       List.iter ~f:(emit_oneof_fields t scope) oneof_decls;
-      Code.emit t `End "} [@@deriving show]"
+      Code.emit t `End "} %s" annot
   in
   t
 

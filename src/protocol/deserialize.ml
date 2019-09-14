@@ -30,13 +30,6 @@ type _ spec =
   | Enum : (int -> 'a result) -> 'a spec
   | Repeated : 'a spec -> 'a list spec
 
-
-let error_wrong_field str field : _ result =
-  `Wrong_field_type (str, field) |> Result.fail
-
-let error_illegal_value str field : _ result =
-  `Illegal_value (str, field) |> Result.fail
-
 type 'a sentinal = unit -> 'a
 
 type decoder = Spec.field -> unit result
@@ -51,11 +44,18 @@ module Defaults = struct
   let message = None
 end
 
+let error_wrong_field str field : _ result =
+  `Wrong_field_type (str, field) |> Result.fail
+
+let error_illegal_value str field : _ result =
+  `Illegal_value (str, field) |> Result.fail
+
+
 (** Deserialize a buffer. *)
 let read_fields : Protobuffer.t -> ((int * Spec.field) list) result = fun t ->
   let rec inner acc =
     match Protobuffer.has_more t with
-    | false -> return (List.rev acc) (* Order must be preserved *)
+    | false -> return (List.rev acc) (* Preserve order *)
     | true ->
       let%bind v = Protobuffer.read_field t in
       inner (v :: acc)
@@ -120,7 +120,6 @@ let int_sentinal ~signed ~type_name () =
       Result.ok_unit
     | field -> error_wrong_field type_name field )
 
-(* Take care of signedness here *)
 let varint_sentinal ~signed ~type_name =
   let value = ref Defaults.int in
   ( (fun () -> !value),
@@ -149,6 +148,9 @@ let fixed32_sentinal ~type_name =
   let value = ref Defaults.int in
   ( (fun () -> !value),
     function
+    | Spec.Fixed_32_bit v ->
+      value := Int32.to_int_exn v;
+      return ()
     | field -> error_wrong_field type_name field )
 
 let sfixed32_sentinal () = fixed32_sentinal ~type_name:"sfixed32"
@@ -159,6 +161,9 @@ let fixed64_sentinal ~type_name =
   let value = ref Defaults.int in
   ( (fun () -> !value),
     function
+    | Spec.Fixed_64_bit v ->
+      value := Int64.to_int_exn v;
+      return ()
     | field -> error_wrong_field type_name field )
 
 let sfixed64_sentinal () = fixed64_sentinal ~type_name:"sfixed64"
@@ -201,7 +206,6 @@ let message_sentinal deser =
   ( (fun () -> !value),
     function
     | Spec.Length_delimited data ->
-      (* Decoding might fail *)
       let%bind message = deser data in
       value := Some message;
       return ()
@@ -213,21 +217,71 @@ let enum_sentinal deser =
     | Ok v -> ref v
     | Error _ -> failwith "Internal error: Enum _must_ allow default value."
   in
-  ( (fun () -> !value),
-    function
-    | Spec.Varint v ->
-      let%bind v = deser v in
-      value := v;
-      return ()
-    | field -> error_wrong_field "enum" field )
+  (fun () -> !value),
+  function
+  | Spec.Varint v ->
+    let%bind v = deser v in
+    value := v;
+    return ()
+  | field -> error_wrong_field "enum" field
 
-let repeated_sentinal (get, read) =
+(** Repeated field. For scalar types, we allow a length delim, and
+    just read all values in it. For this reason, we need to know the exact type.
+*)
+let rec read_fields ~f buffer acc =
+  match Protobuffer.has_more buffer with
+  | true ->
+    let%bind v = f buffer in
+    read_fields ~f buffer (v :: acc)
+  | false ->
+    return acc
+
+let repeated_sentinal ~scalar_type (get, read) =
   let value = ref [] in
-  ( (fun () -> List.rev !value),
-    fun v ->
-      let%bind () = read v in
-      value := get () :: !value;
-      return () )
+  let read_field v =
+    let%bind () = read v in
+    value := get () :: !value;
+    return ()
+  in
+  (fun () -> List.rev !value),
+  (* This could be optimized, as ~scalar_type never changes *)
+  fun field ->
+    let%bind fields_rev =
+      match field, scalar_type with
+      | Spec.Length_delimited data, `Fixed_64_bit ->
+        read_fields ~f:(fun b -> Protobuffer.read_int64 b >>| Spec.fixed_64_bit) (Protobuffer.create data) []
+      | Spec.Length_delimited data, `Fixed_32_bit ->
+        read_fields ~f:(fun b -> Protobuffer.read_int32 b >>| Spec.fixed_32_bit) (Protobuffer.create data) []
+      | Spec.Length_delimited data, `Varint  ->
+        read_fields ~f:(fun b -> Protobuffer.read_varint b >>| Spec.varint) (Protobuffer.create data) []
+      | Spec.Length_delimited _ as v, `Not_scalar -> return [v]
+      | Spec.Fixed_32_bit _ as v, _  -> return [v]
+      | Spec.Fixed_64_bit _ as v, _ -> return [v]
+      | Spec.Varint _ as v, _ -> return [v]
+    in
+    List.fold_right ~init:Result.ok_unit ~f:(fun field acc->
+        let%bind () = acc in
+        read_field field
+      ) fields_rev
+
+
+
+let scalar_type: type a. a spec -> 'b = function
+    | Double -> `Fixed_64_bit
+    | Float -> `Fixed_32_bit
+    | Int32 -> `Varint
+    | Int64 -> `Varint
+    | UInt32 -> `Varint
+    | UInt64 -> `Varint
+    | SInt32 -> `Varint
+    | SInt64 -> `Varint
+    | Fixed32 -> `Fixed_32_bit
+    | Fixed64 -> `Fixed_64_bit
+    | SFixed32 -> `Fixed_32_bit
+    | SFixed64 -> `Fixed_64_bit
+    | Bool -> `Varint
+    | Enum _ -> `Varint
+    | _ -> `Not_scalar
 
 let rec sentinal : type a. a spec -> a sentinal * decoder = function
   | Double -> double_sentinal ()
@@ -247,7 +301,6 @@ let rec sentinal : type a. a spec -> a sentinal * decoder = function
   | Bytes -> bytes_sentinal ()
   | Message deser -> message_sentinal deser
   | Enum deser -> enum_sentinal deser
-  | Repeated deser -> (* I want a type here, as we need to understand if the field can be packed *)
-    (* varint, 32-bit, or 64-bit wire types. So bool and enum are included here *)
-    let sentinal = sentinal deser in
-    repeated_sentinal sentinal
+  | Repeated tpe ->
+    let sentinal = sentinal tpe in
+    repeated_sentinal ~scalar_type:(scalar_type tpe) sentinal

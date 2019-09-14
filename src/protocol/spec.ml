@@ -4,3 +4,8 @@ type field =
   | Length_delimited of string (* string, bytes, embedded messages, packed repeated fields *)
   | Fixed_32_bit of Int32.t (* fixed32, sfixed32, float *)
 [@@deriving show]
+
+let varint v = Varint v
+let fixed_32_bit v = Fixed_32_bit v
+let fixed_64_bit v = Fixed_64_bit v
+let length_delimited s = Length_delimited s
