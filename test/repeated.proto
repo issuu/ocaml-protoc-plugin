@@ -11,3 +11,7 @@ message Double {
 message Float {
   repeated float i = 1;
 }
+
+message String {
+  repeated string i = 1;
+}

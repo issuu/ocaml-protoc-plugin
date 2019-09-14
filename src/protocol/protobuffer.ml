@@ -139,6 +139,12 @@ let read_int64 t =
   t.offset <- t.offset + size;
   return v
 
+let write_raw_field: t -> field -> unit = fun t -> function
+  | Varint v -> write_varint t v
+  | Fixed_64_bit v -> write_int64 t v
+  | Length_delimited v -> write_data t v
+  | Fixed_32_bit v -> write_int32 t v
+
 let write_field : t -> int -> field -> unit =
   fun t index field ->
   let field_type = match field with
@@ -148,11 +154,7 @@ let write_field : t -> int -> field -> unit =
     | Fixed_32_bit _ -> 5
   in
   write_field_header t index field_type;
-  match field with
-  | Varint v -> write_varint t v
-  | Fixed_64_bit v -> write_int64 t v
-  | Length_delimited v -> write_data t v
-  | Fixed_32_bit v -> write_int32 t v
+  write_raw_field t field
 
 let read_field : t -> (int * field, error) result = fun t ->
   let%bind (field_type, field_number) = read_field_header t in

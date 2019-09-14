@@ -28,3 +28,11 @@
   (:proto int_types.proto))
  (action
   (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} --ocaml_out . %{proto})))
+
+(rule
+ (targets repeated.ml)
+ (deps
+  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:proto repeated.proto))
+ (action
+  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} --ocaml_out . %{proto})))

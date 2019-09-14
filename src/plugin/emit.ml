@@ -286,7 +286,7 @@ let emit_deserialization_function scope all_fields oneof_decls =
   List.iter ~f:(fun field ->
       let index = Option.value_exn field.number in
       let typ = protobuf_type_of_field scope field in (* Not correct *)
-      Code.emit implementation `None "let (sentinal_%d, deser_%d) = Protocol.Deserialize.sentinal %s in" index index typ;
+      Code.emit implementation `None "let (sentinal_%d, deser_%d) = Protocol.Deserialize.sentinal (%s) in" index index typ;
     ) fields;
 
   let spec =
