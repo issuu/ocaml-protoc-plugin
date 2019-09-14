@@ -8,4 +8,4 @@ let%expect_test _ =
   let module T = Enum.Outside in
   let t = T.{ enum = Enum.E1.C } in
   Test_lib.test_encode "enum.proto" (module T) t;
-  [%expect {| enum: B; |}]
+  [%expect {| enum: C; |}]
