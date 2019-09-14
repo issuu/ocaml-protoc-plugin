@@ -27,3 +27,10 @@ let%expect_test _ =
   Test_lib.test_encode "repeated.proto" (module T) t;
   [%expect{|
     i: "0";i: "1";i: "2";i: "3";i: "4"; |}]
+
+let%expect_test _ =
+  let module T = Repeated.Enum in
+  let t = T.{ e = T.E.[A; B; C; A; C] } in
+  Test_lib.test_encode "repeated.proto" (module T) t;
+  [%expect{|
+    e: A;e: B;e: C;e: A;e: C; |}]

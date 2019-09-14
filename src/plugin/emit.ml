@@ -115,7 +115,7 @@ let field_name (field_name : string option) =
 
 let variant_name name = module_name name
 
-let constructor_name {Spec.Descriptor.name; number = _; options = _} =
+let constructor_name Spec.Descriptor.{name; number = _; options = _} =
   String.capitalize (Option.value_exn name)
 
 let to_string_opt = function
@@ -148,6 +148,24 @@ let emit_enum_type
     annot;
   Code.append signature t;
   Code.append implementation t;
+  Code.emit signature `None "val to_int: t -> int";
+  Code.emit signature `None "val from_int: int -> t Protocol.Deserialize.result";
+
+  Code.emit implementation `Begin "let to_int = function";
+  List.iter ~f:(fun v -> Code.emit implementation `None "| %s -> %d" (constructor_name v) (Option.value_exn v.number)) value;
+  Code.emit implementation `End "";
+
+  Code.emit implementation `Begin "let from_int = function";
+  List.iter ~f:(fun v ->
+      Code.emit implementation `None "| %d -> Ok %s" (Option.value_exn v.number) (constructor_name v)
+    ) value;
+  Code.emit implementation `None "| n -> Error (`Unknown_enum_value n)";
+
+  Code.emit implementation `End "";
+
+
+
+
   {module_name; signature; implementation}
 
 (* Message type should have a name a signature and an implementation. These should then be declared recursivly.
@@ -162,7 +180,7 @@ let emit_enum_type
 
 *)
 
-let protobuf_type_of_field scope field_descriptor =
+let protobuf_type_of_field ~prefix scope field_descriptor =
   let open Spec.Descriptor in
   let base_type =
     match field_descriptor with
@@ -183,10 +201,10 @@ let protobuf_type_of_field scope field_descriptor =
     | {type_ = Some Type_bytes; _} -> "Bytes"
     | {type_ = Some Type_group; _} -> failwith "Groups are deprecated"
     | {type_ = Some Type_message; type_name; _} ->
-      let to_proto_func = Scope.get_scoped_name ~postfix:"to_proto" scope type_name in
+      let to_proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
       sprintf "Message %s" to_proto_func
     | {type_ = Some Type_enum; type_name; _} ->
-      let to_int_func = Scope.get_scoped_name ~postfix:"to_int" scope type_name in
+      let to_int_func = Scope.get_scoped_name ~postfix:(prefix ^ "_int") scope type_name in
       sprintf "Enum %s" to_int_func
     | {type_ = None; _} -> failwith "Abstract types cannot be"
   in
@@ -285,7 +303,7 @@ let emit_deserialization_function scope all_fields oneof_decls =
   Code.emit implementation `None "let open Base.Result.Monad_infix in";
   List.iter ~f:(fun field ->
       let index = Option.value_exn field.number in
-      let typ = protobuf_type_of_field scope field in (* Not correct *)
+      let typ = protobuf_type_of_field ~prefix:"from" scope field in (* Not correct *)
       Code.emit implementation `None "let (sentinal_%d, deser_%d) = Protocol.Deserialize.sentinal (%s) in" index index typ;
     ) fields;
 
@@ -323,7 +341,7 @@ let emit_serialization_function scope all_fields oneof_decls =
   (* Create a list of protobuf_types *)
   (* to_proto should destruct the type and pass to the function.  *)
   let protocol_field_spec =
-    List.map ~f:(fun field -> field.number, protobuf_type_of_field scope field) fields
+    List.map ~f:(fun field -> field.number, protobuf_type_of_field ~prefix:"to" scope field) fields
     |> List.map ~f:(fun (index, tpe) ->
            sprintf "(%d, %s) ^:: " (Option.value_exn index) tpe)
     |> String.concat

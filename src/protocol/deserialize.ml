@@ -5,7 +5,8 @@ type error =
   [ Protobuffer.error
   | `Wrong_field_type of string * Spec.field
   | `Illegal_value of string * Spec.field
-  | `Not_implemented ] [@@deriving show]
+  | `Not_implemented
+  | `Unknown_enum_value of int] [@@deriving show]
 
 (** Module for deserializing values *)
 type nonrec 'a result = ('a, error) result

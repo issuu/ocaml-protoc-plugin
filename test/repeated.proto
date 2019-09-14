@@ -15,3 +15,12 @@ message Float {
 message String {
   repeated string i = 1;
 }
+
+message Enum {
+  enum E {
+    A = 0;
+    B = 1000;
+    C = 2000;
+  }
+  repeated E e = 1;
+}

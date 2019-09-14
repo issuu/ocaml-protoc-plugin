@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+
+message Message {
+  enum E {
+    A = 0;
+    B = 1;
+    C = 2;
+  }
+  E enum = 1;
+}
+
+
+enum E1 {
+  A = 0;
+  B = 1;
+  C = 2;
+}
+
+message Outside {
+  E1 enum = 1;
+}

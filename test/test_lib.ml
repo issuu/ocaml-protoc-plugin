@@ -15,6 +15,7 @@ let test_encode protobuf_file (type t) (module M : T with type t = t) (expect : 
   Out_channel.output_string cout (Protocol.Protobuffer.contents data);
   Out_channel.close_no_err cout;
   Sys.command_exn (sprintf "protoc --decode=%s %s < %s | tr \"\\n\" \"; \"" M.name protobuf_file filename);
+  Sys.remove filename;
   (* Decode the message *)
   let in_data = Protocol.Protobuffer.reset data in
   (* Protocol.Protobuffer.dump in_data; *)

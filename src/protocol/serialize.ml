@@ -165,7 +165,6 @@ let rec serialize : type a. Protobuffer.t -> (a, Protobuffer.t) protobuf_type_li
       fun v ->
         List.iter v ~f:(fun msg -> Protobuffer.write_field buffer index (Length_delimited (Bytes.to_string msg)));
         serialize buffer rest
-    (* Repeated packed fields. It would be nice if there were a way to reuse the code above.  *)
     | Cons ((index, Repeated Double), rest) ->
       write_packed_field buffer ~index ~f:field_of_double rest
     | Cons ((index, Repeated Float), rest) ->
@@ -196,6 +195,7 @@ let rec serialize : type a. Protobuffer.t -> (a, Protobuffer.t) protobuf_type_li
       write_packed_field buffer ~index ~f:(fun v -> to_int v |> field_of_uint64) rest
     | Cons ((_, Repeated (Repeated _)), _) ->
       failwith "Chained repeated fields not supported"
-    | Cons ((_, Repeated (Oneof _)), _) -> failwith "Oneof fields cannot be repeated"
+    | Cons ((_, Repeated (Oneof _)), _) ->
+      failwith "Oneof fields cannot be repeated"
 
 let serialize spec = serialize (Protobuffer.init ()) spec
