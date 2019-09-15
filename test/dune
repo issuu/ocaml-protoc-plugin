@@ -1,6 +1,6 @@
 (library
  (name test)
- (libraries core protocol)
+ (libraries core protobuf)
  (inline_tests)
  (preprocess
   (pps ppx_expect ppx_deriving.show)))

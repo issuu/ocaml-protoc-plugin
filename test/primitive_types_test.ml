@@ -48,5 +48,5 @@ let%expect_test _ =
     }
   in
   let bin = T.to_proto t in
-  printf "Size: %d%!" (Protocol.Protobuffer.contents bin |> String.length);
+  printf "Size: %d%!" (Protobuf.Protobuffer.contents bin |> String.length);
   [%expect {| Size: 0 |}]

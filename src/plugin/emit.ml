@@ -149,7 +149,7 @@ let emit_enum_type
   Code.append signature t;
   Code.append implementation t;
   Code.emit signature `None "val to_int: t -> int";
-  Code.emit signature `None "val from_int: int -> t Protocol.Deserialize.result";
+  Code.emit signature `None "val from_int: int -> t Protobuf.Deserialize.result";
 
   Code.emit implementation `Begin "let to_int = function";
   List.iter ~f:(fun v -> Code.emit implementation `None "| %s -> %d" (constructor_name v) (Option.value_exn v.number)) value;
@@ -214,7 +214,7 @@ let protobuf_type_of_field ~prefix scope field_descriptor =
 
 (** Get the stringified name of a type.
     Consider moving this to Protocol somewhere. So types are next to each other.
-    Currently this needs to be in sync with the Protocol.Serialize.protobuf_type
+    Currently this needs to be in sync with the Protobuf.Serialize.protobuf_type
 *)
 let type_of_field scope field_descriptor =
   let open Spec.Descriptor in
@@ -295,7 +295,7 @@ let emit_deserialization_function scope all_fields oneof_decls =
 
   let signature = Code.init () in
   let implementation = Code.init () in
-  Code.emit signature `None "val from_proto: Protocol.Protobuffer.t -> (t, Protocol.Deserialize.error) result";
+  Code.emit signature `None "val from_proto: Protobuf.Protobuffer.t -> (t, Protobuf.Deserialize.error) result";
 
   let _field_names = List.map ~f:(fun field -> field_name field.name) fields in
   (* We should call Deserialize with something *)
@@ -304,7 +304,7 @@ let emit_deserialization_function scope all_fields oneof_decls =
   List.iter ~f:(fun field ->
       let index = Option.value_exn field.number in
       let typ = protobuf_type_of_field ~prefix:"from" scope field in (* Not correct *)
-      Code.emit implementation `None "let (sentinal_%d, deser_%d) = Protocol.Deserialize.sentinal (%s) in" index index typ;
+      Code.emit implementation `None "let (sentinal_%d, deser_%d) = Protobuf.Deserialize.sentinal (%s) in" index index typ;
     ) fields;
 
   let spec =
@@ -312,7 +312,7 @@ let emit_deserialization_function scope all_fields oneof_decls =
     |> String.concat ~sep:"; "
   in
   Code.emit implementation `None "let spec = [ %s ] in" spec;
-  Code.emit implementation `None "Protocol.Deserialize.deserialize spec data >>= fun () -> ";
+  Code.emit implementation `None "Protobuf.Deserialize.deserialize spec data >>= fun () -> ";
   (* Construct the record *)
   let construct =
     match List.is_empty fields with
@@ -337,7 +337,7 @@ let emit_serialization_function scope all_fields oneof_decls =
   let fields, _oneof_decls = split_oneof_decl all_fields oneof_decls in
   let signature = Code.init () in
   let implementation = Code.init () in
-  Code.emit signature `None "val to_proto: t -> Protocol.Protobuffer.t";
+  Code.emit signature `None "val to_proto: t -> Protobuf.Protobuffer.t";
   (* Create a list of protobuf_types *)
   (* to_proto should destruct the type and pass to the function.  *)
   let protocol_field_spec =
@@ -354,7 +354,7 @@ let emit_serialization_function scope all_fields oneof_decls =
     | _ -> String.concat ~sep:"; " field_names |> sprintf "{ %s }"
   in
   Code.emit implementation `Begin "let to_proto %s = " destruct;
-  Code.emit implementation `None "let open Protocol.Serialize in";
+  Code.emit implementation `None "let open Protobuf.Serialize in";
   Code.emit
     implementation
     `None
