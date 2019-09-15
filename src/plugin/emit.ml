@@ -295,7 +295,7 @@ let emit_deserialization_function scope all_fields oneof_decls =
 
   let signature = Code.init () in
   let implementation = Code.init () in
-  Code.emit signature `None "val from_proto: Protobuf.Protobuffer.t -> (t, Protobuf.Deserialize.error) result";
+  Code.emit signature `None "val from_proto: Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result";
 
   let _field_names = List.map ~f:(fun field -> field_name field.name) fields in
   (* We should call Deserialize with something *)
@@ -337,7 +337,7 @@ let emit_serialization_function scope all_fields oneof_decls =
   let fields, _oneof_decls = split_oneof_decl all_fields oneof_decls in
   let signature = Code.init () in
   let implementation = Code.init () in
-  Code.emit signature `None "val to_proto: t -> Protobuf.Protobuffer.t";
+  Code.emit signature `None "val to_proto: t -> Protobuf.Writer.t";
   (* Create a list of protobuf_types *)
   (* to_proto should destruct the type and pass to the function.  *)
   let protocol_field_spec =

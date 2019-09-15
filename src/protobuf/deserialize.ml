@@ -2,7 +2,7 @@ open Core
 open Result.Let_syntax
 
 type error =
-  [ Protobuffer.error
+  [ Reader.error
   | `Wrong_field_type of string * Spec.field
   | `Illegal_value of string * Spec.field
   | `Not_implemented
@@ -53,12 +53,12 @@ let error_illegal_value str field : _ result =
 
 
 (** Deserialize a buffer. *)
-let read_fields : Protobuffer.t -> ((int * Spec.field) list) result = fun t ->
+let read_fields : Reader.t -> ((int * Spec.field) list) result = fun t ->
   let rec inner acc =
-    match Protobuffer.has_more t with
+    match Reader.has_more t with
     | false -> return (List.rev acc) (* Preserve order *)
     | true ->
-      let%bind v = Protobuffer.read_field t in
+      let%bind v = Reader.read_field t in
       inner (v :: acc)
   in
   match inner [] with
@@ -75,7 +75,7 @@ let read_fields : Protobuffer.t -> ((int * Spec.field) list) result = fun t ->
 
     A helper function exists to create sentinals
 *)
-let deserialize : (int * decoder) list -> Protobuffer.t -> unit result = fun spec buffer ->
+let deserialize : (int * decoder) list -> Reader.t -> unit result = fun spec buffer ->
   (* Exceptions here is an error in code-generation. Crash hard on that! *)
   let decoder_map = Map.of_alist_exn (module Int) spec in
   let%bind fields = read_fields buffer in
@@ -230,7 +230,7 @@ let enum_sentinal deser =
     just read all values in it. For this reason, we need to know the exact type.
 *)
 let rec read_fields ~f buffer acc =
-  match Protobuffer.has_more buffer with
+  match Reader.has_more buffer with
   | true ->
     let%bind v = f buffer in
     read_fields ~f buffer (v :: acc)
@@ -250,11 +250,11 @@ let repeated_sentinal ~scalar_type (get, read) =
     let%bind fields_rev =
       match field, scalar_type with
       | Spec.Length_delimited data, `Fixed_64_bit ->
-        read_fields ~f:(fun b -> Protobuffer.read_int64 b >>| Spec.fixed_64_bit) (Protobuffer.create data) []
+        read_fields ~f:(fun b -> Reader.read_int64 b >>| Spec.fixed_64_bit) (Reader.create data) []
       | Spec.Length_delimited data, `Fixed_32_bit ->
-        read_fields ~f:(fun b -> Protobuffer.read_int32 b >>| Spec.fixed_32_bit) (Protobuffer.create data) []
+        read_fields ~f:(fun b -> Reader.read_int32 b >>| Spec.fixed_32_bit) (Reader.create data) []
       | Spec.Length_delimited data, `Varint  ->
-        read_fields ~f:(fun b -> Protobuffer.read_varint b >>| Spec.varint) (Protobuffer.create data) []
+        read_fields ~f:(fun b -> Reader.read_varint b >>| Spec.varint) (Reader.create data) []
       | Spec.Length_delimited _ as v, `Not_scalar -> return [v]
       | Spec.Fixed_32_bit _ as v, _  -> return [v]
       | Spec.Fixed_64_bit _ as v, _ -> return [v]

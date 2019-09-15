@@ -25,9 +25,9 @@ type _ spec =
 (* Take a list of fields and return a field *)
 let serialize_message : (int * field) list -> string =
   fun fields ->
-  let buffer = Protobuffer.init () in
-  List.iter ~f:(fun (index, field) -> Protobuffer.write_field buffer index field) fields;
-  Protobuffer.contents buffer
+  let buffer = Writer.init () in
+  List.iter ~f:(fun (index, field) -> Writer.write_field buffer index field) fields;
+  Writer.contents buffer
 
 type (_, _) protobuf_type_list =
   | Nil : ('a, 'a) protobuf_type_list
@@ -84,7 +84,7 @@ let field_of_enum ~f v =
   field_of_uint64 (f v)
 
 (** Allow emitted code to present a protobuf specification. *)
-let rec serialize : type a. Protobuffer.t -> (a, Protobuffer.t) protobuf_type_list -> a =
+let rec serialize : type a. Writer.t -> (a, Writer.t) protobuf_type_list -> a =
   (* This function could just test for default values, and choose not to write them *)
   let write_field buffer ~index ~f rest v =
     (* Only actually write if the value is different from the default value *)
@@ -94,16 +94,16 @@ let rec serialize : type a. Protobuffer.t -> (a, Protobuffer.t) protobuf_type_li
       | Fixed_32_bit v when v = Int32.zero -> ()
       | Length_delimited "" -> ()
       | field ->
-        Protobuffer.write_field buffer index field
+        Writer.write_field buffer index field
     in
     serialize buffer rest
   in
   let write_packed_field buffer ~index ~f rest vs =
-    let value_buffer = Protobuffer.init () in
+    let value_buffer = Writer.init () in
     List.iter
-      ~f:(fun v -> Protobuffer.write_raw_field value_buffer (f v))
+      ~f:(fun v -> Writer.write_raw_field value_buffer (f v))
       vs;
-    Protobuffer.write_field buffer index (Length_delimited (Protobuffer.contents value_buffer));
+    Writer.write_field buffer index (Length_delimited (Writer.contents value_buffer));
     serialize buffer rest
   in
 
@@ -147,7 +147,7 @@ let rec serialize : type a. Protobuffer.t -> (a, Protobuffer.t) protobuf_type_li
       (* Oneof fields ignores the initial index *)
       fun v ->
         let index, v = f v in
-        Protobuffer.write_field buffer index v;
+        Writer.write_field buffer index v;
         serialize buffer rest
     (* Repeated fields - Not packed *)
     | Cons ((index, Repeated (Message to_string)), rest) ->
@@ -155,15 +155,15 @@ let rec serialize : type a. Protobuffer.t -> (a, Protobuffer.t) protobuf_type_li
         List.iter v ~f:(function
             | None -> failwith "Repeated message cannot be null"
             | Some msg ->
-              Protobuffer.write_field buffer index (Length_delimited (to_string msg)));
+              Writer.write_field buffer index (Length_delimited (to_string msg)));
         serialize buffer rest
     | Cons ((index, Repeated String), rest) ->
       fun v ->
-        List.iter v ~f:(fun msg -> Protobuffer.write_field buffer index (Length_delimited msg));
+        List.iter v ~f:(fun msg -> Writer.write_field buffer index (Length_delimited msg));
         serialize buffer rest
     | Cons ((index, Repeated Bytes), rest) ->
       fun v ->
-        List.iter v ~f:(fun msg -> Protobuffer.write_field buffer index (Length_delimited (Bytes.to_string msg)));
+        List.iter v ~f:(fun msg -> Writer.write_field buffer index (Length_delimited (Bytes.to_string msg)));
         serialize buffer rest
     | Cons ((index, Repeated Double), rest) ->
       write_packed_field buffer ~index ~f:field_of_double rest
@@ -198,4 +198,4 @@ let rec serialize : type a. Protobuffer.t -> (a, Protobuffer.t) protobuf_type_li
     | Cons ((_, Repeated (Oneof _)), _) ->
       failwith "Oneof fields cannot be repeated"
 
-let serialize spec = serialize (Protobuffer.init ()) spec
+let serialize spec = serialize (Writer.init ()) spec
