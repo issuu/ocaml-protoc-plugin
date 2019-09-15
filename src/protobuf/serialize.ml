@@ -17,7 +17,7 @@ type _ spec =
   | Bool : bool spec
   | String : string spec
   | Bytes : bytes spec
-  | Message : ('a -> string) -> 'a option spec
+  | Message : ('a -> Writer.t) -> 'a option spec
   | Enum : ('a -> int) -> 'a spec
   | Repeated : 'a spec -> 'a list spec
   | Oneof : ('a -> int * field) -> 'a spec
@@ -25,9 +25,9 @@ type _ spec =
 (* Take a list of fields and return a field *)
 let serialize_message : (int * field) list -> string =
   fun fields ->
-  let buffer = Writer.init () in
-  List.iter ~f:(fun (index, field) -> Writer.write_field buffer index field) fields;
-  Writer.contents buffer
+  let writer = Writer.init () in
+  List.iter ~f:(fun (index, field) -> Writer.write_field writer index field) fields;
+  Writer.contents writer
 
 type (_, _) protobuf_type_list =
   | Nil : ('a, 'a) protobuf_type_list
@@ -72,127 +72,135 @@ let field_of_fixed32 v = Fixed_32_bit (Int32.of_int_exn v)
 let field_of_sfixed64 v = Fixed_64_bit (Int64.of_int_exn v)
 let field_of_sfixed32 v = Fixed_32_bit (Int32.of_int_exn v)
 let field_of_bool v = unsigned_varint (match v with true -> 1 | false -> 0)
-let field_of_string v = Length_delimited v
-let field_of_bytes v = Length_delimited (Bytes.to_string v)
+let field_of_string v = Length_delimited { offset = 0; length = String.length v; data = v }
+let field_of_bytes v = Length_delimited { offset = 0; length = Bytes.length v; data = Bytes.to_string v }
 let field_of_message ~f v =
   let data = match v with
     | None -> ""
     | Some v -> (f v)
   in
-  Length_delimited data
+  field_of_string data
 let field_of_enum ~f v =
   field_of_uint64 (f v)
 
 (** Allow emitted code to present a protobuf specification. *)
 let rec serialize : type a. Writer.t -> (a, Writer.t) protobuf_type_list -> a =
   (* This function could just test for default values, and choose not to write them *)
-  let write_field buffer ~index ~f rest v =
+  let write_field writer ~index ~f rest v =
     (* Only actually write if the value is different from the default value *)
     let () = match f v with
       | Varint 0 -> ()
       | Fixed_64_bit v when v = Int64.zero -> ()
       | Fixed_32_bit v when v = Int32.zero -> ()
-      | Length_delimited "" -> ()
+      | Length_delimited { length = 0; _ } -> ()
       | field ->
-        Writer.write_field buffer index field
+        Writer.write_field writer index field
     in
-    serialize buffer rest
+    serialize writer rest
   in
-  let write_packed_field buffer ~index ~f rest vs =
-    let value_buffer = Writer.init () in
+  let write_packed_field writer ~index ~f rest vs =
+    let value_writer = Writer.init () in
     List.iter
-      ~f:(fun v -> Writer.write_raw_field value_buffer (f v))
+      ~f:(fun v -> Writer.add_field value_writer (f v))
       vs;
-    Writer.write_field buffer index (Length_delimited (Writer.contents value_buffer));
-    serialize buffer rest
+    Writer.concat_as_length_delimited writer ~src:value_writer index;
+    serialize writer rest
   in
-
-  fun buffer -> function
-    | Nil -> buffer
+  let write_message writer ~index ~f rest msg =
+    let () = match msg with
+      | None -> ()
+      | Some msg ->
+        let message_writer = f msg in
+        Writer.concat_as_length_delimited writer ~src:message_writer index;
+    in
+    serialize writer rest
+  in
+  fun writer -> function
+    | Nil -> writer
     | Cons ((index, Double), rest) ->
-      write_field buffer ~index ~f:field_of_double rest
+      write_field writer ~index ~f:field_of_double rest
     | Cons ((index, Float), rest) ->
-      write_field buffer ~index ~f:field_of_float rest
+      write_field writer ~index ~f:field_of_float rest
     | Cons ((index, Int64), rest) ->
-      write_field buffer ~index ~f:field_of_int64 rest
+      write_field writer ~index ~f:field_of_int64 rest
     | Cons ((index, UInt64), rest) ->
-      write_field buffer ~index ~f:field_of_uint64 rest
+      write_field writer ~index ~f:field_of_uint64 rest
     | Cons ((index, SInt64), rest) ->
-      write_field buffer ~index ~f:field_of_sint64 rest
+      write_field writer ~index ~f:field_of_sint64 rest
     | Cons ((index, Int32), rest) ->
-      write_field buffer ~index ~f:field_of_int32 rest
+      write_field writer ~index ~f:field_of_int32 rest
     | Cons ((index, UInt32), rest) ->
-      write_field buffer ~index ~f:field_of_uint32 rest
+      write_field writer ~index ~f:field_of_uint32 rest
     | Cons ((index, SInt32), rest) ->
-      write_field buffer ~index ~f:field_of_sint32 rest
+      write_field writer ~index ~f:field_of_sint32 rest
     | Cons ((index, Fixed32), rest) ->
-      write_field buffer ~index ~f:field_of_fixed32 rest
+      write_field writer ~index ~f:field_of_fixed32 rest
     | Cons ((index, Fixed64), rest) ->
-      write_field buffer ~index ~f:field_of_fixed64 rest
+      write_field writer ~index ~f:field_of_fixed64 rest
     | Cons ((index, SFixed32), rest) ->
-      write_field buffer ~index ~f:field_of_sfixed32 rest
+      write_field writer ~index ~f:field_of_sfixed32 rest
     | Cons ((index, SFixed64), rest) ->
-      write_field buffer ~index ~f:field_of_sfixed64 rest
+      write_field writer ~index ~f:field_of_sfixed64 rest
     | Cons ((index, Bool), rest) ->
-      write_field buffer ~index ~f:field_of_bool rest
+      write_field writer ~index ~f:field_of_bool rest
     | Cons ((index, String), rest) ->
-      write_field buffer ~index ~f:field_of_string rest
+      write_field writer ~index ~f:field_of_string rest
     | Cons ((index, Bytes), rest) ->
-      write_field buffer ~index ~f:field_of_bytes rest
-    | Cons ((index, Message to_string), rest) ->
-      write_field buffer ~index ~f:(field_of_message ~f:to_string) rest
+      write_field writer ~index ~f:field_of_bytes rest
+    | Cons ((index, Message to_writer), rest) ->
+      write_message writer ~index ~f:to_writer rest
     | Cons ((index, Enum to_int), rest) ->
-      write_field buffer ~index ~f:(field_of_enum ~f:to_int) rest
+      write_field writer ~index ~f:(field_of_enum ~f:to_int) rest
     | Cons ((_index, Oneof f), rest) ->
       (* Oneof fields ignores the initial index *)
       fun v ->
         let index, v = f v in
-        Writer.write_field buffer index v;
-        serialize buffer rest
+        Writer.write_field writer index v;
+        serialize writer rest
     (* Repeated fields - Not packed *)
-    | Cons ((index, Repeated (Message to_string)), rest) ->
-      fun v ->
-        List.iter v ~f:(function
-            | None -> failwith "Repeated message cannot be null"
-            | Some msg ->
-              Writer.write_field buffer index (Length_delimited (to_string msg)));
-        serialize buffer rest
+    | Cons ((index, Repeated (Message to_writer)), rest) ->
+      fun vs ->
+        let writer = List.fold_left ~init:writer ~f:(fun writer v ->
+            write_message writer ~index ~f:to_writer Nil v) vs
+        in
+        serialize writer rest
     | Cons ((index, Repeated String), rest) ->
       fun v ->
-        List.iter v ~f:(fun msg -> Writer.write_field buffer index (Length_delimited msg));
-        serialize buffer rest
+        List.iter v ~f:(fun msg -> Writer.write_field writer index (field_of_string msg));
+        serialize writer rest
     | Cons ((index, Repeated Bytes), rest) ->
       fun v ->
-        List.iter v ~f:(fun msg -> Writer.write_field buffer index (Length_delimited (Bytes.to_string msg)));
-        serialize buffer rest
+        List.iter v ~f:(fun msg -> Writer.write_field writer index (field_of_bytes msg));
+        serialize writer rest
+    (* Repeated fields - Packed *)
     | Cons ((index, Repeated Double), rest) ->
-      write_packed_field buffer ~index ~f:field_of_double rest
+      write_packed_field writer ~index ~f:field_of_double rest
     | Cons ((index, Repeated Float), rest) ->
-      write_packed_field buffer ~index ~f:field_of_float rest
+      write_packed_field writer ~index ~f:field_of_float rest
     | Cons ((index, Repeated Int64), rest) ->
-      write_packed_field buffer ~index ~f:field_of_int64 rest
+      write_packed_field writer ~index ~f:field_of_int64 rest
     | Cons ((index, Repeated Int32), rest) ->
-      write_packed_field buffer ~index ~f:field_of_int32 rest
+      write_packed_field writer ~index ~f:field_of_int32 rest
     | Cons ((index, Repeated UInt64), rest) ->
-      write_packed_field buffer ~index ~f:field_of_uint64 rest
+      write_packed_field writer ~index ~f:field_of_uint64 rest
     | Cons ((index, Repeated UInt32), rest) ->
-      write_packed_field buffer ~index ~f:field_of_uint32 rest
+      write_packed_field writer ~index ~f:field_of_uint32 rest
     | Cons ((index, Repeated SInt64), rest) ->
-      write_packed_field buffer ~index ~f:field_of_sint64 rest
+      write_packed_field writer ~index ~f:field_of_sint64 rest
     | Cons ((index, Repeated SInt32), rest) ->
-      write_packed_field buffer ~index ~f:field_of_sint32 rest
+      write_packed_field writer ~index ~f:field_of_sint32 rest
     | Cons ((index, Repeated Fixed64), rest) ->
-      write_packed_field buffer ~index ~f:field_of_fixed64 rest
+      write_packed_field writer ~index ~f:field_of_fixed64 rest
     | Cons ((index, Repeated Fixed32), rest) ->
-      write_packed_field buffer ~index ~f:field_of_fixed32 rest
+      write_packed_field writer ~index ~f:field_of_fixed32 rest
     | Cons ((index, Repeated SFixed64), rest) ->
-      write_packed_field buffer ~index ~f:field_of_sfixed64 rest
+      write_packed_field writer ~index ~f:field_of_sfixed64 rest
     | Cons ((index, Repeated SFixed32), rest) ->
-      write_packed_field buffer ~index ~f:field_of_sfixed32 rest
+      write_packed_field writer ~index ~f:field_of_sfixed32 rest
     | Cons ((index, Repeated Bool), rest) ->
-      write_packed_field buffer ~index ~f:field_of_bool rest
+      write_packed_field writer ~index ~f:field_of_bool rest
     | Cons ((index, Repeated (Enum to_int)), rest) ->
-      write_packed_field buffer ~index ~f:(fun v -> to_int v |> field_of_uint64) rest
+      write_packed_field writer ~index ~f:(fun v -> to_int v |> field_of_uint64) rest
     | Cons ((_, Repeated (Repeated _)), _) ->
       failwith "Chained repeated fields not supported"
     | Cons ((_, Repeated (Oneof _)), _) ->

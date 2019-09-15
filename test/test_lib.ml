@@ -21,5 +21,5 @@ let test_encode protobuf_file (type t) (module M : T with type t = t) (expect : 
   (* Protobuf.Protobuffer.dump in_data; *)
   match M.from_proto in_data with
   | Ok observed when expect = observed -> ()
-  | Ok observed -> printf "Expect  :%s\nObserved:%s\n" ([%show: M.t] expect) ([%show: M.t] observed)
-  | Error err -> printf "Decode failed: %s\n" (Protobuf.Deserialize.show_error err)
+  | Ok observed -> printf "\nExpect  :%s\nObserved:%s\n" ([%show: M.t] expect) ([%show: M.t] observed)
+  | Error err -> printf "\nDecode failed: %s\n" (Protobuf.Deserialize.show_error err)

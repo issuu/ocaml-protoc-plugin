@@ -5,77 +5,89 @@ open Spec
 let incr = 128
 
 type t = {
-  mutable offset : int;
-  mutable data : Bytes.t;
+  mutable fields : Spec.field list;
 }
 
 type error = [ `Premature_end_of_input
              | `Unknown_field_type of int
              ] [@@deriving show]
 
-let init ?(length = incr) () = {data = Bytes.create length; offset = 0}
-let contents t = Bytes.sub ~pos:0 ~len:t.offset t.data |> Bytes.to_string
+let init () = { fields = [] }
 
-let ensure_capacity ?(cap = 1) t =
-  let length = Bytes.length t.data in
-  let remain = length - t.offset in
-  match cap - remain with
-  | n when n <= 0 -> ()
-  | n ->
-    let data' = Bytes.create (length + max n incr) in
-    Bytes.blit ~src:t.data ~src_pos:0 ~dst:data' ~dst_pos:0 ~len:t.offset;
-    t.data <- data'
+let rec size_of_field = function
+  | Varint 0 -> 1
+  | Varint n when n > 0 ->
+    let bits = Float.iround_down_exn (log (float n) /. log 2.0) + 1 in
+    (bits - 1) / 7 + 1
+  | Varint _ -> (* Negative *) 10
+  | Fixed_32_bit _ -> 4
+  | Fixed_64_bit _ -> 8
+  | Length_delimited { length; _ } ->
+    size_of_field (Varint length) + length
 
-let write_byte t v =
-  ensure_capacity t;
-  Bytes.set t.data t.offset @@ Char.of_int_exn v;
-  t.offset <- t.offset + 1
+let size t =
+  List.fold_left ~init:0 ~f:(fun acc field -> acc + (size_of_field field)) t.fields
 
-let write_varint t v =
-  let rec inner t v =
+let write_varint buffer ~offset v =
+  let rec inner ~offset v : int =
     let open Int64 in
     match v land 0x7FL, v lsr 7 with
-    | v, 0L -> write_byte t (v |> to_int_exn)
+    | v, 0L ->
+      Bytes.set buffer offset (v |> to_int_exn |> Char.of_int_exn);
+      Int.(offset + 1)
     | v, rem ->
-      write_byte t (v lor 0x80L |> to_int_exn);
-      inner t rem
+      Bytes.set buffer offset (v lor 0x80L |> to_int_exn |> Char.of_int_exn);
+      inner ~offset:Int.(offset + 1) rem
   in
-  inner t (Int64.of_int v)
+  inner ~offset (Int64.of_int v)
+
+let write_fixed32 buffer ~offset v =
+  EndianBytes.LittleEndian.set_int32 buffer offset v;
+  offset + 4
+
+let write_fixed64 buffer ~offset v =
+  EndianBytes.LittleEndian.set_int64 buffer offset v;
+  offset + 8
+
+let write_length_delimited buffer ~offset ~src ~src_pos ~len =
+  let offset = write_varint buffer ~offset len in
+  (* Copy string to bytes, should exist *)
+  Bytes.blit
+    ~src:(Bytes.of_string src)
+    ~src_pos
+    ~dst:buffer
+    ~dst_pos:offset
+    ~len;
+  offset + len
+
+let write_field buffer ~offset = function
+  | Varint v -> write_varint buffer ~offset v
+  | Fixed_32_bit v -> write_fixed32 buffer ~offset v
+  | Fixed_64_bit v -> write_fixed64 buffer ~offset v
+  | Length_delimited { offset=src_pos; length; data } ->
+    write_length_delimited buffer ~offset ~src:data ~src_pos ~len:length
+
+let contents t =
+  let size = size t in
+  let t = List.rev t.fields in
+  let buffer = Bytes.create size in
+  let next_offset =
+    List.fold_left ~init:0 ~f:(fun offset field -> write_field buffer ~offset field) t
+  in
+  assert (next_offset = size);
+  Bytes.to_string buffer
+
+(** Add the contents of src as a length_delimited field *)
+let concat t ~src =
+  let size = size src in
+  t.fields <- src.fields @ (Varint size) :: t.fields
+
+let add_field t field = t.fields <- field :: t.fields
 
 let write_field_header : t -> int -> int -> unit =
   fun t index field_type ->
   let header = (index lsl 3) + field_type in
-  write_varint t header; ()
-
-let write_data t v =
-  write_varint t (String.length v);
-  ensure_capacity ~cap:(String.length v) t;
-  Bytes.blit
-    ~src:(Bytes.of_string v)
-    ~src_pos:0
-    ~dst:t.data
-    ~dst_pos:t.offset
-    ~len:(String.length v);
-  t.offset <- t.offset + String.length v
-
-(** Dont really know how to write an unsiged 32 bit *)
-let write_int32 t v =
-  let size = 4 in
-  ensure_capacity ~cap:size t;
-  EndianBytes.LittleEndian.set_int32 t.data t.offset v;
-  t.offset <- t.offset + size
-
-let write_int64 t v =
-  let size = 8 in
-  ensure_capacity ~cap:size t;
-  EndianBytes.LittleEndian.set_int64 t.data t.offset v;
-  t.offset <- t.offset + size
-
-let write_raw_field: t -> field -> unit = fun t -> function
-  | Varint v -> write_varint t v
-  | Fixed_64_bit v -> write_int64 t v
-  | Length_delimited v -> write_data t v
-  | Fixed_32_bit v -> write_int32 t v
+  add_field t (Varint header)
 
 let write_field : t -> int -> field -> unit =
   fun t index field ->
@@ -86,14 +98,24 @@ let write_field : t -> int -> field -> unit =
     | Fixed_32_bit _ -> 5
   in
   write_field_header t index field_type;
-  write_raw_field t field
+  add_field t field
+
+(** Add the contents of src as a length_delimited field *)
+let concat_as_length_delimited t ~src index =
+  let size = size src in
+  write_field_header t index 2;
+  add_field t (Varint size);
+  t.fields <- src.fields @ t.fields
+
 
 let dump t =
-  Bytes.to_list t.data
+  contents t
+  |> String.to_list
   |> List.map ~f:Char.to_int
   |> List.map ~f:(sprintf "%02x")
   |> String.concat ~sep:"-"
   |> printf "Buffer: %s\n"
+
 
 let%test _ =
   let buffer = init () in

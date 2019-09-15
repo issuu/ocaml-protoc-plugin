@@ -27,7 +27,7 @@ type _ spec =
   | Bool : bool spec
   | String : string spec
   | Bytes : bytes spec
-  | Message : (string -> 'a result) -> 'a option spec
+  | Message : (Reader.t -> 'a result) -> 'a option spec
   | Enum : (int -> 'a result) -> 'a spec
   | Repeated : 'a spec -> 'a list spec
 
@@ -51,7 +51,7 @@ let error_wrong_field str field : _ result =
 let error_illegal_value str field : _ result =
   `Illegal_value (str, field) |> Result.fail
 
-(** Deserialize a buffer. *)
+(** Deserialize a reader. *)
 let read_fields : Reader.t -> ((int * Spec.field) list) result = fun t ->
   let rec inner acc =
     match Reader.has_more t with
@@ -65,7 +65,7 @@ let read_fields : Reader.t -> ((int * Spec.field) list) result = fun t ->
   | Error `Premature_end_of_input -> Result.fail `Premature_end_of_input
   | Error (`Unknown_field_type n) -> Result.fail (`Unknown_field_type n)
 
-(** Deserialize takes a list of field sentinals and a buffer for the
+(** Deserialize takes a list of field sentinals and a reader for the
     data. Data is decoded into a list of tags, fields
     and the appropiate function for the tag is called.
     After all fields have been processed,
@@ -73,10 +73,10 @@ let read_fields : Reader.t -> ((int * Spec.field) list) result = fun t ->
 
     A helper function exists to create sentinals
 *)
-let deserialize : (int * decoder) list -> Reader.t -> unit result = fun spec buffer ->
+let deserialize : (int * decoder) list -> Reader.t -> unit result = fun spec reader ->
   (* Exceptions here is an error in code-generation. Crash hard on that! *)
   let decoder_map = Map.of_alist_exn (module Int) spec in
-  let%bind fields = read_fields buffer in
+  let%bind fields = read_fields reader in
   List.fold_left
     ~init:(Result.Ok ())
     ~f:(fun acc (field_idx, field_val) ->
@@ -186,26 +186,22 @@ let string_sentinal () =
   let value = ref Defaults.string in
   ( (fun () -> !value),
     function
-    | Spec.Length_delimited data ->
-      value := data;
+    | Spec.Length_delimited { offset; length; data } ->
+      value := String.sub ~pos:offset ~len:length data;
       Result.ok_unit
     | field -> error_wrong_field "string" field )
 
 let bytes_sentinal () =
-  let value = ref Defaults.bytes in
-  ( (fun () -> !value),
-    function
-    | Spec.Length_delimited data ->
-      value := Bytes.of_string data;
-      Result.ok_unit
-    | field -> error_wrong_field "bytes" field )
+  let (get, read) = string_sentinal () in
+  (fun () -> get () |> Bytes.of_string), read
 
 let message_sentinal deser =
   let value = ref None in
   ( (fun () -> !value),
     function
-    | Spec.Length_delimited data ->
-      let%bind message = deser data in
+    | Spec.Length_delimited { offset; length; data } ->
+      let reader = Reader.create ~length ~offset data in
+      let%bind message = deser reader in
       value := Some message;
       return ()
     | field -> error_wrong_field "message" field )
@@ -227,11 +223,11 @@ let enum_sentinal deser =
 (** Repeated field. For scalar types, we allow a length delim, and
     just read all values in it. For this reason, we need to know the exact type.
 *)
-let rec read_fields ~f buffer acc =
-  match Reader.has_more buffer with
+let rec read_fields ~f reader acc =
+  match Reader.has_more reader with
   | true ->
-    let%bind v = f buffer in
-    read_fields ~f buffer (v :: acc)
+    let%bind v = f reader in
+    read_fields ~f reader (v :: acc)
   | false ->
     return acc
 
@@ -246,12 +242,17 @@ let repeated_sentinal ~scalar_type (get, read) =
   fun field ->
     let%bind fields_rev =
       match field, scalar_type with
-      | Spec.Length_delimited data, `Fixed_64_bit ->
-        read_fields ~f:(Reader.read_int64) (Reader.create data) []
-      | Spec.Length_delimited data, `Fixed_32_bit ->
-        read_fields ~f:(Reader.read_int32) (Reader.create data) []
-      | Spec.Length_delimited data, `Varint  ->
-        read_fields ~f:(Reader.read_varint) (Reader.create data) []
+      | Spec.Length_delimited { offset; length; data }, `Fixed_64_bit ->
+        read_fields ~f:(Reader.read_fixed64) (Reader.create ~offset ~length data) []
+      | Spec.Length_delimited { offset; length; data }, `Fixed_32_bit ->
+        read_fields ~f:(Reader.read_fixed32) (Reader.create ~offset ~length data) []
+      | Spec.Length_delimited { offset; length; data }, `Varint  ->
+        let () = match String.length data >= offset + length with
+          | true -> ()
+          | false -> failwithf "Cannot read length delimited: { offset = %d; length = %d; data = %d }"
+                       offset length (String.length data) ()
+        in
+        read_fields ~f:(Reader.read_varint) (Reader.create ~offset ~length data) []
       | Spec.Length_delimited _ as v, `Not_scalar -> return [v]
       | Spec.Fixed_32_bit _ as v, _  -> return [v]
       | Spec.Fixed_64_bit _ as v, _ -> return [v]

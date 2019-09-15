@@ -6,35 +6,38 @@ open Result.Let_syntax
 
 type t = {
   mutable offset : int;
-  mutable data : Bytes.t;
+  end_offset: int;
+  data : String.t;
 }
 
 type error = [ `Premature_end_of_input
              | `Unknown_field_type of int
              ] [@@deriving show]
 
-let create data = { data = Bytes.of_string data; offset = 0 }
+let create ?(offset=0) ?length data =
+  let end_offset = match length with
+    | None -> String.length data
+    | Some l -> l + offset
+  in
+  assert (String.length data >= end_offset);
+  { offset; end_offset; data }
 
-(** Seems to be two different types here *)
-let reset t =
-  let data = Bytes.sub ~pos:0 ~len:t.offset t.data in
-  { data; offset = 0 }
-
-let contents t = Bytes.sub ~pos:0 ~len:t.offset t.data |> Bytes.to_string
+let size { offset; end_offset; _ } = end_offset - offset
 
 (** Return an error if there is not enough data in input *)
 let validate_capacity t count =
-  match Bytes.length t.data >= t.offset + count with
+  match t.offset + count <= t.end_offset with
   | true -> Result.ok_unit
-  | false -> Result.fail `Premature_end_of_input
+  | false -> (* Result.fail `Premature_end_of_input*)
+    failwithf "Premature end of input: want: %d. Size: %d" count (size t) ()
 
 (** Test if there is more data in the buffer to be read *)
 let has_more t =
-  t.offset < Bytes.length t.data
+  t.offset < t.end_offset
 
 let read_byte t =
   let%bind () = validate_capacity t 1 in
-  let v = Bytes.get t.data t.offset in
+  let v = String.get t.data t.offset in
   t.offset <- t.offset + 1;
   return (Char.to_int v)
 
@@ -63,24 +66,24 @@ let read_field_header : t -> (int * int, error) result = fun t ->
   let field_number = v / 8 in
   return (tpe, field_number)
 
-let read_data t =
-  let%bind size = read_raw_varint t in
-  let%bind () = validate_capacity t size in
-  let v = Bytes.sub t.data ~pos:t.offset ~len:size in
-  t.offset <- t.offset + size;
-  return (Length_delimited (v |> Bytes.to_string))
+let read_length_delimited t =
+  let%bind length = read_raw_varint t in
+  let%bind () = validate_capacity t length in
+  let v = Length_delimited { offset = t.offset; length; data = t.data } in
+  t.offset <- t.offset + length;
+  return v
 
-let read_int32 t =
+let read_fixed32 t =
   let size = 4 in
   let%bind () = validate_capacity t size in
-  let v = EndianBytes.LittleEndian.get_int32 t.data t.offset in
+  let v = EndianString.LittleEndian.get_int32 t.data t.offset in
   t.offset <- t.offset + size;
   return (Fixed_32_bit v)
 
-let read_int64 t =
+let read_fixed64 t =
   let size = 8 in
   let%bind () = validate_capacity t size in
-  let v = EndianBytes.LittleEndian.get_int64 t.data t.offset in
+  let v = EndianString.LittleEndian.get_int64 t.data t.offset in
   t.offset <- t.offset + size;
   return (Fixed_64_bit v)
 
@@ -91,18 +94,18 @@ let read_field : t -> (int * field, error) result = fun t ->
     | 0 ->
       read_varint t
     | 1 ->
-      read_int64 t
+      read_fixed64 t
     | 2 ->
-      read_data t
+      read_length_delimited t
     | 5 ->
-      read_int32 t
+      read_fixed32 t
     | n ->
       Result.fail (`Unknown_field_type n)
   in
   return (field_number, field)
 
 let dump t =
-  Bytes.to_list t.data
+  String.to_list t.data
   |> List.map ~f:Char.to_int
   |> List.map ~f:(sprintf "%02x")
   |> String.concat ~sep:"-"
