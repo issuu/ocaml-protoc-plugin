@@ -45,15 +45,16 @@ let%expect_test _ =
   [%expect
     {|
     Test Int32
-    i: -1073741823;i: -2;i: -1;i: 1;i: 2;i: 1073741823;
+    i: -1073741823;
     Expect  :{ i = -1073741823 }
     Observed:{ i = 3221225473 }
-
+    i: -2;
     Expect  :{ i = -2 }
     Observed:{ i = 4294967294 }
-
+    i: -1;
     Expect  :{ i = -1 }
-    Observed:{ i = 4294967295 } |}]
+    Observed:{ i = 4294967295 }
+    i: 1;i: 2;i: 1073741823; |}]
 
 let%expect_test _ =
   let module T = Int_types.UInt64 in

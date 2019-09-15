@@ -22,7 +22,6 @@ let test_encode ?dump protobuf_file (type t) (module M : T with type t = t) (exp
   let filename = Filename.temp_file M.name ".bin" in
   let cout = Out_channel.create filename in
   let data = M.to_proto expect |> Protobuf.Writer.contents in
-  printf "Size: %d\n" (String.length data);
   let () =
     match dump with
     | Some _ -> hexlify data
