@@ -150,22 +150,29 @@ let emit_enum_type
   Code.append implementation t;
   Code.emit signature `None "val to_int: t -> int";
   Code.emit signature `None "val from_int: int -> t Protobuf.Deserialize.result";
-
   Code.emit implementation `Begin "let to_int = function";
-  List.iter ~f:(fun v -> Code.emit implementation `None "| %s -> %d" (constructor_name v) (Option.value_exn v.number)) value;
+  List.iter
+    ~f:(fun v ->
+      Code.emit
+        implementation
+        `None
+        "| %s -> %d"
+        (constructor_name v)
+        (Option.value_exn v.number))
+    value;
   Code.emit implementation `End "";
-
   Code.emit implementation `Begin "let from_int = function";
-  List.iter ~f:(fun v ->
-      Code.emit implementation `None "| %d -> Ok %s" (Option.value_exn v.number) (constructor_name v)
-    ) value;
+  List.iter
+    ~f:(fun v ->
+      Code.emit
+        implementation
+        `None
+        "| %d -> Ok %s"
+        (Option.value_exn v.number)
+        (constructor_name v))
+    value;
   Code.emit implementation `None "| n -> Error (`Unknown_enum_value n)";
-
   Code.emit implementation `End "";
-
-
-
-
   {module_name; signature; implementation}
 
 (* Message type should have a name a signature and an implementation. These should then be declared recursivly.
@@ -201,16 +208,22 @@ let protobuf_type_of_field ~prefix scope field_descriptor =
     | {type_ = Some Type_bytes; _} -> "Bytes"
     | {type_ = Some Type_group; _} -> failwith "Groups are deprecated"
     | {type_ = Some Type_message; type_name; _} ->
-      let to_proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
+      let to_proto_func =
+        Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name
+      in
       sprintf "Message %s" to_proto_func
     | {type_ = Some Type_enum; type_name; _} ->
-      let to_int_func = Scope.get_scoped_name ~postfix:(prefix ^ "_int") scope type_name in
+      let to_int_func =
+        Scope.get_scoped_name ~postfix:(prefix ^ "_int") scope type_name
+      in
       sprintf "Enum %s" to_int_func
     | {type_ = None; _} -> failwith "Abstract types cannot be"
   in
   match field_descriptor with
-  | {label = Some Label_repeated; type_ = Some Type_message; type_name; _ } ->
-    let to_proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
+  | {label = Some Label_repeated; type_ = Some Type_message; type_name; _} ->
+    let to_proto_func =
+      Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name
+    in
     sprintf "RepeatedMessage %s" to_proto_func
   | {label = Some Label_repeated; _} -> sprintf "Repeated (%s)" base_type
   | _ -> base_type
@@ -295,44 +308,60 @@ let inject (signature', implementation') signature implementation =
 
 let emit_deserialization_function scope all_fields oneof_decls =
   let fields, _oneof_decls = split_oneof_decl all_fields oneof_decls in
-
   let signature = Code.init () in
   let implementation = Code.init () in
-  Code.emit signature `None "val from_proto: Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result";
-
+  Code.emit
+    signature
+    `None
+    "val from_proto: Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result";
   let _field_names = List.map ~f:(fun field -> field_name field.name) fields in
   (* We should call Deserialize with something *)
   Code.emit implementation `Begin "let from_proto data =";
   Code.emit implementation `None "let open Base.Result.Monad_infix in";
-  List.iter ~f:(fun field ->
+  List.iter
+    ~f:(fun field ->
       let index = Option.value_exn field.number in
-      let typ = protobuf_type_of_field ~prefix:"from" scope field in (* Not correct *)
-      Code.emit implementation `None "let (sentinal_%d, deser_%d) = Protobuf.Deserialize.sentinal (%s) in" index index typ;
-    ) fields;
-
+      let typ = protobuf_type_of_field ~prefix:"from" scope field in
+      (* Not correct *)
+      Code.emit
+        implementation
+        `None
+        "let (sentinal_%d, deser_%d) = Protobuf.Deserialize.sentinal (%s) in"
+        index
+        index
+        typ)
+    fields;
   let spec =
-    List.map ~f:(fun field -> sprintf "(%d, deser_%d)" (Option.value_exn field.number) (Option.value_exn field.number)) fields
+    List.map
+      ~f:(fun field ->
+        sprintf
+          "(%d, deser_%d)"
+          (Option.value_exn field.number)
+          (Option.value_exn field.number))
+      fields
     |> String.concat ~sep:"; "
   in
   Code.emit implementation `None "let spec = [ %s ] in" spec;
-  Code.emit implementation `None "Protobuf.Deserialize.deserialize spec data >>= fun () -> ";
+  Code.emit
+    implementation
+    `None
+    "Protobuf.Deserialize.deserialize spec data >>= fun () -> ";
   (* Construct the record *)
   let construct =
     match List.is_empty fields with
     | true -> "()"
     | false ->
-      List.map ~f:(fun field ->
+      List.map
+        ~f:(fun field ->
           let name = field_name field.name in
           let index = Option.value_exn field.number in
-          sprintf "%s = sentinal_%d ()" name index
-        ) fields
+          sprintf "%s = sentinal_%d ()" name index)
+        fields
       |> String.concat ~sep:"; "
       |> sprintf "{ %s }"
   in
-
   Code.emit implementation `None "Base.Result.return %s" construct;
   Code.emit implementation `End "";
-
   signature, implementation
 
 (* Return code for signature and implementation *)
@@ -344,7 +373,9 @@ let emit_serialization_function scope all_fields oneof_decls =
   (* Create a list of protobuf_types *)
   (* to_proto should destruct the type and pass to the function.  *)
   let protocol_field_spec =
-    List.map ~f:(fun field -> field.number, protobuf_type_of_field ~prefix:"to" scope field) fields
+    List.map
+      ~f:(fun field -> field.number, protobuf_type_of_field ~prefix:"to" scope field)
+      fields
     |> List.map ~f:(fun (index, tpe) ->
            sprintf "(%d, %s) ^:: " (Option.value_exn index) tpe)
     |> String.concat
@@ -364,9 +395,7 @@ let emit_serialization_function scope all_fields oneof_decls =
     "serialize (%sNil) %s"
     protocol_field_spec
     (String.concat ~sep:" " field_names);
-
   Code.emit implementation `End "";
-
   signature, implementation
 
 let emit_message_type scope all_fields oneof_decls =

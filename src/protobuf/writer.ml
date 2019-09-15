@@ -2,31 +2,30 @@
 
 open Core
 open Spec
+
 let incr = 128
 
-type t = {
-  mutable fields : Spec.field list;
-}
+type t = {mutable fields : Spec.field list}
 
-type error = [ `Premature_end_of_input
-             | `Unknown_field_type of int
-             ] [@@deriving show]
+type error =
+  [ `Premature_end_of_input
+  | `Unknown_field_type of int ]
+[@@deriving show]
 
-let init () = { fields = [] }
+let init () = {fields = []}
 
 let rec size_of_field = function
   | Varint 0 -> 1
   | Varint n when n > 0 ->
     let bits = Float.iround_down_exn (log (float n) /. log 2.0) + 1 in
-    (bits - 1) / 7 + 1
+    ((bits - 1) / 7) + 1
   | Varint _ -> (* Negative *) 10
   | Fixed_32_bit _ -> 4
   | Fixed_64_bit _ -> 8
-  | Length_delimited { length; _ } ->
-    size_of_field (Varint length) + length
+  | Length_delimited {length; _} -> size_of_field (Varint length) + length
 
 let size t =
-  List.fold_left ~init:0 ~f:(fun acc field -> acc + (size_of_field field)) t.fields
+  List.fold_left ~init:0 ~f:(fun acc field -> acc + size_of_field field) t.fields
 
 let write_varint buffer ~offset v =
   let rec inner ~offset v : int =
@@ -52,19 +51,14 @@ let write_fixed64 buffer ~offset v =
 let write_length_delimited buffer ~offset ~src ~src_pos ~len =
   let offset = write_varint buffer ~offset len in
   (* Copy string to bytes, should exist *)
-  Bytes.blit
-    ~src:(Bytes.of_string src)
-    ~src_pos
-    ~dst:buffer
-    ~dst_pos:offset
-    ~len;
+  Bytes.blit ~src:(Bytes.of_string src) ~src_pos ~dst:buffer ~dst_pos:offset ~len;
   offset + len
 
 let write_field buffer ~offset = function
   | Varint v -> write_varint buffer ~offset v
   | Fixed_32_bit v -> write_fixed32 buffer ~offset v
   | Fixed_64_bit v -> write_fixed64 buffer ~offset v
-  | Length_delimited { offset=src_pos; length; data } ->
+  | Length_delimited {offset = src_pos; length; data} ->
     write_length_delimited buffer ~offset ~src:data ~src_pos ~len:length
 
 let contents t =
@@ -80,18 +74,19 @@ let contents t =
 (** Add the contents of src as a length_delimited field *)
 let concat t ~src =
   let size = size src in
-  t.fields <- src.fields @ (Varint size) :: t.fields
+  t.fields <- src.fields @ (Varint size :: t.fields)
 
 let add_field t field = t.fields <- field :: t.fields
 
 let write_field_header : t -> int -> int -> unit =
-  fun t index field_type ->
+ fun t index field_type ->
   let header = (index lsl 3) + field_type in
   add_field t (Varint header)
 
 let write_field : t -> int -> field -> unit =
-  fun t index field ->
-  let field_type = match field with
+ fun t index field ->
+  let field_type =
+    match field with
     | Varint _ -> 0
     | Fixed_64_bit _ -> 1
     | Length_delimited _ -> 2
@@ -107,7 +102,6 @@ let concat_as_length_delimited t ~src index =
   add_field t (Varint size);
   t.fields <- src.fields @ t.fields
 
-
 let dump t =
   contents t
   |> String.to_list
@@ -115,7 +109,6 @@ let dump t =
   |> List.map ~f:(sprintf "%02x")
   |> String.concat ~sep:"-"
   |> printf "Buffer: %s\n"
-
 
 let%test _ =
   let buffer = init () in
