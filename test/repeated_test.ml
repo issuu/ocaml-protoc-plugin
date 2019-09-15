@@ -46,5 +46,5 @@ let%expect_test _ =
   let t = T.{ ms = [ m 0; m 1; m 2; m 1; m 0; m 5] } in
   Test_lib.test_encode "repeated.proto" (module T) t;
   [%expect{|
-    Size: 10
-    e: A;e: B;e: C;e: A;e: C; |}]
+    Size: 20
+    ms {;};ms {;  i: 1;};ms {;  i: 2;};ms {;  i: 1;};ms {;};ms {;  i: 5;}; |}]
