@@ -1,3 +1,8 @@
+(* Consider changeing the Length_delimited to be a substring *)
+(* Also consider changeing the writer to create a list of fields,
+   and only convert these into a string at the very end.
+   This would save data copying.
+*)
 type field =
   | Varint of int (* int32, int64, uint32, uint64, sint32, sint64, bool, enum *)
   | Fixed_64_bit of Int64.t (* fixed64, sfixed64, double *)

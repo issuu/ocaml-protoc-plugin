@@ -38,7 +38,7 @@ let read_byte t =
   t.offset <- t.offset + 1;
   return (Char.to_int v)
 
-let read_varint t =
+let read_raw_varint t =
   let open Int64 in
   let rec inner acc =
     let%bind v = read_byte t in
@@ -54,49 +54,48 @@ let read_varint t =
   let v = List.fold_left ~init:0L ~f:(fun acc c -> acc lsl 7 + c) v in
   return (to_int_exn v)
 
+let read_varint t =
+  read_raw_varint t >>| fun v -> Varint v
+
 let read_field_header : t -> (int * int, error) result = fun t ->
-  let%bind v = read_varint t in
+  let%bind v = read_raw_varint t in
   let tpe = v land 0x7 in
   let field_number = v / 8 in
   return (tpe, field_number)
 
 let read_data t =
-  let%bind size = read_varint t in
+  let%bind size = read_raw_varint t in
   let%bind () = validate_capacity t size in
   let v = Bytes.sub t.data ~pos:t.offset ~len:size in
   t.offset <- t.offset + size;
-  return (v |> Bytes.to_string)
+  return (Length_delimited (v |> Bytes.to_string))
 
 let read_int32 t =
   let size = 4 in
   let%bind () = validate_capacity t size in
   let v = EndianBytes.LittleEndian.get_int32 t.data t.offset in
   t.offset <- t.offset + size;
-  return v
+  return (Fixed_32_bit v)
 
 let read_int64 t =
   let size = 8 in
   let%bind () = validate_capacity t size in
   let v = EndianBytes.LittleEndian.get_int64 t.data t.offset in
   t.offset <- t.offset + size;
-  return v
+  return (Fixed_64_bit v)
 
 let read_field : t -> (int * field, error) result = fun t ->
   let%bind (field_type, field_number) = read_field_header t in
   let%bind field =
     match field_type with
     | 0 ->
-      let%bind v = read_varint t in
-      return (Varint v)
+      read_varint t
     | 1 ->
-      let%bind v = read_int64 t in
-      return (Fixed_64_bit v)
+      read_int64 t
     | 2 ->
-      let%bind v = read_data t in
-      return (Length_delimited v)
+      read_data t
     | 5 ->
-      let%bind v = read_int32 t in
-      return (Fixed_32_bit v)
+      read_int32 t
     | n ->
       Result.fail (`Unknown_field_type n)
   in

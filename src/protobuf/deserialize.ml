@@ -51,7 +51,6 @@ let error_wrong_field str field : _ result =
 let error_illegal_value str field : _ result =
   `Illegal_value (str, field) |> Result.fail
 
-
 (** Deserialize a buffer. *)
 let read_fields : Reader.t -> ((int * Spec.field) list) result = fun t ->
   let rec inner acc =
@@ -65,7 +64,6 @@ let read_fields : Reader.t -> ((int * Spec.field) list) result = fun t ->
   | Ok v -> return v
   | Error `Premature_end_of_input -> Result.fail `Premature_end_of_input
   | Error (`Unknown_field_type n) -> Result.fail (`Unknown_field_type n)
-
 
 (** Deserialize takes a list of field sentinals and a buffer for the
     data. Data is decoded into a list of tags, fields
@@ -245,16 +243,15 @@ let repeated_sentinal ~scalar_type (get, read) =
     return ()
   in
   (fun () -> List.rev !value),
-  (* This could be optimized, as ~scalar_type never changes *)
   fun field ->
     let%bind fields_rev =
       match field, scalar_type with
       | Spec.Length_delimited data, `Fixed_64_bit ->
-        read_fields ~f:(fun b -> Reader.read_int64 b >>| Spec.fixed_64_bit) (Reader.create data) []
+        read_fields ~f:(Reader.read_int64) (Reader.create data) []
       | Spec.Length_delimited data, `Fixed_32_bit ->
-        read_fields ~f:(fun b -> Reader.read_int32 b >>| Spec.fixed_32_bit) (Reader.create data) []
+        read_fields ~f:(Reader.read_int32) (Reader.create data) []
       | Spec.Length_delimited data, `Varint  ->
-        read_fields ~f:(fun b -> Reader.read_varint b >>| Spec.varint) (Reader.create data) []
+        read_fields ~f:(Reader.read_varint) (Reader.create data) []
       | Spec.Length_delimited _ as v, `Not_scalar -> return [v]
       | Spec.Fixed_32_bit _ as v, _  -> return [v]
       | Spec.Fixed_64_bit _ as v, _ -> return [v]
@@ -264,8 +261,6 @@ let repeated_sentinal ~scalar_type (get, read) =
         let%bind () = acc in
         read_field field
       ) fields_rev
-
-
 
 let scalar_type: type a. a spec -> 'b = function
     | Double -> `Fixed_64_bit
