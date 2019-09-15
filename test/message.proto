@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+message Submessage {
+  int64 i = 1;
+}
+
+message Message {
+  Submessage m = 1;
+}
+
+message Message2 {
+  int64 i = 1;
+  Submessage m = 2;
+}

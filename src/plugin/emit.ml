@@ -209,6 +209,9 @@ let protobuf_type_of_field ~prefix scope field_descriptor =
     | {type_ = None; _} -> failwith "Abstract types cannot be"
   in
   match field_descriptor with
+  | {label = Some Label_repeated; type_ = Some Type_message; type_name; _ } ->
+    let to_proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
+    sprintf "RepeatedMessage %s" to_proto_func
   | {label = Some Label_repeated; _} -> sprintf "Repeated (%s)" base_type
   | _ -> base_type
 

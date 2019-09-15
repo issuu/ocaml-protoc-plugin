@@ -44,3 +44,11 @@
   (:proto enum.proto))
  (action
   (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} --ocaml_out . %{proto})))
+
+(rule
+ (targets message.ml)
+ (deps
+  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:proto message.proto))
+ (action
+  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} --ocaml_out . %{proto})))

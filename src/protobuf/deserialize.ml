@@ -20,7 +20,7 @@ type _ spec =
   | UInt64 : int spec
   | SInt32 : int spec
   | SInt64 : int spec
-  | Fixed32 : int spec (* unsigned *)
+  | Fixed32 : int spec
   | Fixed64 : int spec
   | SFixed32 : int spec
   | SFixed64 : int spec
@@ -30,6 +30,7 @@ type _ spec =
   | Message : (Reader.t -> 'a result) -> 'a option spec
   | Enum : (int -> 'a result) -> 'a spec
   | Repeated : 'a spec -> 'a list spec
+  | RepeatedMessage : (Reader.t -> 'a result) -> 'a list spec
 
 type 'a sentinal = unit -> 'a
 
@@ -301,3 +302,9 @@ let rec sentinal : type a. a spec -> a sentinal * decoder = function
   | Repeated tpe ->
     let sentinal = sentinal tpe in
     repeated_sentinal ~scalar_type:(scalar_type tpe) sentinal
+  | RepeatedMessage deser ->
+    let (get, read) = message_sentinal deser in
+    let get () =
+      Option.value_exn ~message:"Repeated messages cannot have None message" (get ())
+    in
+    repeated_sentinal ~scalar_type:`Not_scalar (get, read)

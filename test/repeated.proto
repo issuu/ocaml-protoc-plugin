@@ -24,3 +24,8 @@ message Enum {
   }
   repeated E e = 1;
 }
+
+message Message {
+  message M { int64 i = 1; }
+  repeated M ms = 1;
+}

@@ -103,10 +103,3 @@ let read_field : t -> (int * field, error) result = fun t ->
       Result.fail (`Unknown_field_type n)
   in
   return (field_number, field)
-
-let dump t =
-  String.to_list t.data
-  |> List.map ~f:Char.to_int
-  |> List.map ~f:(sprintf "%02x")
-  |> String.concat ~sep:"-"
-  |> printf "Buffer: %s\n"

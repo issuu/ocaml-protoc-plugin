@@ -20,6 +20,7 @@ type _ spec =
   | Message : ('a -> Writer.t) -> 'a option spec
   | Enum : ('a -> int) -> 'a spec
   | Repeated : 'a spec -> 'a list spec
+  | RepeatedMessage: ('a -> Writer.t) -> 'a list spec
   | Oneof : ('a -> int * field) -> 'a spec
 
 (* Take a list of fields and return a field *)
@@ -158,12 +159,14 @@ let rec serialize : type a. Writer.t -> (a, Writer.t) protobuf_type_list -> a =
         Writer.write_field writer index v;
         serialize writer rest
     (* Repeated fields - Not packed *)
-    | Cons ((index, Repeated (Message to_writer)), rest) ->
+    | Cons ((index, RepeatedMessage to_writer), rest) ->
       fun vs ->
         let writer = List.fold_left ~init:writer ~f:(fun writer v ->
-            write_message writer ~index ~f:to_writer Nil v) vs
+            write_message writer ~index ~f:to_writer Nil (Some v)) vs
         in
         serialize writer rest
+    | Cons ((_, Repeated (Message _)), _) ->
+      failwith "Illegal construct";
     | Cons ((index, Repeated String), rest) ->
       fun v ->
         List.iter v ~f:(fun msg -> Writer.write_field writer index (field_of_string msg));
@@ -202,7 +205,9 @@ let rec serialize : type a. Writer.t -> (a, Writer.t) protobuf_type_list -> a =
     | Cons ((index, Repeated (Enum to_int)), rest) ->
       write_packed_field writer ~index ~f:(fun v -> to_int v |> field_of_uint64) rest
     | Cons ((_, Repeated (Repeated _)), _) ->
-      failwith "Chained repeated fields not supported"
+      failwith "Chained repeated fields are not allowed"
+    | Cons ((_, Repeated (RepeatedMessage _)), _) ->
+      failwith "Chained repeated fields are not allowed"
     | Cons ((_, Repeated (Oneof _)), _) ->
       failwith "Oneof fields cannot be repeated"
 
