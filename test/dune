@@ -52,3 +52,11 @@
   (:proto message.proto))
  (action
   (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} --ocaml_out . %{proto})))
+
+(rule
+ (targets oneof.ml)
+ (deps
+  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:proto oneof.proto))
+ (action
+  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} --ocaml_out . %{proto})))

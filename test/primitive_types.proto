@@ -18,26 +18,4 @@ message Types {
   bytes bytes = 15;
 }
 
-message SInt64 {
-  sint64 i = 1;
-}
-
-message SInt32 {
-  sint32 i = 1;
-}
-
-message UInt64 {
-  uint64 i = 1;
-}
-
-message UInt32 {
-  uint32 i = 1;
-}
-
-message Int64 {
-  int64 i = 1;
-}
-
-message Int32 {
-  int32 i = 1;
-}
+message Empty { }

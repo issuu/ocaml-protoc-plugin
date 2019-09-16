@@ -52,3 +52,10 @@ let%expect_test _ =
   let bin = T.to_proto t in
   printf "Size: %d%!" (Protobuf.Writer.contents bin |> String.length);
   [%expect {| Size: 0 |}]
+
+
+let%expect_test _ =
+  let module T = Primitive_types.Empty in
+  let t = () in
+  Test_lib.test_encode "primitive_types.proto" (module T) t;
+  [%expect {| |}]

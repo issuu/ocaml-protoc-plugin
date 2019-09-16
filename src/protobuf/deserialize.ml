@@ -6,7 +6,8 @@ type error =
   | `Wrong_field_type of string * Spec.field
   | `Illegal_value of string * Spec.field
   | `Not_implemented
-  | `Unknown_enum_value of int ]
+  | `Unknown_enum_value of int
+  | `Oneof_missing ]
 [@@deriving show]
 
 (** Module for deserializing values *)
@@ -326,3 +327,28 @@ let rec sentinal : type a. a spec -> a sentinal * decoder = function
       Option.value_exn ~message:"Repeated messages cannot have None message" (get ())
     in
     repeated_sentinal ~scalar_type:`Not_scalar (get, read)
+
+(* Oh, no. Do we need yet another gadt? *)
+type _ oneof =
+  | Oneof : (int * 'b spec * ('b -> 'a)) -> 'a oneof
+
+let oneof_sentinal: 'a oneof list -> (unit -> 'a result) * (int * decoder) list = fun oneofs ->
+  let value = ref None in
+  let create_sentinal: 'a oneof -> (int * decoder) = function
+    | Oneof (index, spec, constr) ->
+      let (get, read) = sentinal spec in
+      let read field =
+        let%bind () = read field in
+        let v = get () in
+        value := Some (constr v);
+        return ()
+      in
+      index, read
+  in
+  let read () =
+    match !value with
+    | None -> Result.fail `Oneof_missing
+    | Some v -> return v
+  in
+    let decoders = List.map ~f:create_sentinal oneofs in
+    (read, decoders)

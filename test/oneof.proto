@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+
+message Test {
+  int64 y = 1;
+  oneof x {
+    int64 i = 10;
+    int64 j = 20;
+  }
+}

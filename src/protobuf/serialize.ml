@@ -21,7 +21,9 @@ type _ spec =
   | Enum : ('a -> int) -> 'a spec
   | Repeated : 'a spec -> 'a list spec
   | RepeatedMessage : ('a -> Writer.t) -> 'a list spec
-  | Oneof : ('a -> int * field) -> 'a spec
+  | Oneof : ('a -> (int * 'b spec) * 'b) -> 'a spec
+
+(* How do I serialize a message into a field???  *)
 
 (* Take a list of fields and return a field *)
 let serialize_message : (int * field) list -> string =
@@ -160,11 +162,9 @@ let rec serialize : type a. Writer.t -> (a, Writer.t) protobuf_type_list -> a =
     | Cons ((index, Enum to_int), rest) ->
       write_field writer ~index ~f:(field_of_enum ~f:to_int) rest
     | Cons ((_index, Oneof f), rest) ->
-      (* Oneof fields ignores the initial index *)
       fun v ->
-       let index, v = f v in
-       Writer.write_field writer index v;
-       serialize writer rest
+        let ((index, spec), v) = f v in
+        serialize writer (Cons ((index, spec), rest)) v;
     (* Repeated fields - Not packed *)
     | Cons ((index, RepeatedMessage to_writer), rest) ->
       fun vs ->
