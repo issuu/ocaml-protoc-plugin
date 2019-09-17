@@ -9,7 +9,7 @@ The main features should include:
 * Support service descriptions
 * proto3 compatibility
 
-## Differences from existing tools:
+## Comparrison with other ocaml protobuf handlers
 
 | Feature           | ocaml-protoc  | ocaml-pb-plugin | ocaml-protoc-plugin |
 | -------           | ------------  | --------------- | ------------------- |
@@ -38,9 +38,10 @@ can generate the ocaml code by running
 ```
 
 `Options` control the code generated.
+
 | Option      | Description       | Example                  |
 | ----------- | -----------       | -------                  |
-| annot       | Type annotations. | `annot=[@@deriving show] |
+| annot       | Type annotations. | `annot=[@@deriving show]` |
 | dump        | Enable debugging  | `dump`                   |
 
 Parameters are seperated by `:`
@@ -63,10 +64,10 @@ Below is a dune rule for generating code for `test.proto`:
   (run protoc -I .  "--ocaml_opt=dump:annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
 ```
 
-
+## Service interface
+!Note this is deprecated, and will change
 ```ocaml
 
-!Note this is deprecated, and will change
 module IO = struct
   'a deferred;
 end
