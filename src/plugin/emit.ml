@@ -2,38 +2,42 @@ open Core_kernel
 
 (* This should be part of options sent to proc so its under user control *)
 let annot = "[@@deriving show { with_path = false }]"
+(*  Service declarations:
 
-(*  Service functions could be implemented as simple as:
-   module Service = sig
-     val name: string
-     type request = ...
-     type response = ...
-     val encode_request: request -> string
-     val decode_request: string -> request result
-     val encode_response: response -> string
-     val decode_response: string -> response result
-   end
+    module type Msg = sig
+      type t
+      from_proto = ...
+      to_proto = ...
+    end
+    module type Service = sig
+      type request
+      type response
+      module Request : Msg with type t = request
+      module Response : Msg with type t = response
+    end
 
-   User code could then implement something like:
-   val create_service: (module F : Service_type) -> ~handler:(F.request -> F.response Deferred.Result.t) -> string -> string Deferred.Result.t
-*)
+    service SearchService {
+      rpc Search (SearchRequest) returns (SearchResponse);
+    }
 
-(*
-   Oneof types are mapped to polymorphic types:
+    Should emit:
 
-   message X {
-     oneof of {
-       int32 field1 = 1;
-     };
-     int32 field2 = 2;
-   };
+    module SearchService : Service with
+        type request = SearchRequest.t and
+        type response = SearchResponse.t = struct
 
-   module X = struct
-     type t = {
-       of : [ `field1 of int ]
-       field2 : int;
-     }
+      type request = SearchRequest.t
+      type response = SearchResponse.t
+      module Request = SearchRequest
+      module Response = SearchResponse
+    end
 
+    = A general service module can then be written as
+
+    let go (type a b) (module S : SSig with type request = a and type response = b) =
+      let x = fun x -> S.Request.to_string x |> S.Response.of_string in
+      let y = fun y -> S.Response.to_string y |> S.Request.of_string in
+      x, y
 *)
 
 (** Taken from: https://caml.inria.fr/pub/docs/manual-ocaml/lex.html *)
@@ -46,7 +50,7 @@ let is_reserved = function
   | "private" | "rec" | "sig" | "struct" | "then" | "to" | "true" | "try" | "type"
   | "val" | "virtual" | "when" | "while" | "with" ->
     true
-  | "from_proto" | "to_proto" -> true
+  | "from_proto" | "to_proto" -> true (* Why?? *)
   | _ -> false
 
 (* Remember to mangle reserved keywords *)
