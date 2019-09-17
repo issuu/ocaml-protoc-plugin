@@ -1,7 +1,7 @@
 open Core_kernel
 
-(* This should be part of options sent to proc so its under user control *)
-let annot = "[@@deriving show { with_path = false }]"
+let annot = ref ""
+let dump = ref false
 (*  Service declarations:
 
     module type Msg = sig
@@ -38,6 +38,9 @@ let annot = "[@@deriving show { with_path = false }]"
       let x = fun x -> S.Request.to_string x |> S.Response.of_string in
       let y = fun y -> S.Response.to_string y |> S.Request.of_string in
       x, y
+
+    To support maps, we need to see if the referenced type has option: map_entry = true.
+    So we prob need a dict with all map types. - Darn.
 *)
 
 (** Taken from: https://caml.inria.fr/pub/docs/manual-ocaml/lex.html *)
@@ -79,7 +82,10 @@ type message = {
   implementation : Code.t;
 }
 
-let log fmt = eprintf (fmt ^^ "\n%!")
+let log fmt =
+  match !dump with
+  | true -> eprintf (fmt ^^ "\n%!")
+  | false -> ifprintf stderr fmt
 
 let emit_enum_type
     Spec.Descriptor.{name; value; options = _; reserved_range = _; reserved_name = _}
@@ -94,7 +100,7 @@ let emit_enum_type
     `None
     "type t = %s %s"
     (List.map ~f:constructor_name value |> String.concat ~sep:" | ")
-    annot;
+    !annot;
   Code.append signature t;
   Code.append implementation t;
   Code.emit signature `None "val to_int: t -> int";
@@ -183,8 +189,7 @@ let type_of_field scope field_descriptor =
     | {type_ = Some Type_sfixed64; _}
     | {type_ = Some Type_sint32; _}
     | {type_ = Some Type_sint64; _}
-    | {type_ = Some Type_uint32; _} ->
-      "int"
+    | {type_ = Some Type_uint32; _} -> "int"
     | {type_ = Some Type_bool; _} -> "bool"
     | {type_ = Some Type_string; _} -> "string"
     | {type_ = Some Type_group; _} -> failwith "Groups are deprecated"
@@ -368,12 +373,12 @@ let emit_message_type scope all_fields oneof_decls =
   let t = Code.init () in
   let () =
     match all_fields with
-    | [] -> Code.emit t `None "type t = unit %s" annot
+    | [] -> Code.emit t `None "type t = unit %s" !annot
     | _ ->
       Code.emit t `Begin "type t = {";
       List.iter ~f:(emit_field t scope) fields;
       List.iter ~f:(emit_oneof_fields t scope) oneof_decls;
-      Code.emit t `End "} %s" annot
+      Code.emit t `End "} %s" !annot
   in
   t
 
@@ -533,13 +538,23 @@ let parse_proto_file
   in
   out_name, implementation
 
+let parse_parameters parameters =
+  String.split ~on:':' parameters
+  |> List.iter ~f:(fun param ->
+      match String.split ~on:'=' param with
+      | "annot" :: values -> annot := String.concat ~sep:"=" values
+      | ["dump"] -> dump := true
+      | _ -> failwithf "Unknown parameter: %s" param ()
+    )
+
 let parse_request
-    {Spec.Plugin.file_to_generate; parameter; proto_file; compiler_version = _}
+    {Spec.Plugin.file_to_generate; parameter = parameters; proto_file; compiler_version = _}
   =
   log
     "Request to parse proto_files: %s. Parameter: %s"
     (String.concat ~sep:"; " file_to_generate)
-    (Option.value ~default:"<None>" parameter);
-  let x = List.map ~f:parse_proto_file proto_file in
-  List.iter ~f:(fun (_, code) -> Code.dump code) x;
-  x
+    (Option.value ~default:"<None>" parameters);
+  Option.iter ~f:parse_parameters parameters;
+  let result = List.map ~f:parse_proto_file proto_file in
+  (match !dump with true -> List.iter ~f:(fun (_, code) -> Code.dump code) result | false -> ());
+  result

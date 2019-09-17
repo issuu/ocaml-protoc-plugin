@@ -29,7 +29,44 @@ either from ocaml-protoc or ocaml-pb, whichever is the simpletst.
 ### Service definitions
 Service definitions will add function on the form:
 
+## Invocation
+If the plugin is available in the path as `protoc-gen-ocaml`, then you
+can generate the ocaml code by running
+
+```
+  protoc --ocaml_out=. --ocaml_opt=<options> file.proto
+```
+
+`Options` control the code generated.
+| Option      | Description       | Example                  |
+| ----------- | -----------       | -------                  |
+| annot       | Type annotations. | `annot=[@@deriving show] |
+| dump        | Enable debugging  | `dump`                   |
+
+Parameters are seperated by `:`
+
+If `protoc-gen-ocaml` is not located in the path, it is possible to
+specify the name of the plugin:
+
+```
+protoc --plugin=protoc-gen-ocaml=../plugin/ocaml.exe --ocaml_out=. <file>.proto
+```
+
+### Using dune
+Below is a dune rule for generating code for `test.proto`:
+```
+(rule
+ (targets test.ml)
+ (deps
+  (:proto test.proto))
+ (action
+  (run protoc -I .  "--ocaml_opt=dump:annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
+```
+
+
 ```ocaml
+
+!Note this is deprecated, and will change
 module IO = struct
   'a deferred;
 end
