@@ -39,10 +39,12 @@ can generate the ocaml code by running
 
 `Options` control the code generated.
 
-| Option      | Description       | Example                  |
-| ----------- | -----------       | -------                  |
-| annot       | Type annotations. | `annot=[@@deriving show]` |
-| dump        | Enable debugging  | `dump`                   |
+| Option      | Description                         | Example                   |
+| ----------- | ------------------------------      | -----------------------   |
+| annot       | Type annotations.                   | `annot=[@@deriving show]` |
+| debug       | Enable debugging                    | `debug`                   |
+| open        | Add open at top of generated files. May be given multiple times | `open=Base.Sexp           |
+
 
 Parameters are seperated by `:`
 

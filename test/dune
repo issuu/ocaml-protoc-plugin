@@ -67,4 +67,4 @@
   (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
   (:proto map.proto))
  (action
-  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} "--ocaml_opt=dump:annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
+  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} "--ocaml_opt=debug:annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))

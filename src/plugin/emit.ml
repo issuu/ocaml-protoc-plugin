@@ -1,7 +1,18 @@
 open Core_kernel
 
 let annot = ref ""
-let dump = ref false
+let debug = ref false
+let opens = ref []
+
+let parse_parameters parameters =
+  String.split ~on:':' parameters
+  |> List.iter ~f:(fun param ->
+      match String.split ~on:'=' param with
+      | "annot" :: values -> annot := String.concat ~sep:"=" values
+      | "open" :: values -> opens := String.concat ~sep:"=" values :: !opens
+      | ["debug"] -> debug := true
+      | _ -> failwithf "Unknown parameter: %s" param ()
+    )
 (*  Service declarations:
 
     module type Msg = sig
@@ -83,7 +94,7 @@ type message = {
 }
 
 let log fmt =
-  match !dump with
+  match !debug with
   | true -> eprintf (fmt ^^ "\n%!")
   | false -> ifprintf stderr fmt
 
@@ -95,37 +106,20 @@ let emit_enum_type
   let signature = Code.init () in
   let implementation = Code.init () in
   let t = Code.init () in
-  Code.emit
-    t
-    `None
-    "type t = %s %s"
-    (List.map ~f:constructor_name value |> String.concat ~sep:" | ")
-    !annot;
+  Code.emit t `None "type t = %s %s" (List.map ~f:constructor_name value |> String.concat ~sep:" | ") !annot;
   Code.append signature t;
   Code.append implementation t;
   Code.emit signature `None "val to_int: t -> int";
   Code.emit signature `None "val from_int: int -> t Protobuf.Deserialize.result";
   Code.emit implementation `Begin "let to_int = function";
-  List.iter
-    ~f:(fun v ->
-      Code.emit
-        implementation
-        `None
-        "| %s -> %d"
-        (constructor_name v)
-        (Option.value_exn v.number))
-    value;
+  List.iter ~f:(fun v ->
+      Code.emit implementation `None "| %s -> %d" (constructor_name v) (Option.value_exn v.number)
+    ) value;
   Code.emit implementation `End "";
   Code.emit implementation `Begin "let from_int = function";
-  List.iter
-    ~f:(fun v ->
-      Code.emit
-        implementation
-        `None
-        "| %d -> Ok %s"
-        (Option.value_exn v.number)
-        (constructor_name v))
-    value;
+  List.iter ~f:(fun v ->
+      Code.emit implementation `None "| %d -> Ok %s" (Option.value_exn v.number) (constructor_name v)
+    ) value;
   Code.emit implementation `None "| n -> Error (`Unknown_enum_value n)";
   Code.emit implementation `End "";
   {module_name; signature; implementation}
@@ -164,9 +158,7 @@ let protobuf_type_of_field ~prefix scope field_descriptor =
   in
   match field_descriptor with
   | {label = Some Label_repeated; type_ = Some Type_message; type_name; _} ->
-    let to_proto_func =
-      Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name
-    in
+    let to_proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
     sprintf "RepeatedMessage %s" to_proto_func
   | {label = Some Label_repeated; _} -> sprintf "Repeated (%s)" base_type
   | _ -> base_type
@@ -214,35 +206,24 @@ let emit_oneof_fields t scope
     ((oneof_decl : Spec.Descriptor.oneof_descriptor_proto), fields)
   =
   (* Emit a polymorphic variant type *)
-  let variants =
-    List.map
-      ~f:(fun field ->
-        let type_ = type_of_field scope field in
-        let name = variant_name field.name in
-        sprintf "`%s of %s" name type_)
-      fields
+  let variants = List.map ~f:(fun field ->
+      let type_ = type_of_field scope field in
+      let name = variant_name field.name in
+      sprintf "`%s of %s" name type_
+    ) fields
   in
-  Code.emit
-    t
-    `None
-    "%s: [ %s ];"
-    (field_name oneof_decl.name)
-    (String.concat ~sep:" | " variants)
+  Code.emit t `None "%s: [ %s ];" (field_name oneof_decl.name) (String.concat ~sep:" | " variants)
 
 (** Return a list of plain fields + a list of fields per oneof_decl *)
 let split_oneof_decl fields oneof_decls =
-  List.foldi
-    ~init:(fields, [])
-    ~f:(fun i (fields, oneof_decls) oneof_decl ->
-      let oneof_fields, rest =
-        List.partition_tf
-          ~f:(function
-            | {Spec.Descriptor.oneof_index = Some i'; _} -> i = i'
-            | {Spec.Descriptor.oneof_index = None; _} -> false)
-          fields
+  List.foldi ~init:(fields, []) ~f:(fun i (fields, oneof_decls) oneof_decl ->
+      let oneof_fields, rest = List.partition_tf ~f:(function
+          | {Spec.Descriptor.oneof_index = Some i'; _} -> i = i'
+          | {Spec.Descriptor.oneof_index = None; _} -> false
+        ) fields
       in
-      rest, (oneof_decl, oneof_fields) :: oneof_decls)
-    oneof_decls
+      rest, (oneof_decl, oneof_fields) :: oneof_decls
+    ) oneof_decls
 
 let inject (signature', implementation') signature implementation =
   Code.append signature signature';
@@ -252,33 +233,19 @@ let emit_deserialization_function scope all_fields (oneof_decls: Spec.Descriptor
   let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
   let signature = Code.init () in
   let implementation = Code.init () in
-  Code.emit
-    signature
-    `None
-    "val from_proto: Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result";
+  Code.emit signature `None "val from_proto: Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result";
   let _field_names = List.map ~f:(fun field -> field_name field.name) fields in
   Code.emit implementation `Begin "let from_proto data =";
   Code.emit implementation `None "let open Base.Result.Monad_infix in";
-  List.iter
-    ~f:(fun field ->
+  List.iter ~f:(fun field ->
       let index = Option.value_exn field.number in
       let typ = protobuf_type_of_field ~prefix:"from" scope field in
-      Code.emit
-        implementation
-        `None
-        "let (sentinal_%d, deser_%d) = Protobuf.Deserialize.sentinal (%s) in"
-        index
-        index
-        typ)
-    fields;
-  let spec =
-    List.map
-      ~f:(fun field ->
-        sprintf
-          "(%d, deser_%d)"
-          (Option.value_exn field.number)
-          (Option.value_exn field.number))
-      fields
+      Code.emit implementation `None "let (sentinal_%d, deser_%d) = Protobuf.Deserialize.sentinal (%s) in"
+        index index typ
+    ) fields;
+  let spec = List.map ~f:(fun field ->
+      sprintf "(%d, deser_%d)" (Option.value_exn field.number) (Option.value_exn field.number)
+    ) fields
   in
   List.iteri ~f:(fun idx (_decl, fields) ->
       let spec = List.map ~f:(fun field ->
@@ -289,34 +256,26 @@ let emit_deserialization_function scope all_fields (oneof_decls: Spec.Descriptor
         ) fields
       in
       Code.emit implementation `None "let (oneof_sentinal_%d, oneof_spec_%d) = Protobuf.Deserialize.oneof_sentinal [ %s ] in"
-        idx idx
-        (String.concat ~sep:"; " spec)
+        idx idx (String.concat ~sep:"; " spec)
     ) oneof_decls;
-  let oneof_specs =
-    List.mapi ~f:(fun idx _ -> sprintf "oneof_spec_%d" idx) oneof_decls
-  in
+  let oneof_specs = List.mapi ~f:(fun idx _ -> sprintf "oneof_spec_%d" idx) oneof_decls in
   Code.emit implementation `None "let spec = %s @ [ %s ] in" (String.concat ~sep:" @ " ("[]" :: oneof_specs)) (String.concat ~sep:"; " spec);
   Code.emit implementation `None "Protobuf.Deserialize.deserialize spec data >>= fun () -> ";
   List.iteri ~f:(fun idx _ ->
-      Code.emit implementation `None "oneof_sentinal_%d () >>= fun oneof_%d -> " idx idx;
+      Code.emit implementation `None "oneof_sentinal_%d () >>= fun oneof_%d -> " idx idx
     ) oneof_decls;
 
   (* Construct the record *)
-  let construct =
-    match List.is_empty all_fields with
+  let fields = List.map ~f:(fun field ->
+      let name = field_name field.name in
+      let index = Option.value_exn field.number in
+      sprintf "%s = sentinal_%d ()" name index
+    ) fields
+  in
+  let oneof_fields = List.mapi ~f:(fun idx (decl, _) -> sprintf "%s = oneof_%d" (field_name decl.name) idx) oneof_decls in
+  let construct = match List.is_empty all_fields with
     | true -> "()"
     | false ->
-      let fields =
-        List.map
-          ~f:(fun field ->
-              let name = field_name field.name in
-              let index = Option.value_exn field.number in
-              sprintf "%s = sentinal_%d ()" name index)
-          fields
-      in
-      let oneof_fields =
-        List.mapi ~f:(fun idx (decl, _) -> sprintf "%s = oneof_%d" (field_name decl.name) idx) oneof_decls
-      in
       sprintf "{ %s }" (String.concat ~sep:"; " (fields @ oneof_fields))
   in
   Code.emit implementation `None "Base.Result.return %s" construct;
@@ -357,14 +316,8 @@ let emit_serialization_function scope all_fields (oneof_decls: Spec.Descriptor.o
   in
   Code.emit implementation `Begin "let to_proto %s = " destruct;
   Code.emit implementation `None "let open Protobuf.Serialize in";
-  Code.emit
-    implementation
-    `None
-    "serialize (%s %sNil) %s %s"
-    protocol_field_spec
-    oneof_field_spec
-    (String.concat ~sep:" " field_names)
-    (String.concat ~sep:" " oneof_names);
+  Code.emit implementation `None "serialize (%s %sNil) %s %s"
+    protocol_field_spec oneof_field_spec (String.concat ~sep:" " field_names) (String.concat ~sep:" " oneof_names);
   Code.emit implementation `End "";
   signature, implementation
 
@@ -399,9 +352,7 @@ let rec emit_message scope
     : message
   =
   let rec emit_nested_types ~signature ~implementation ?(is_first = true) nested_types =
-    let emit_sub dest ~is_implementation ~is_first
-        {module_name; signature; implementation}
-      =
+    let emit_sub dest ~is_implementation ~is_first {module_name; signature; implementation} =
       let () =
         match is_first with
         | true -> Code.emit dest `Begin "module rec %s : sig" module_name
@@ -441,10 +392,7 @@ let rec emit_message scope
     match name with
     | Some _name ->
       Code.emit signature `None "val name: string";
-      Code.emit
-        implementation
-        `None
-        "let name = \"%s\""
+      Code.emit implementation `None "let name = \"%s\""
         (String.concat ~sep:"." (List.rev scope));
       (* Need fully qualified name, plz *)
       let t = emit_message_type scope fields oneof_decls in
@@ -494,67 +442,46 @@ let rec wrap_packages scope message_type = function
     signature, implementation
 
 let parse_proto_file
-    {
-      Spec.Descriptor.name;
-      package;
-      dependency = _;
-      public_dependency = _;
-      weak_dependency = _;
-      message_type = message_types;
-      enum_type = enum_types;
-      service = _;
-      extension = _;
-      options = _;
-      source_code_info = _;
-      syntax;
-    }
+    Spec.Descriptor.{ name; package; dependency = _; public_dependency = _;
+                      weak_dependency = _; message_type = message_types;
+                      enum_type = enum_types; service = _; extension = _;
+                      options = _; source_code_info = _; syntax; }
   =
-  log
-    "parse_proto_file: Name = %s. Package=%s, syntax=%s. enums: %d"
+  log "parse_proto_file: Name = %s. Package=%s, syntax=%s. enums: %d"
     (to_string_opt name)
     (to_string_opt package)
     (to_string_opt syntax)
     (List.length enum_types);
   let message_type =
-    Spec.Descriptor.default_descriptor_proto
-      ~name:None
-      ~nested_type:message_types
-      ~enum_type:enum_types
-      ()
+    Spec.Descriptor.default_descriptor_proto ~name:None ~nested_type:message_types ~enum_type:enum_types ()
   in
   let _, implementation =
-    wrap_packages
-      (Scope.init ())
-      message_type
-      (Option.value_map ~default:[] ~f:(String.split ~on:'.') package)
+    wrap_packages (Scope.init ()) message_type (Option.value_map ~default:[] ~f:(String.split ~on:'.') package)
   in
   let out_name =
-    name
-    |> Option.map ~f:(fun proto_file_name ->
-           (match String.chop_suffix ~suffix:".proto" proto_file_name with
-           | None -> proto_file_name
-           | Some stem -> stem)
-           |> Printf.sprintf "%s.ml")
+    Option.map ~f:(fun proto_file_name ->
+        let name = match String.chop_suffix ~suffix:".proto" proto_file_name with
+          | None -> proto_file_name
+          | Some stem -> stem
+        in
+        Printf.sprintf "%s.ml" name
+      ) name
   in
   out_name, implementation
 
-let parse_parameters parameters =
-  String.split ~on:':' parameters
-  |> List.iter ~f:(fun param ->
-      match String.split ~on:'=' param with
-      | "annot" :: values -> annot := String.concat ~sep:"=" values
-      | ["dump"] -> dump := true
-      | _ -> failwithf "Unknown parameter: %s" param ()
-    )
-
-let parse_request
-    {Spec.Plugin.file_to_generate; parameter = parameters; proto_file; compiler_version = _}
-  =
-  log
-    "Request to parse proto_files: %s. Parameter: %s"
+let parse_request Spec.Plugin.{file_to_generate; parameter = parameters; proto_file; compiler_version = _} =
+  log "Request to parse proto_files: %s. Parameter: %s"
     (String.concat ~sep:"; " file_to_generate)
     (Option.value ~default:"<None>" parameters);
   Option.iter ~f:parse_parameters parameters;
-  let result = List.map ~f:parse_proto_file proto_file in
-  (match !dump with true -> List.iter ~f:(fun (_, code) -> Code.dump code) result | false -> ());
+  let result =
+    List.map ~f:parse_proto_file proto_file
+    |> List.map ~f:(fun (v, code) ->
+        let c = Code.init () in
+        List.iter ~f:(Code.emit c `None "open %s") (List.rev !opens);
+        Code.append c code;
+        (v, c)
+      )
+  in
+  (match !debug with true -> List.iter ~f:(fun (_, code) -> Code.dump code) result | false -> ());
   result

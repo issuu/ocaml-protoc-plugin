@@ -2,7 +2,7 @@
 build: ## Build
 	dune build
 
-.PHONY: clean 
+.PHONY: clean
 clean: ## Clean
 	dune clean
 
@@ -34,3 +34,6 @@ update-protobuf: ## Update generated code for interfacing with protoc
 .PHONY: help
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+%: %.proto
+	protoc -I $(dir $<) $< -o/dev/stdout | protoc --decode google.protobuf.FileDescriptorSet /usr/include/google/protobuf/descriptor.proto
