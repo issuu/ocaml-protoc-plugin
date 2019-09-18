@@ -1,5 +1,6 @@
-open Core_kernel
+open Base
 
+let sprintf = Printf.sprintf
 let annot = ref ""
 let debug = ref false
 let opens = ref []
@@ -11,7 +12,7 @@ let parse_parameters parameters =
       | "annot" :: values -> annot := String.concat ~sep:"=" values
       | "open" :: values -> opens := String.concat ~sep:"=" values :: !opens
       | ["debug"] -> debug := true
-      | _ -> failwithf "Unknown parameter: %s" param ()
+      | _ -> failwith ("Unknown parameter: " ^ param)
     )
 (*  Service declarations:
 
@@ -95,8 +96,8 @@ type message = {
 
 let log fmt =
   match !debug with
-  | true -> eprintf (fmt ^^ "\n%!")
-  | false -> ifprintf stderr fmt
+  | true -> Stdlib.(Printf.eprintf (fmt ^^ "\n%!"))
+  | false -> Stdlib.Printf.ifprintf Stdlib.stderr fmt
 
 let emit_enum_type
     Spec.Descriptor.{name; value; options = _; reserved_range = _; reserved_name = _}
@@ -497,5 +498,7 @@ let parse_request Spec.Plugin.{file_to_generate; parameter = parameters; proto_f
         (v, c)
       )
   in
-  (match !debug with true -> List.iter ~f:(fun (_, code) -> Code.dump code) result | false -> ());
+  (match !debug with
+   | true -> List.iter ~f:(fun (_, code) -> log "%s" (Code.contents code)) result
+   | false -> ());
   result

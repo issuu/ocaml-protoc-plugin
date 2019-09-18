@@ -1,4 +1,4 @@
 (executable
  (name ocaml_protoc_plugin)
  (public_name protoc-gen-ocaml)
- (libraries spec))
+ (libraries spec base))

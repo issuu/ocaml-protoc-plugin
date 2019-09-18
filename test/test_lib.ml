@@ -1,19 +1,17 @@
 open Core
+open Stdio
 
 module type T = sig
   type t [@@deriving show]
-
   val to_proto : t -> Protobuf.Writer.t
-
-  val from_proto : Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result
-
+  val from_proto : Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) Result.t
   val name : string
 end
 
 let hexlify data =
   String.to_list data
   |> List.map ~f:Char.to_int
-  |> List.map ~f:(sprintf "%02x")
+  |> List.map ~f:(Printf.sprintf "%02x")
   |> String.concat ~sep:"-"
   |> printf "Buffer: '%s'\n"
 

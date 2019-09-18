@@ -1,9 +1,10 @@
 (** Some buffer to hold data, and to read and write data *)
 
-open Core
+open Base
 open Spec
 
-let incr = 128
+let sprintf = Printf.sprintf
+let printf = Stdlib.Printf.printf
 
 type t = {mutable fields : Spec.field list}
 
@@ -17,7 +18,7 @@ let init () = {fields = []}
 let rec size_of_field = function
   | Varint 0 -> 1
   | Varint n when n > 0 ->
-    let bits = Float.iround_down_exn (log (float n) /. log 2.0) + 1 in
+    let bits = Float.(iround_down_exn (log (of_int n) /. log 2.0)) + 1 in
     ((bits - 1) / 7) + 1
   | Varint _ -> (* Negative *) 10
   | Fixed_32_bit _ -> 4
@@ -114,4 +115,4 @@ let%test _ =
   let buffer = init () in
   write_field buffer 1 (Varint 1);
   let c = contents buffer in
-  String.length c = 2 && c = "\x08\x01"
+  String.length c = 2 && String.equal c "\x08\x01"

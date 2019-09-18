@@ -1,4 +1,4 @@
-open Core
+open Base
 open Result.Let_syntax
 
 type error =
@@ -11,7 +11,7 @@ type error =
 [@@deriving show]
 
 (** Module for deserializing values *)
-type nonrec 'a result = ('a, error) result
+type nonrec 'a result = ('a, error) Result.t
 
 type _ spec =
   | Double : float spec
@@ -136,7 +136,7 @@ let varint_sentinal ~signed ~type_name =
     | Spec.Varint v ->
       let v =
         match signed with
-        | true when v mod 2 = 0 -> v / 2
+        | true when v % 2 = 0 -> v / 2
         | true -> (v / 2 * -1) - 1
         | false -> v
       in
@@ -263,12 +263,11 @@ let repeated_sentinal ~scalar_type (get, read) =
             match String.length data >= offset + length with
             | true -> ()
             | false ->
-              failwithf
+              Spec.failwithf
                 "Cannot read length delimited: { offset = %d; length = %d; data = %d }"
                 offset
                 length
                 (String.length data)
-                ()
           in
           read_fields ~f:Reader.read_varint (Reader.create ~offset ~length data) []
         | (Spec.Length_delimited _ as v), `Not_scalar -> return [v]

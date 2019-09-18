@@ -1,6 +1,6 @@
 (** Some buffer to hold data, and to read and write data *)
 
-open Core
+open Base
 open Spec
 open Result.Let_syntax
 
@@ -31,8 +31,7 @@ let validate_capacity t count =
   match t.offset + count <= t.end_offset with
   | true -> Result.ok_unit
   | false ->
-    (* Result.fail `Premature_end_of_input*)
-    failwithf "Premature end of input: want: %d. Size: %d" count (size t) ()
+    Result.fail `Premature_end_of_input
 
 (** Test if there is more data in the buffer to be read *)
 let has_more t = t.offset < t.end_offset
@@ -61,7 +60,7 @@ let read_raw_varint t =
 
 let read_varint t = read_raw_varint t >>| fun v -> Varint v
 
-let read_field_header : t -> (int * int, error) result =
+let read_field_header : t -> (int * int, error) Result.t =
  fun t ->
   let%bind v = read_raw_varint t in
   let tpe = v land 0x7 in
@@ -89,7 +88,7 @@ let read_fixed64 t =
   t.offset <- t.offset + size;
   return (Fixed_64_bit v)
 
-let read_field : t -> (int * field, error) result =
+let read_field : t -> (int * field, error) Result.t =
  fun t ->
   let%bind field_type, field_number = read_field_header t in
   let%bind field =

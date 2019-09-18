@@ -16,9 +16,8 @@ type field =
 [@@deriving show]
 
 let varint v = Varint v
-
 let fixed_32_bit v = Fixed_32_bit v
-
 let fixed_64_bit v = Fixed_64_bit v
-
 let length_delimited ~offset ~length data = Length_delimited {offset; length; data}
+
+let failwithf fmt = Printf.ksprintf failwith fmt

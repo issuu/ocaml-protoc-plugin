@@ -1,6 +1,4 @@
 (library
  (name spec)
- (public_name ocaml-protoc-plugin.spec)
- (libraries ocaml-protoc core_kernel)
- (preprocess
-  (pps ppx_let ppx_deriving.show)))
+ (libraries ocaml-protoc)
+)

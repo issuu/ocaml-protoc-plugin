@@ -1,4 +1,4 @@
-open Core_kernel
+open Base
 
 type t = {
   mutable indent : string;
@@ -27,8 +27,6 @@ let emit t indent fmt =
 
 let append t code = List.iter ~f:(emit t `None "%s") (code.code |> List.rev)
 
-let dump t =
-  List.iter ~f:(eprintf "%s\n") (List.rev t.code);
-  ()
-
-let dumps t = List.map ~f:(sprintf "%s") (List.rev t.code) |> String.concat ~sep:"\n"
+let contents t =
+  List.map ~f:(Printf.sprintf "%s") (List.rev t.code)
+  |> String.concat ~sep:"\n"

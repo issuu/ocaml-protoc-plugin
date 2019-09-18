@@ -1,4 +1,4 @@
-open Core_kernel
+open Base
 open Spec
 
 type _ spec =
@@ -22,8 +22,6 @@ type _ spec =
   | Repeated : 'a spec -> 'a list spec
   | RepeatedMessage : ('a -> Writer.t) -> 'a list spec
   | Oneof : ('a -> (int * 'b spec) * 'b) -> 'a spec
-
-(* How do I serialize a message into a field???  *)
 
 (* Take a list of fields and return a field *)
 let serialize_message : (int * field) list -> string =
@@ -50,50 +48,28 @@ let signed_varint v =
   in
   Varint v
 
+let (=) = Poly.(=)
 let%test _ = signed_varint 0 = Varint 0
-
 let%test _ = signed_varint (-1) = Varint 1
-
 let%test _ = signed_varint 1 = Varint 2
-
 let%test _ = signed_varint (-2) = Varint 3
-
 let%test _ = signed_varint 2147483647 = Varint 4294967294
-
 let%test _ = signed_varint (-2147483648) = Varint 4294967295
 
 let field_of_double v = Fixed_64_bit (Int64.bits_of_float v)
-
 let field_of_float v = Fixed_32_bit (Int32.bits_of_float v)
-
 let field_of_int64 v = unsigned_varint v
-
 let field_of_int32 v = unsigned_varint (v land 0xffffffff)
-
 let field_of_sint64 v = signed_varint v
-
 let field_of_sint32 v = signed_varint v
-
 let field_of_uint64 v = unsigned_varint v
-
 let field_of_uint32 v = unsigned_varint v
-
 let field_of_fixed64 v = Fixed_64_bit (Int64.of_int_exn v)
-
 let field_of_fixed32 v = Fixed_32_bit (Int32.of_int_exn v)
-
 let field_of_sfixed64 v = Fixed_64_bit (Int64.of_int_exn v)
-
 let field_of_sfixed32 v = Fixed_32_bit (Int32.of_int_exn v)
-
-let field_of_bool v =
-  unsigned_varint
-    (match v with
-    | true -> 1
-    | false -> 0)
-
+let field_of_bool v = unsigned_varint (match v with | true -> 1 | false -> 0)
 let field_of_string v = Length_delimited {offset = 0; length = String.length v; data = v}
-
 let field_of_bytes v =
   Length_delimited {offset = 0; length = Bytes.length v; data = Bytes.to_string v}
 
