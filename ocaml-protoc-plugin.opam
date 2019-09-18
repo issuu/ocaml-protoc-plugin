@@ -16,12 +16,24 @@ depends: [
   "ocaml" {>= "4.05.0"}
   "ocaml-protoc"
   "ocamlformat" {build & >= "0.10"}
-  "core" { with-test }
+  "core" {with-test}
   "ocplib-endian"
 ]
+
+# This should be moved to conf-protoc
+depexts: [
+  ["libprotoc-dev"] {os-distribution = "debian"}
+  ["libprotoc-devel"] {os-distribution = "mageia"}
+  ["libprotoc-dev"] {os-distribution = "ubuntu"}
+  ["protoc-dev"] {os-distribution = "centos"}
+  ["protoc-dev"] {os-distribution = "fedora"}
+  ["protoc-dev"] {os-distribution = "rhel"}
+  ["protoc-dev"] {os-distribution = "alpine"}
+  ["protoc-dev"] {os-family = "suse"}
+  ["protoc"] {os = "freebsd"}
+  ["protoc"] {os = "macos" & os-distribution = "homebrew"}
+]
+
 synopsis: "Plugin for protoc protobuf compiler to generate ocaml definitions from a .proto file"
 description: """
 """
-
-
-# Depext: libprotoc-dev
