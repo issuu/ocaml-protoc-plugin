@@ -229,7 +229,7 @@ let inject (signature', implementation') signature implementation =
   Code.append signature signature';
   Code.append implementation implementation'
 
-let emit_deserialization_function scope all_fields (oneof_decls: Spec.Descriptor.oneof_descriptor_proto list) =
+let emit_deserialization_function ~is_map_entry scope all_fields (oneof_decls: Spec.Descriptor.oneof_descriptor_proto list) =
   let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
   let signature = Code.init () in
   let implementation = Code.init () in
@@ -273,9 +273,11 @@ let emit_deserialization_function scope all_fields (oneof_decls: Spec.Descriptor
     ) fields
   in
   let oneof_fields = List.mapi ~f:(fun idx (decl, _) -> sprintf "%s = oneof_%d" (field_name decl.name) idx) oneof_decls in
-  let construct = match List.is_empty all_fields with
-    | true -> "()"
-    | false ->
+  let construct = match all_fields with
+    | [] -> "()"
+    | [_; _] when is_map_entry ->
+      "( sentinal_1 (), sentinal_2 () )"
+    | _  ->
       sprintf "{ %s }" (String.concat ~sep:"; " (fields @ oneof_fields))
   in
   Code.emit implementation `None "Base.Result.return %s" construct;
@@ -283,7 +285,7 @@ let emit_deserialization_function scope all_fields (oneof_decls: Spec.Descriptor
   signature, implementation
 
 (* Return code for signature and implementation *)
-let emit_serialization_function scope all_fields (oneof_decls: Spec.Descriptor.oneof_descriptor_proto list) =
+let emit_serialization_function ~is_map_entry scope all_fields (oneof_decls: Spec.Descriptor.oneof_descriptor_proto list) =
   let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
   let signature = Code.init () in
   let implementation = Code.init () in
@@ -302,7 +304,8 @@ let emit_serialization_function scope all_fields (oneof_decls: Spec.Descriptor.o
   in
   let protocol_field_spec =
     fields
-    |> List.map ~f:(fun (field : Spec.Descriptor.field_descriptor_proto) -> field.number, protobuf_type_of_field ~prefix:"to" scope field)
+    |> List.map ~f:(fun (field : Spec.Descriptor.field_descriptor_proto) ->
+        field.number, protobuf_type_of_field ~prefix:"to" scope field)
     |> List.map ~f:(fun (index, tpe) -> sprintf "(%d, %s) ^:: " (Option.value_exn index) tpe)
     |> String.concat
   in
@@ -312,6 +315,8 @@ let emit_serialization_function scope all_fields (oneof_decls: Spec.Descriptor.o
   let destruct =
     match all_fields with
     | [] -> "()"
+    | [key; value] when is_map_entry ->
+      sprintf "( %s, %s )" (field_name key.name) (field_name value.name)
     | _ -> String.concat ~sep:"; " (field_names @ oneof_names) |> sprintf "{ %s }"
   in
   Code.emit implementation `Begin "let to_proto %s = " destruct;
@@ -321,12 +326,16 @@ let emit_serialization_function scope all_fields (oneof_decls: Spec.Descriptor.o
   Code.emit implementation `End "";
   signature, implementation
 
-let emit_message_type scope all_fields oneof_decls =
+let emit_message_type ~is_map_entry scope all_fields oneof_decls =
   let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
   let t = Code.init () in
   let () =
     match all_fields with
     | [] -> Code.emit t `None "type t = unit %s" !annot
+    | [key; value] when is_map_entry ->
+      (* Generate tuple instead of record *)
+      Code.emit t `None "type t = ( %s * %s ) %s"
+        (type_of_field scope key) (type_of_field scope value) !annot
     | _ ->
       Code.emit t `Begin "type t = {";
       List.iter ~f:(emit_field t scope) fields;
@@ -334,6 +343,11 @@ let emit_message_type scope all_fields oneof_decls =
       Code.emit t `End "} %s" !annot
   in
   t
+
+let is_map_entry options =
+  match options with
+  | Some Spec.Descriptor.{ map_entry = Some true; _ } -> true
+  | _ -> false
 
 let rec emit_message scope
     Spec.Descriptor.
@@ -345,12 +359,11 @@ let rec emit_message scope
         enum_type = enum_types;
         extension_range = _;
         oneof_decl = oneof_decls;
-        options = _;
+        options;
         reserved_range = _;
         reserved_name = _;
       }
-    : message
-  =
+  : message =
   let rec emit_nested_types ~signature ~implementation ?(is_first = true) nested_types =
     let emit_sub dest ~is_implementation ~is_first {module_name; signature; implementation} =
       let () =
@@ -394,16 +407,17 @@ let rec emit_message scope
       Code.emit signature `None "val name: string";
       Code.emit implementation `None "let name = \"%s\""
         (String.concat ~sep:"." (List.rev scope));
+      let is_map_entry = is_map_entry options in
       (* Need fully qualified name, plz *)
-      let t = emit_message_type scope fields oneof_decls in
+      let t = emit_message_type ~is_map_entry scope fields oneof_decls in
       Code.append signature t;
       Code.append implementation t;
       inject
-        (emit_serialization_function scope fields oneof_decls)
+        (emit_serialization_function ~is_map_entry scope fields oneof_decls)
         signature
         implementation;
       inject
-        (emit_deserialization_function scope fields oneof_decls)
+        (emit_deserialization_function ~is_map_entry scope fields oneof_decls)
         signature
         implementation
     | None -> ()

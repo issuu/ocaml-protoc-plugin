@@ -42,4 +42,4 @@ let%expect_test _ =
   Test_lib.test_encode "repeated.proto" (module T) t;
   [%expect
     {|
-    ms {;};ms {;  i: 1;};ms {;  i: 2;};ms {;  i: 1;};ms {;};ms {;  i: 5;}; |}]
+    ms {;};ms {; i: 1;};ms {; i: 2;};ms {; i: 1;};ms {;};ms {; i: 5;}; |}]

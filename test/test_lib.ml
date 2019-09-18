@@ -33,7 +33,7 @@ let test_encode ?dump protobuf_file (type t) (module M : T with type t = t) (exp
   (* flush *)
   Sys.command_exn
     (sprintf
-       "protoc --decode=%s %s < %s | tr \"\\n\" \"; \""
+       "protoc --decode=%s %s < %s | tr \"\\n\" \"; \" | sed -E 's/ +/ /g'"
        M.name
        protobuf_file
        filename);

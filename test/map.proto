@@ -3,3 +3,15 @@ syntax = "proto3";
 message Test {
   map<uint64, string> m = 1;
 }
+
+message Two {
+  map<uint64, string> m = 1;
+  map<sint32, float> n = 20;
+}
+
+message Map_message {
+  message Inner {
+    int64 i = 1;
+  }
+  map<uint64, Inner> m = 1;
+}

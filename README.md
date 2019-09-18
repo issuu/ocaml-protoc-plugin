@@ -17,17 +17,11 @@ The main features should include:
 | Service endpoints | Not supported | Unknown         | Supported           |
 | proto3            | Not supported | Supported       | Supported           |
 
-
-## Design
-This tool will create a binary which will read a
-`CodeGeneratorRequest` protobuf message, and produce a
-`CodeGeneratorResponse`.
-
-Serialization and deserialization would be based on existing code,
-either from ocaml-protoc or ocaml-pb, whichever is the simpletst.
-
-### Service definitions
-Service definitions will add function on the form:
+## Types
+Basic types are mapped trivially to ocaml types.
+Map types are mapped into an associative list for ease of use.
+Protobuf mandates that if two identical keys exists in a map type,
+then one the last key value pair one should be used.
 
 ## Invocation
 If the plugin is available in the path as `protoc-gen-ocaml`, then you

@@ -7,7 +7,7 @@ let%expect_test _ =
   Test_lib.test_encode ~dump:true "message.proto" (module T) t;
   [%expect {|
     Buffer: '0a-02-08-03'
-    m {;  i: 3;}; |}]
+    m {; i: 3;}; |}]
 
 (** The message containing a submessage with all default values.
     The length of the submessage is 0, so
@@ -33,7 +33,7 @@ let%expect_test _ =
   Test_lib.test_encode ~dump:true "message.proto" (module T) t;
   [%expect {|
     Buffer: '0a-02-08-01'
-    m {;  i: 1;}; |}]
+    m {; i: 1;}; |}]
 
 let%expect_test _ =
   let module T = Message.Message in
