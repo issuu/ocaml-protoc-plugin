@@ -11,10 +11,6 @@ test: build
 test: ## Run tests
 	@dune runtest --force
 
-.PHONY: format
-format: ## Reformat the code
-	dune build @fmt --auto-promote @install
-
 RUN_OCAML_PROTOC = @dune exec -- ocaml-protoc \
 		-I "$(abspath $(GOOGLE_PROTOBUF_FOLDER)/../..)" \
 		-int32_type int_t \
