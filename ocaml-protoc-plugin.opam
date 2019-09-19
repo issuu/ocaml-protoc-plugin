@@ -12,12 +12,10 @@ build: [
 ]
 depends: [
   "base"
-  "core" {with-test}
   "conf-protoc"
   "dune" {>= "1.10" & build}
-  "ocaml" {>= "4.05.0"}
+  "ocaml" {>= "4.06.0"}
   "ocaml-protoc" {build}
-  "core" {with-test}
   "ocplib-endian"
   "ppx_let"
   "ppx_deriving"

@@ -1,4 +1,4 @@
-open Core
+open Base
 
 let%expect_test _ =
   let module T = Oneof.Test in

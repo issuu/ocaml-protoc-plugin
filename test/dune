@@ -1,6 +1,6 @@
 (library
  (name test)
- (libraries core protobuf)
+ (libraries base protobuf)
  (inline_tests)
  (preprocess
   (pps ppx_expect ppx_deriving.show ppx_deriving.eq)))
@@ -11,7 +11,9 @@
   (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
   (:proto basic.proto))
  (action
-  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin}  "--ocaml_opt=annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets primitive_types.ml)
@@ -19,7 +21,9 @@
   (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
   (:proto primitive_types.proto))
  (action
-  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin}  "--ocaml_opt=annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets int_types.ml)
@@ -27,7 +31,9 @@
   (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
   (:proto int_types.proto))
  (action
-  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin}  "--ocaml_opt=annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets repeated.ml)
@@ -35,7 +41,9 @@
   (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
   (:proto repeated.proto))
  (action
-  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin}  "--ocaml_opt=annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets enum.ml)
@@ -43,7 +51,9 @@
   (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
   (:proto enum.proto))
  (action
-  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin}  "--ocaml_opt=annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets message.ml)
@@ -51,7 +61,9 @@
   (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
   (:proto message.proto))
  (action
-  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin}  "--ocaml_opt=annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets oneof.ml)
@@ -59,7 +71,9 @@
   (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
   (:proto oneof.proto))
  (action
-  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} "--ocaml_opt=annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets map.ml)
@@ -67,4 +81,6 @@
   (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
   (:proto map.proto))
  (action
-  (run protoc -I . --plugin=protoc-gen-ocaml=%{plugin} "--ocaml_opt=debug:annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))

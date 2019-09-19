@@ -1,4 +1,4 @@
-open Core
+open Base
 
 let%expect_test _ =
   let module T = Primitive_types.Types in
@@ -50,7 +50,7 @@ let%expect_test _ =
       }
   in
   let bin = T.to_proto t in
-  printf "Size: %d%!" (Protobuf.Writer.contents bin |> String.length);
+  Stdlib.Printf.printf "Size: %d%!" (Protobuf.Writer.contents bin |> String.length);
   [%expect {| Size: 0 |}]
 
 
