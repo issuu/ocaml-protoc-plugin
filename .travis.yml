@@ -12,7 +12,6 @@ env:
   - PACKAGE=ocaml-protoc-plugin
 
   matrix:
-  - OCAML_VERSION=4.04
   - OCAML_VERSION=4.05
   - OCAML_VERSION=4.06
   - OCAML_VERSION=4.07
