@@ -4,17 +4,17 @@ authors: "Anders Fugmann <af@issuu.com>"
 license: "APACHE 2.0"
 homepage: "https://developers.google.com/protocol-buffers/"
 bug-reports: "https://github.com/issuu/ocaml-protoc-plugin/issues"
-build: [ "protoc" ]
+build: [ "protoc" "--help" ]
 
 depexts: [
-  ["libprotoc-dev"] {os-distribution = "debian"}
-  ["libprotoc-devel"] {os-distribution = "mageia"}
-  ["libprotoc-dev"] {os-distribution = "ubuntu"}
-  ["protoc-dev"] {os-distribution = "centos"}
-  ["protoc-dev"] {os-distribution = "fedora"}
-  ["protoc-dev"] {os-distribution = "rhel"}
-  ["protoc-dev"] {os-distribution = "alpine"}
-  ["protoc-dev"] {os-family = "suse"}
+  ["libprotoc-dev" "protobuf-compiler"] {os-distribution = "debian"}
+  ["libprotoc-devel" "protobuf-compiler"] {os-distribution = "mageia"}
+  ["libprotoc-dev" "protobuf-compiler"] {os-distribution = "ubuntu"}
+  ["protoc-dev" "protobuf-compiler"] {os-distribution = "centos"}
+  ["protoc-dev" "protobuf-compiler"] {os-distribution = "fedora"}
+  ["protoc-dev" "protobuf-compiler"] {os-distribution = "rhel"}
+  ["protoc-dev" "protobuf-compiler"] {os-distribution = "alpine"}
+  ["protoc-dev" "protobuf-compiler"] {os-family = "suse"}
   ["protoc"] {os = "freebsd"}
   ["protoc"] {os = "macos" & os-distribution = "homebrew"}
 ]
