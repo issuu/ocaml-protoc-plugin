@@ -11,6 +11,7 @@ env:
   - DISTRO=ubuntu-18.04
   - TESTS=true
   - PACKAGE=ocaml-protoc-plugin
+  - PINS="conf-protoc:."
 
   matrix:
   - OCAML_VERSION=4.05
