@@ -1,5 +1,6 @@
 # Ocaml protoc plugin
 
+[![BuildStatus](https://travis-ci.org/issuu/ocaml-protoc-plugin?branch=master)](https://travis-ci.org/issuu/ocaml-protoc-plugin)
 The goal of Ocaml protoc plugin is to create an up to date plugin for
 the google protobug compiler (protoc) to generate ocaml types and
 serialization and deserialization.
@@ -47,6 +48,15 @@ specify the name of the plugin:
 
 ```
 protoc --plugin=protoc-gen-ocaml=../plugin/ocaml.exe --ocaml_out=. <file>.proto
+```
+
+### Older versions of protoc
+It seems that the `--ocaml_opt` flag may not be supported by older
+versions of the proto compiler. As an alternative, options can also be
+passed with the `--ocaml_out` flag:
+
+```
+protoc --plugin=protoc-gen-ocaml=../plugin/ocaml.exe --ocaml_out=annot=[@@deriving show { with_path = false }, eq]:. <file>.proto
 ```
 
 ### Using dune
