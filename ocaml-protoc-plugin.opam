@@ -12,14 +12,29 @@ build: [
 ]
 depends: [
   "base"
+  "core" {with-test}
   "conf-protoc"
-  "dune" {build}
+  "dune" {>= "1.10" & build}
   "ocaml" {>= "4.05.0"}
   "ocaml-protoc" {build}
   "core" {with-test}
   "ocplib-endian"
+  "ppx_let"
+  "ppx_deriving"
+  "ppx_expect"
+  "ppx_inline_test"
 ]
 
 synopsis: "Plugin for protoc protobuf compiler to generate ocaml definitions from a .proto file"
-description: """
+
+description: """ The plugin generates ocaml type definitions,
+serialization and deserialization functions from a protobuf file.
+The types generated aims to create ocaml idiomatic types;
+- messages are mapped into modules
+- oneof constructs are mapped to polymorphic variants
+- enums are mapped to adt's
+- map types are mapped to assoc lists
+- all integer types are mapped to int
+- all floating point types are mapped to float.
+The library only handles protobuf spec version 3.
 """

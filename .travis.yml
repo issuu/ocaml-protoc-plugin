@@ -14,7 +14,7 @@ env:
   - PINS="conf-protoc:."
 
   matrix:
-  - OCAML_VERSION=4.05
+  - OCAML_VERSION=4.07
 
 os:
   - linux
