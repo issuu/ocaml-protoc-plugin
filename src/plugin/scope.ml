@@ -25,7 +25,7 @@ let make_type_db: Spec.Descriptor.file_descriptor_proto list -> (string, string,
   let types_of_file Spec.Descriptor.{ name; message_type = message_types; enum_type = enum_types; package; _ } =
     let path =
       Option.value_map ~default:[] ~f:(String.split ~on:'.') package
-      |> List.rev_map ~f:String.capitalize
+      |> List.rev
     in
     let module_name = Option.value_exn name |> module_name_of_proto in
     (module_name, map_types ~path ~message_types ~enum_types:enum_types)

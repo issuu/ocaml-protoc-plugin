@@ -1,18 +1,18 @@
 syntax = "proto3";
 
 
-import public "included.proto";
-import public "included2.proto";
+import public "enum.proto";
+import public "package.proto";
 
-message M {
-  message X {
-    uint32 x = 1;
-  }
-  N n  = 1;
-  N.E e = 2;
+message I {
+  Message.E enum = 1;
+  a.b.M m = 2;
+  Outside o = 3;
+  X.Inner c = 4;
 }
 
-
 message X {
-    X x = 1;
+  message Inner {
+    uint64 i = 1;
+  }
 }
