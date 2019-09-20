@@ -1,0 +1,5 @@
+[ ] int32 and int64 have problems.
+[ ] Make functions eagerly evaluated to speed up serialization and deserialization
+[ ] Handle service descriptions
+
+0.1 (Unreleased)
