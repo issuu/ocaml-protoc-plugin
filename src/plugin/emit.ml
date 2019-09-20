@@ -6,7 +6,7 @@ let debug = ref false
 let opens = ref []
 
 let parse_parameters parameters =
-  String.split ~on:':' parameters
+  String.split ~on:';' parameters
   |> List.iter ~f:(fun param ->
       match String.split ~on:'=' param with
       | "annot" :: values -> annot := String.concat ~sep:"=" values

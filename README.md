@@ -41,7 +41,7 @@ can generate the ocaml code by running
 | open        | Add open at top of generated files. May be given multiple times | `open=Base.Sexp           |
 
 
-Parameters are seperated by `:`
+Parameters are seperated by `;`
 
 If `protoc-gen-ocaml` is not located in the path, it is possible to
 specify the name of the plugin:
@@ -67,7 +67,7 @@ Below is a dune rule for generating code for `test.proto`:
  (deps
   (:proto test.proto))
  (action
-  (run protoc -I .  "--ocaml_opt=dump:annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
+  (run protoc -I .  "--ocaml_opt=debug;annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
 ```
 
 ## Service interface
