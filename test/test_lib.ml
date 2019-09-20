@@ -15,7 +15,7 @@ let hexlify data =
   |> Stdlib.Printf.printf "Buffer: '%s'\n"
 
 (** Create a common function for testing. *)
-let test_encode ?dump _protobuf_file (type t) (module M : T with type t = t) (expect : t) =
+let test_encode ?dump (type t) (module M : T with type t = t) (expect : t) =
   let protobuf_file, type_name =
     match String.split ~on:'.' M.name with
       | protobuf_name :: type_name ->
@@ -51,10 +51,3 @@ let test_encode ?dump _protobuf_file (type t) (module M : T with type t = t) (ex
     Stdlib.Printf.printf "\nExpect  :%s\nObserved:%s\n" ([%show: M.t] expect) ([%show: M.t] observed)
   | Error err ->
     Stdlib.Printf.printf "\nDecode failed: %s\n" (Protobuf.Deserialize.show_error err)
-
-
-let protofile_of_module module_name =
-  match String.split ~on:'_' module_name with
-  | ["Test"; ""; name; "test"] ->
-    Printf.sprintf "%s.proto" (String.lowercase name)
-  | _ -> failwith "Could not parse modulename"
