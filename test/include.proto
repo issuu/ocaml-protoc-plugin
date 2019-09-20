@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+
+import public "included.proto";
+import public "included2.proto";
+
+message M {
+  message X {
+    uint32 x = 1;
+  }
+  N n  = 1;
+  N.E e = 2;
+}
+
+
+message X {
+    X x = 1;
+}

@@ -236,7 +236,7 @@ let emit_deserialization_function ~is_map_entry scope all_fields (oneof_decls: S
   let implementation = Code.init () in
   Code.emit signature `None "val from_proto: Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result";
   let _field_names = List.map ~f:(fun field -> field_name field.name) fields in
-  Code.emit implementation `Begin "let from_proto data =";
+  Code.emit implementation `Begin "let rec from_proto data =";
   Code.emit implementation `None "let open Base.Result.Monad_infix in";
   List.iter ~f:(fun field ->
       let index = Option.value_exn field.number in
@@ -282,7 +282,7 @@ let emit_deserialization_function ~is_map_entry scope all_fields (oneof_decls: S
       sprintf "{ %s }" (String.concat ~sep:"; " (fields @ oneof_fields))
   in
   Code.emit implementation `None "Base.Result.return %s" construct;
-  Code.emit implementation `End "";
+  Code.emit implementation `End "[@@warning \"-39\"]";
   signature, implementation
 
 (* Return code for signature and implementation *)
@@ -320,11 +320,11 @@ let emit_serialization_function ~is_map_entry scope all_fields (oneof_decls: Spe
       sprintf "( %s, %s )" (field_name key.name) (field_name value.name)
     | _ -> String.concat ~sep:"; " (field_names @ oneof_names) |> sprintf "{ %s }"
   in
-  Code.emit implementation `Begin "let to_proto %s = " destruct;
+  Code.emit implementation `Begin "let rec to_proto %s = " destruct;
   Code.emit implementation `None "let open Protobuf.Serialize in";
   Code.emit implementation `None "serialize (%s %sNil) %s %s"
     protocol_field_spec oneof_field_spec (String.concat ~sep:" " field_names) (String.concat ~sep:" " oneof_names);
-  Code.emit implementation `End "";
+  Code.emit implementation `End "[@@warning \"-39\"]";
   signature, implementation
 
 let emit_message_type ~is_map_entry scope all_fields oneof_decls =
@@ -406,8 +406,7 @@ let rec emit_message scope
     match name with
     | Some _name ->
       Code.emit signature `None "val name: string";
-      Code.emit implementation `None "let name = \"%s\""
-        (String.concat ~sep:"." (List.rev scope));
+      Code.emit implementation `None "let name = \"%s\"" (Scope.get_current_scope scope);
       let is_map_entry = is_map_entry options in
       (* Need fully qualified name, plz *)
       let t = emit_message_type ~is_map_entry scope fields oneof_decls in
@@ -459,10 +458,11 @@ let rec wrap_packages scope message_type = function
     signature, implementation
 
 let parse_proto_file
-    Spec.Descriptor.{ name; package; dependency = _; public_dependency = _;
-                      weak_dependency = _; message_type = message_types;
-                      enum_type = enum_types; service = _; extension = _;
-                      options = _; source_code_info = _; syntax; }
+      scope
+      Spec.Descriptor.{ name; package; dependency = _; public_dependency = _;
+                        weak_dependency = _; message_type = message_types;
+                        enum_type = enum_types; service = _; extension = _;
+                        options = _; source_code_info = _; syntax; }
   =
   log "parse_proto_file: Name = %s. Package=%s, syntax=%s. enums: %d"
     (to_string_opt name)
@@ -473,7 +473,7 @@ let parse_proto_file
     Spec.Descriptor.default_descriptor_proto ~name:None ~nested_type:message_types ~enum_type:enum_types ()
   in
   let _, implementation =
-    wrap_packages (Scope.init ()) message_type (Option.value_map ~default:[] ~f:(String.split ~on:'.') package)
+    wrap_packages scope message_type (Option.value_map ~default:[] ~f:(String.split ~on:'.') package)
   in
   let out_name =
     Option.map ~f:(fun proto_file_name ->
@@ -486,19 +486,27 @@ let parse_proto_file
   in
   out_name, implementation
 
-let parse_request Spec.Plugin.{file_to_generate; parameter = parameters; proto_file; compiler_version = _} =
-  log "Request to parse proto_files: %s. Parameter: %s"
-    (String.concat ~sep:"; " file_to_generate)
-    (Option.value ~default:"<None>" parameters);
+let parse_request Spec.Plugin.{file_to_generate = files_to_generate; parameter = parameters; proto_file = proto_files; compiler_version = _} =
   Option.iter ~f:parse_parameters parameters;
+  log "*** Request to parse proto_files: %s. Parameter: %s" (String.concat ~sep:"; " files_to_generate) (Option.value ~default:"<None>" parameters);
+  (* Find the correct file to process *)
+  let target_proto_files = List.filter ~f:(fun Spec.Descriptor.{name; _} ->
+      List.mem ~equal:String.equal files_to_generate (Option.value_exn name)
+    ) proto_files
+  in
+  let scope = Scope.init proto_files in
   let result =
-    List.map ~f:parse_proto_file proto_file
+    List.map ~f:(fun proto_file ->
+      let scope = Scope.push scope (Option.value_exn proto_file.name |> Scope.module_name_of_proto) in
+      parse_proto_file scope proto_file
+    ) target_proto_files
     |> List.map ~f:(fun (v, code) ->
-        let c = Code.init () in
-        List.iter ~f:(Code.emit c `None "open %s") (List.rev !opens);
-        Code.append c code;
-        (v, c)
-      )
+      log "Processed %s" (Option.value v ~default:"<None>");
+      let c = Code.init () in
+      List.iter ~f:(Code.emit c `None "open %s") (List.rev !opens);
+      Code.append c code;
+      (v, c)
+    )
   in
   (match !debug with
    | true -> List.iter ~f:(fun (_, code) -> log "%s" (Code.contents code)) result

@@ -15,7 +15,14 @@ let hexlify data =
   |> Stdlib.Printf.printf "Buffer: '%s'\n"
 
 (** Create a common function for testing. *)
-let test_encode ?dump protobuf_file (type t) (module M : T with type t = t) (expect : t) =
+let test_encode ?dump _protobuf_file (type t) (module M : T with type t = t) (expect : t) =
+  let protobuf_file, type_name =
+    match String.split ~on:'.' M.name with
+      | protobuf_name :: type_name ->
+          Printf.sprintf "%s.proto" (String.uncapitalize protobuf_name),
+          String.concat ~sep:"." type_name
+      | _ -> failwith "Illegal type name"
+  in
   let filename = Stdlib.Filename.temp_file M.name ".bin" in
   let cout = Stdlib.open_out filename in
   let data = M.to_proto expect |> Protobuf.Writer.contents in
@@ -31,7 +38,7 @@ let test_encode ?dump protobuf_file (type t) (module M : T with type t = t) (exp
   let _:int = Stdlib.Sys.command
       (Printf.sprintf
          "protoc --decode=%s %s < %s | tr \"\\n\" \"; \" | sed -E 's/ +/ /g'"
-         M.name
+         type_name
          protobuf_file
          filename)
   in
