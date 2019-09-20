@@ -84,3 +84,13 @@
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
        "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+
+(rule
+ (targets package.ml)
+ (deps
+  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:proto package.proto))
+ (action
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=debug;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))

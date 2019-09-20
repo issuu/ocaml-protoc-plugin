@@ -44,3 +44,10 @@ let test_encode ?dump protobuf_file (type t) (module M : T with type t = t) (exp
     Stdlib.Printf.printf "\nExpect  :%s\nObserved:%s\n" ([%show: M.t] expect) ([%show: M.t] observed)
   | Error err ->
     Stdlib.Printf.printf "\nDecode failed: %s\n" (Protobuf.Deserialize.show_error err)
+
+
+let protofile_of_module module_name =
+  match String.split ~on:'_' module_name with
+  | ["Test"; ""; name; "test"] ->
+    Printf.sprintf "%s.proto" (String.lowercase name)
+  | _ -> failwith "Could not parse modulename"

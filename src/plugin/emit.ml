@@ -433,6 +433,7 @@ let rec wrap_packages scope message_type = function
     let signature = Code.init () in
     let implementation = Code.init () in
     let package_name = module_name (Some package) in
+    let scope = Scope.push scope package in
     let {module_name = _; signature = signature'; implementation = implementation'} =
       emit_message scope message_type
     in
@@ -446,8 +447,9 @@ let rec wrap_packages scope message_type = function
     let signature = Code.init () in
     let implementation = Code.init () in
     let package_name = module_name (Some package) in
+    let scope = Scope.push scope package in
     let signature', implementation' =
-      wrap_packages (Scope.push scope package_name) message_type packages
+      wrap_packages scope message_type packages
     in
     Code.emit signature `Begin "module %s : sig" package_name;
     Code.emit implementation `Begin "module %s = struct" package_name;
