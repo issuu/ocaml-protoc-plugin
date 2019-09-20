@@ -25,6 +25,7 @@ master branch does, however)
 Basic types are mapped trivially to ocaml types:
 
 Primitive types:
+
 | Protobuf Type | Ocaml type      |
 | ------------- | ----------      |
 | Integers      | int             |
@@ -41,12 +42,13 @@ to <name>.ml, and types in included proto files are referenced by
 their fill name.
 
 Compound types are mapped like:
+
 | Protobuf Type | Ocaml type                                                            |
 | ------------- | ----------                                                              |
-| oneof         | Polymorphic variants: `[ \`Field1 of fieldtype1 \| \`Field1 of fieldtype2 ]` |
+| oneof         | Polymorphic variants: `` [ `Field1 of fieldtype1 | `Field1 of fieldtype2 ] `` |
 | repeated 'a   | 'a list                                                                 |
 | message       | message option                                                         |
-| enum          | Abstrace data types: `Enum1 \| Enum2 \| Enum3`                           |
+| enum          | Abstract data types: `` Enum1 | Enum2 | Enum3 ``                           |
 | map<'a, 'b>   | ('a * 'b) list |
 
 ## Invocation
@@ -59,11 +61,12 @@ can generate the ocaml code by running
 
 `Options` control the code generated.
 
-| Option      | Description                         | Example                   |
-| ----------- | ------------------------------      | -----------------------   |
-| annot       | Type annotations.                   | `annot=[@@deriving show]` |
-| debug       | Enable debugging                    | `debug`                   |
-| open        | Add open at top of generated files. May be given multiple times | `open=Base.Sexp           |
+| Option      | Description                                                     | Example                   |
+| ----------- | ------------------------------                                  | -----------------------   |
+| annot       | Type annotations.                                               | `annot=[@@deriving show]` |
+| debug       | Enable debugging                                                | `debug`                   |
+| open        | Add open at top of generated files. May be given multiple times | `open=Base.Sexp`          |
+
 
 
 Parameters are seperated by `;`
