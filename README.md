@@ -45,10 +45,10 @@ Compound types are mapped like:
 
 | Protobuf Type | Ocaml type                                                            |
 | ------------- | ----------                                                              |
-| oneof         | Polymorphic variants: `` [ `Field1 of fieldtype1 | `Field1 of fieldtype2 ] `` |
+| oneof         | Polymorphic variants:  `[ Field1 of fieldtype1, Field1 of fieldtype2 ]`  |
 | repeated 'a   | 'a list                                                                 |
 | message       | message option                                                         |
-| enum          | Abstract data types: `` Enum1 | Enum2 | Enum3 ``                           |
+| enum          | Abstract data types: `` Enum1, Enum2, Enum3 ``                           |
 | map<'a, 'b>   | ('a * 'b) list |
 
 ## Invocation
@@ -59,7 +59,7 @@ can generate the ocaml code by running
   protoc --ocaml_out=. --ocaml_opt=<options> file.proto
 ```
 
-`Options` control the code generated.
+*Options* control the code generated.
 
 | Option      | Description                                                     | Example                   |
 | ----------- | ------------------------------                                  | -----------------------   |

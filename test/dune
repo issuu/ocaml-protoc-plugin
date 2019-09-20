@@ -105,7 +105,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=debug;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets included.ml)
@@ -126,3 +126,23 @@
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
        "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+
+; (rule
+;  (targets descriptor.ml)
+;  (deps
+;   (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+;   (:proto /usr/include/google/protobuf/descriptor.proto))
+;  (action
+;   (run protoc -I /usr/include/google/protobuf/
+;        "--plugin=protoc-gen-ocaml=%{plugin}"
+;        "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+
+(rule
+ (targets service.ml)
+ (deps
+  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:proto service.proto))
+ (action
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=debug;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))

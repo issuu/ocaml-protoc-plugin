@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+message Request {
+  uint64 i = 1;
+}
+
+message Response {
+  string s = 1;
+}
+
+service String_of_int {
+  rpc Call (Request) returns (Response);
+}

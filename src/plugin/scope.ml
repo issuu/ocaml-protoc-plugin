@@ -51,7 +51,7 @@ let pop: t -> string -> t = fun t name ->
   | [] -> failwith "Cannot pop empty scope"
   | _ -> failwith "Cannot pop wrong scope"
 
-let get_scoped_name ~postfix t = function
+let get_scoped_name ?postfix t = function
   | Some name -> begin
       let module_name = match Map.find t.type_db name with
         | Some x -> x
@@ -64,8 +64,11 @@ let get_scoped_name ~postfix t = function
         let rec inner = function
           | x :: xs, y :: ys when String.Caseless.equal x y -> inner (xs, ys)
           | xs, _ ->
-            List.map ~f:String.capitalize xs |> fun l ->
-            l @ [postfix] |> String.concat ~sep:"."
+            let stem =
+              List.map ~f:String.capitalize xs
+              |> String.concat ~sep:"."
+            in
+            Option.value_map ~default:stem ~f:(Printf.sprintf "%s.%s" stem) postfix
         in
         inner (module_name :: xs, List.rev t.path)
       | _ -> failwith "Expected name to start with a '.'"

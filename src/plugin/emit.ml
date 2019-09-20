@@ -14,46 +14,6 @@ let parse_parameters parameters =
       | ["debug"] -> debug := true
       | _ -> failwith ("Unknown parameter: " ^ param)
     )
-(*  Service declarations:
-
-    module type Msg = sig
-      type t
-      from_proto = ...
-      to_proto = ...
-    end
-    module type Service = sig
-      type request
-      type response
-      module Request : Msg with type t = request
-      module Response : Msg with type t = response
-    end
-
-    service SearchService {
-      rpc Search (SearchRequest) returns (SearchResponse);
-    }
-
-    Should emit:
-
-    module SearchService : Service with
-        type request = SearchRequest.t and
-        type response = SearchResponse.t = struct
-
-      type request = SearchRequest.t
-      type response = SearchResponse.t
-      module Request = SearchRequest
-      module Response = SearchResponse
-    end
-
-    = A general service module can then be written as
-
-    let go (type a b) (module S : SSig with type request = a and type response = b) =
-      let x = fun x -> S.Request.to_string x |> S.Response.of_string in
-      let y = fun y -> S.Response.to_string y |> S.Request.of_string in
-      x, y
-
-    To support maps, we need to see if the referenced type has option: map_entry = true.
-    So we prob need a dict with all map types. - Darn.
-*)
 
 (** Taken from: https://caml.inria.fr/pub/docs/manual-ocaml/lex.html *)
 let is_reserved = function
@@ -65,7 +25,7 @@ let is_reserved = function
   | "private" | "rec" | "sig" | "struct" | "then" | "to" | "true" | "try" | "type"
   | "val" | "virtual" | "when" | "while" | "with" ->
     true
-  | "from_proto" | "to_proto" -> true (* Why?? *)
+  | "from_proto" | "to_proto" -> true
   | _ -> false
 
 (* Remember to mangle reserved keywords *)
@@ -206,7 +166,7 @@ let emit_field t scope (field : Spec.Descriptor.field_descriptor_proto) =
 let emit_oneof_fields t scope
     ((oneof_decl : Spec.Descriptor.oneof_descriptor_proto), fields)
   =
-  (* Emit a polymorphic variant type *)
+  (* Emit a polymorphic variant type. *)
   let variants = List.map ~f:(fun field ->
       let type_ = type_of_field scope field in
       let name = variant_name field.name in
@@ -229,6 +189,22 @@ let split_oneof_decl fields oneof_decls =
 let inject (signature', implementation') signature implementation =
   Code.append signature signature';
   Code.append implementation implementation'
+
+let emit_service_type scope Spec.Descriptor.{ name; method_ = methods; _ } =
+  let emit_method t Spec.Descriptor.{ name; input_type; output_type; _} =
+    Code.emit t `Begin "let %s = " (field_name name);
+    Code.emit t `None "( (module %s : Protobuf.Service.Message with type t = %s ), "
+      (Scope.get_scoped_name scope input_type)
+      (Scope.get_scoped_name ~postfix:"t" scope input_type);
+    Code.emit t `None "  (module %s : Protobuf.Service.Message with type t = %s ) ) "
+      (Scope.get_scoped_name scope output_type)
+      (Scope.get_scoped_name ~postfix:"t" scope output_type)
+  in
+  let t = Code.init () in
+  Code.emit t `Begin "module %s = struct" (module_name name);
+  List.iter ~f:(emit_method t) methods;
+  Code.emit t `End "end";
+  t
 
 let emit_deserialization_function ~is_map_entry scope all_fields (oneof_decls: Spec.Descriptor.oneof_descriptor_proto list) =
   let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
@@ -424,44 +400,28 @@ let rec emit_message scope
   in
   {module_name; signature; implementation}
 
-let rec wrap_packages scope message_type = function
+let rec wrap_packages scope message_type services = function
   | [] ->
-    let {module_name = _; signature; implementation} = emit_message scope message_type in
-    signature, implementation
-  | [package] ->
-    let signature = Code.init () in
-    let implementation = Code.init () in
-    let package_name = module_name (Some package) in
-    let scope = Scope.push scope package in
-    let {module_name = _; signature = signature'; implementation = implementation'} =
-      emit_message scope message_type
-    in
-    Code.emit signature `Begin "module %s : sig" package_name;
-    Code.emit implementation `Begin "module %s = struct" package_name;
-    inject (signature', implementation') signature implementation;
-    Code.emit signature `End "end";
-    Code.emit implementation `End "end";
-    signature, implementation
+    let {module_name = _; implementation; _} = emit_message scope message_type in
+    List.iter ~f:(fun service ->
+        Code.append implementation (emit_service_type scope service)
+      ) services;
+    implementation
+
   | package :: packages ->
-    let signature = Code.init () in
     let implementation = Code.init () in
     let package_name = module_name (Some package) in
     let scope = Scope.push scope package in
-    let signature', implementation' =
-      wrap_packages scope message_type packages
-    in
-    Code.emit signature `Begin "module %s : sig" package_name;
     Code.emit implementation `Begin "module %s = struct" package_name;
-    inject (signature', implementation') signature implementation;
-    Code.emit signature `End "end";
+    Code.append implementation (wrap_packages scope message_type services packages);
     Code.emit implementation `End "end";
-    signature, implementation
+    implementation
 
 let parse_proto_file
       scope
       Spec.Descriptor.{ name; package; dependency = _; public_dependency = _;
                         weak_dependency = _; message_type = message_types;
-                        enum_type = enum_types; service = _; extension = _;
+                        enum_type = enum_types; service = services; extension = _;
                         options = _; source_code_info = _; syntax; }
   =
   log "parse_proto_file: Name = %s. Package=%s, syntax=%s. enums: %d"
@@ -472,8 +432,9 @@ let parse_proto_file
   let message_type =
     Spec.Descriptor.default_descriptor_proto ~name:None ~nested_type:message_types ~enum_type:enum_types ()
   in
-  let _, implementation =
-    wrap_packages scope message_type (Option.value_map ~default:[] ~f:(String.split ~on:'.') package)
+  (* No real reason to emit a .mli *)
+  let implementation =
+    wrap_packages scope message_type services (Option.value_map ~default:[] ~f:(String.split ~on:'.') package)
   in
   let out_name =
     Option.map ~f:(fun proto_file_name ->
