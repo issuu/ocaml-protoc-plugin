@@ -26,13 +26,6 @@ type _ compound =
   | Oneof : ('a -> Writer.t) -> 'a compound
   | Basic : 'a spec -> 'a compound
 
-(* Take a list of fields and return a field *)
-let serialize_message : (int * field) list -> string =
- fun fields ->
-  let writer = Writer.init () in
-  List.iter ~f:(fun (index, field) -> Writer.write_field writer index field) fields;
-  Writer.contents writer
-
 type (_, _) compound_list =
   | Nil : ('a, 'a) compound_list
   | Cons :
@@ -40,6 +33,13 @@ type (_, _) compound_list =
       -> ('a -> 'b, 'c) compound_list
 
 let ( ^:: ) a b = Cons (a, b)
+
+(* Take a list of fields and return a field *)
+let serialize_message : (int * field) list -> string =
+ fun fields ->
+  let writer = Writer.init () in
+  List.iter ~f:(fun (index, field) -> Writer.write_field writer index field) fields;
+  Writer.contents writer
 
 let unsigned_varint v = Varint v
 

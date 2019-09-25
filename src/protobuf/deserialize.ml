@@ -41,22 +41,6 @@ type 'a sentinal = unit -> 'a
 
 type decoder = Spec.field -> unit result
 
-module Defaults = struct
-  let bool = false
-
-  let int = 0
-
-  let float = 0.0
-
-  let string = ""
-
-  let bytes = Bytes.create 0
-
-  let enum = 0
-
-  let message = None
-end
-
 let error_wrong_field str field : _ result =
   `Wrong_field_type (str, field) |> Result.fail
 
@@ -117,7 +101,10 @@ let ok_exn = function
 let type_of_spec: type a. a spec -> a * 'b * (Spec.field -> a result) = function
   | Double -> (0.0, `Fixed_64_bit, function Spec.Fixed_64_bit v -> return (Int64.float_of_bits v) | field -> error_wrong_field "double" field)
   | Float -> (0.0, `Fixed_32_bit, function Spec.Fixed_32_bit v -> return (Int32.float_of_bits v) | field -> error_wrong_field "float" field)
-  | Int32 -> (0, `Varint, read_varint ~signed:false ~type_name:"int32")
+  | Int32 -> (0, `Varint, fun field ->
+      let%bind v = read_varint ~signed:false ~type_name:"int32" field in
+      return (match v lsr 31 with 1 -> v lor 0x7fffffff00000000 | _ -> v)
+    )
   | Int64 -> (0, `Varint, read_varint ~signed:false ~type_name:"int64")
   | UInt32 -> (0, `Varint, read_varint ~signed:false ~type_name:"uint32")
   | UInt64 -> (0, `Varint, read_varint ~signed:false ~type_name:"uint64")
@@ -204,7 +191,7 @@ let sentinal: type a. a compound -> a sentinal * decoder = function
     get, read
 
 
-(** Oneofs are handled a bit special *)
+(** Oneofs are handled a bit special. *)
 type _ oneof =
   | Oneof : (int * 'b compound * ('b -> 'a)) -> 'a oneof
 

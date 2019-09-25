@@ -145,7 +145,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=debug;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets recursive.ml)
@@ -155,4 +155,4 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=debug;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))

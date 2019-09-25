@@ -1,4 +1,4 @@
-[ ] Fix deserialization of int32 and int64 negative numbers
+[ ] Optimize serialization and deserialization using parial evaluation
 
 0.9 2019-09-25
 [ ] Initial Release
