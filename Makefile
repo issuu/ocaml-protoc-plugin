@@ -6,6 +6,9 @@ build: ## Build
 clean: ## Clean
 	dune clean
 
+.PHONY: install
+install: dune install
+
 .PHONY: test
 test: build
 test: ## Run tests

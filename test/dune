@@ -8,7 +8,7 @@
 (rule
  (targets basic.ml)
  (deps
-  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto basic.proto))
  (action
   (run protoc -I .
@@ -18,7 +18,7 @@
 (rule
  (targets primitive_types.ml)
  (deps
-  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto primitive_types.proto))
  (action
   (run protoc -I .
@@ -28,7 +28,7 @@
 (rule
  (targets int_types.ml)
  (deps
-  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto int_types.proto))
  (action
   (run protoc -I .
@@ -38,7 +38,7 @@
 (rule
  (targets repeated.ml)
  (deps
-  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto repeated.proto))
  (action
   (run protoc -I .
@@ -48,7 +48,7 @@
 (rule
  (targets enum.ml)
  (deps
-  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto enum.proto))
  (action
   (run protoc -I .
@@ -58,7 +58,7 @@
 (rule
  (targets message.ml)
  (deps
-  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto message.proto))
  (action
   (run protoc -I .
@@ -68,7 +68,7 @@
 (rule
  (targets oneof.ml)
  (deps
-  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto oneof.proto))
  (action
   (run protoc -I .
@@ -78,7 +78,7 @@
 (rule
  (targets map.ml)
  (deps
-  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto map.proto))
  (action
   (run protoc -I .
@@ -88,7 +88,7 @@
 (rule
  (targets package.ml)
  (deps
-  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto package.proto))
  (action
   (run protoc -I .
@@ -98,7 +98,7 @@
 (rule
  (targets include.ml)
  (deps
-  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto include.proto)
   (:unused included.proto included2.proto)
  )
@@ -110,7 +110,7 @@
 (rule
  (targets included.ml)
  (deps
-  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto included.proto))
  (action
   (run protoc -I .
@@ -120,7 +120,7 @@
 (rule
  (targets included2.ml)
  (deps
-  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto included2.proto))
  (action
   (run protoc -I .
@@ -130,7 +130,7 @@
 ; (rule
 ;  (targets descriptor.ml)
 ;  (deps
-;   (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+;   (:plugin ../src/plugin/protoc_gen_ocaml.exe)
 ;   (:proto /usr/include/google/protobuf/descriptor.proto))
 ;  (action
 ;   (run protoc -I /usr/include/google/protobuf/
@@ -140,7 +140,7 @@
 (rule
  (targets service.ml)
  (deps
-  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto service.proto))
  (action
   (run protoc -I .
@@ -150,7 +150,7 @@
 (rule
  (targets recursive.ml)
  (deps
-  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto recursive.proto))
  (action
   (run protoc -I .
