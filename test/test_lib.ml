@@ -4,7 +4,7 @@ module type T = sig
   type t [@@deriving show, eq]
   val to_proto : t -> Protobuf.Writer.t
   val from_proto : Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) Result.t
-  val name : string
+  val name : unit -> string
 end
 
 let hexlify data =
@@ -17,13 +17,13 @@ let hexlify data =
 (** Create a common function for testing. *)
 let test_encode ?dump (type t) (module M : T with type t = t) (expect : t) =
   let protobuf_file, type_name =
-    match String.split ~on:'.' M.name with
+    match String.split ~on:'.' (M.name ()) with
       | protobuf_name :: type_name ->
           Printf.sprintf "%s.proto" (String.uncapitalize protobuf_name),
           String.concat ~sep:"." type_name
       | _ -> failwith "Illegal type name"
   in
-  let filename = Stdlib.Filename.temp_file M.name ".bin" in
+  let filename = Stdlib.Filename.temp_file (M.name ())".bin" in
   let cout = Stdlib.open_out filename in
   let data = M.to_proto expect |> Protobuf.Writer.contents in
   let () =

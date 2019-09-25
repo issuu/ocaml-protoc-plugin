@@ -1,14 +1,14 @@
 open Base
 
 let test_signed (type t) ~(create : int -> t) (module T : Test_lib.T with type t = t) =
-  Stdlib.Printf.printf "Test %s\n%!" T.name;
+  Stdlib.Printf.printf "Test %s\n%!" (T.name ());
   let values = [-1073741823; -2; -1; 0; 1; 2; 1073741823] in
   List.iter
     ~f:(fun v -> Test_lib.test_encode (module T) (create v))
     values
 
 let test_unsigned (type t) ~(create : int -> t) (module T : Test_lib.T with type t = t) =
-  Stdlib.Printf.printf "Test %s\n%!" T.name;
+  Stdlib.Printf.printf "Test %s\n%!" (T.name ());
   let values = [0; 1; 2; 2147483647] in
   List.iter
     ~f:(fun v -> Test_lib.test_encode (module T) (create v))

@@ -20,3 +20,10 @@ message Message {
   }
   Message1 m = 1;
 }
+
+message Mutual1 {
+  Mutual2 m2 = 7;
+}
+message Mutual2 {
+  Mutual1 m1 = 17;
+}

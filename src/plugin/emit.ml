@@ -393,10 +393,9 @@ let rec emit_message scope
   let () =
     match name with
     | Some _name ->
-      Code.emit signature `None "val name: string";
-      Code.emit implementation `None "let name = \"%s\"" (Scope.get_current_scope scope);
+      Code.emit signature `None "val name: unit -> string";
+      Code.emit implementation `None "let name () = \"%s\"" (Scope.get_current_scope scope);
       let is_map_entry = is_map_entry options in
-      (* Need fully qualified name, plz *)
       let t = emit_message_type ~is_map_entry scope fields oneof_decls in
       Code.append signature t;
       Code.append implementation t;
