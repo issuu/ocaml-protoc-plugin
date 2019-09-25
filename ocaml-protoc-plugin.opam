@@ -34,5 +34,5 @@ The types generated aims to create ocaml idiomatic types;
 - map types are mapped to assoc lists
 - all integer types are mapped to int
 - all floating point types are mapped to float.
-The library only handles protobuf spec version 3.
+- packages are mapped to nested modules
 """
