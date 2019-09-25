@@ -100,7 +100,7 @@
  (deps
   (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto include.proto)
-  (:unused included.proto included2.proto)
+  included.proto package.proto enum.proto
  )
  (action
   (run protoc -I .
@@ -143,7 +143,7 @@
   (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto service.proto))
  (action
-  (run protoc -I .
+  (run protoc -I.
        "--plugin=protoc-gen-ocaml=%{plugin}"
        "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
