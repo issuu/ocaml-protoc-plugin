@@ -5,6 +5,20 @@ message Test {
   int64 y = 1;
   oneof x {
     int64 i = 10;
-    int64 j = 20;
+    string j = 20;
+  }
+}
+
+message Test2 {
+  message F1 {
+    string j = 2;
+  }
+  message F2 {
+    int64 x = 2;
+  }
+  oneof x {
+    F1 f1 = 10;
+    F2 f2 = 20;
+    string f3 = 2;
   }
 }

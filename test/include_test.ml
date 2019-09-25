@@ -9,4 +9,4 @@ let%expect_test _ =
             } in
   Test_lib.test_encode (module T) t;
   [%expect {|
-    enum: B;m {; i: 3;};o {; enum: C;};c {; i: 7;}; |}]
+    enum: B; m {;  i: 3; }; o {;  enum: C; }; c {;  i: 7; }; |}]

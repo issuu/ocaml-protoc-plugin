@@ -85,44 +85,49 @@ let emit_enum_type
   Code.emit implementation `End "";
   {module_name; signature; implementation}
 
+let is_message_type = function
+  | Spec.Descriptor.{type_ = Some Type_message; _ } -> true
+  | _ -> false
+
 let protobuf_type_of_field ~prefix scope field_descriptor =
   let open Spec.Descriptor in
-  let base_type =
-    match field_descriptor with
-    | {type_ = Some Type_double; _} -> "Double"
-    | {type_ = Some Type_float; _} -> "Float"
-    | {type_ = Some Type_int64; _} -> "Int64"
-    | {type_ = Some Type_uint64; _} -> "UInt64"
-    | {type_ = Some Type_int32; _} -> "Int32"
-    | {type_ = Some Type_fixed64; _} -> "Fixed64"
-    | {type_ = Some Type_fixed32; _} -> "Fixed32"
-    | {type_ = Some Type_sfixed32; _} -> "SFixed32"
-    | {type_ = Some Type_sfixed64; _} -> "SFixed64"
-    | {type_ = Some Type_sint32; _} -> "SInt32"
-    | {type_ = Some Type_sint64; _} -> "SInt64"
-    | {type_ = Some Type_uint32; _} -> "UInt32"
-    | {type_ = Some Type_bool; _} -> "Bool"
-    | {type_ = Some Type_string; _} -> "String"
-    | {type_ = Some Type_bytes; _} -> "Bytes"
-    | {type_ = Some Type_group; _} -> failwith "Groups are deprecated"
-    | {type_ = Some Type_message; type_name; _} ->
-      let to_proto_func =
-        Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name
-      in
-      sprintf "Message %s" to_proto_func
-    | {type_ = Some Type_enum; type_name; _} ->
+  let type_spec type_name = function
+    | Type_double -> "Double"
+    | Type_float -> "Float"
+    | Type_int64 -> "Int64"
+    | Type_uint64 -> "UInt64"
+    | Type_int32 -> "Int32"
+    | Type_fixed64 -> "Fixed64"
+    | Type_fixed32 -> "Fixed32"
+    | Type_sfixed32 -> "SFixed32"
+    | Type_sfixed64 -> "SFixed64"
+    | Type_sint32 -> "SInt32"
+    | Type_sint64 -> "SInt64"
+    | Type_uint32 -> "UInt32"
+    | Type_bool -> "Bool"
+    | Type_string -> "String"
+    | Type_bytes -> "Bytes"
+    | Type_enum ->
       let to_int_func =
         Scope.get_scoped_name ~postfix:(prefix ^ "_int") scope type_name
       in
       sprintf "Enum %s" to_int_func
-    | {type_ = None; _} -> failwith "Abstract types cannot be"
+    | Type_message -> failwith "Message types are not basic"
+    | _ -> failwith "Unknown type";
   in
   match field_descriptor with
   | {label = Some Label_repeated; type_ = Some Type_message; type_name; _} ->
-    let to_proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
-    sprintf "RepeatedMessage %s" to_proto_func
-  | {label = Some Label_repeated; _} -> sprintf "Repeated (%s)" base_type
-  | _ -> base_type
+    let proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
+    sprintf "RepeatedMessage %s" proto_func
+  | {label = Some Label_repeated; type_ = Some type_; type_name; _} -> sprintf "Repeated (%s)" (type_spec type_name type_)
+  | { type_ = None; _ } -> failwith "Abstract types not supported"
+  | {label = _; type_ = Some Type_message; type_name; _} ->
+    let proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
+    sprintf "Message %s" proto_func
+  | {label = _; type_ = Some type_; type_name; _} ->
+    sprintf "Basic (%s)" (type_spec type_name type_)
+
+
 
 (** Get the stringified name of a type.
     Consider moving this to Protocol somewhere. So types are next to each other.
@@ -226,9 +231,12 @@ let emit_deserialization_function ~is_map_entry scope all_fields (oneof_decls: S
   in
   List.iteri ~f:(fun idx (_decl, fields) ->
       let spec = List.map ~f:(fun field ->
-          let constr = sprintf "fun v -> `%s v" (variant_name field.name) in
+          let constr = match is_message_type field with
+            | true -> sprintf "function Some v -> `%s v | None -> failwith \"oneof fields cannot be null.\"" (variant_name field.name)
+            | false -> sprintf "fun v -> `%s v" (variant_name field.name)
+          in
           let index = Option.value_exn field.number in
-          let spec = protobuf_type_of_field ~prefix:"from_" scope field in
+          let spec = protobuf_type_of_field ~prefix:"from" scope field in
           sprintf "Oneof (%d, %s, %s)" index spec constr;
         ) fields
       in
@@ -272,7 +280,11 @@ let emit_serialization_function ~is_map_entry scope all_fields (oneof_decls: Spe
     |> List.map ~f:(fun (_decl, fields) ->
         let cases =
           List.map ~f:(fun (field : Spec.Descriptor.field_descriptor_proto) ->
-              sprintf "`%s v -> (%d, %s), v" (variant_name field.name) (Option.value_exn field.number) (protobuf_type_of_field ~prefix:"to" scope field)
+              let wrap_some = match is_message_type field with
+                | true -> "Some"
+                | false -> ""
+              in
+              sprintf "`%s v -> Protobuf.Serialize.(serialize ((%d, %s) ^:: Nil) (%s v))" (variant_name field.name) (Option.value_exn field.number) (protobuf_type_of_field ~prefix:"to" scope field) wrap_some
             ) fields
         in
         sprintf "(0, Oneof (function %s)) ^:: " (String.concat ~sep:"| " cases)

@@ -146,3 +146,13 @@
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
        "--ocaml_out=debug;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+
+(rule
+ (targets recursive.ml)
+ (deps
+  (:plugin ../src/plugin/ocaml_protoc_plugin.exe)
+  (:proto recursive.proto))
+ (action
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=debug;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))

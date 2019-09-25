@@ -20,7 +20,7 @@ let%expect_test _ =
   test_signed ~create (module T);
   [%expect {|
     Test Int_types.SInt64
-    i: -1073741823;i: -2;i: -1;i: 1;i: 2;i: 1073741823; |}]
+    i: -1073741823; i: -2; i: -1; i: 1; i: 2; i: 1073741823; |}]
 
 let%expect_test _ =
   let module T = Int_types.SInt32 in
@@ -28,7 +28,7 @@ let%expect_test _ =
   test_signed ~create (module T);
   [%expect {|
     Test Int_types.SInt32
-    i: -1073741823;i: -2;i: -1;i: 1;i: 2;i: 1073741823; |}]
+    i: -1073741823; i: -2; i: -1; i: 1; i: 2; i: 1073741823; |}]
 
 let%expect_test _ =
   let module T = Int_types.Int64 in
@@ -36,7 +36,7 @@ let%expect_test _ =
   test_signed ~create (module T);
   [%expect {|
     Test Int_types.Int64
-    i: -1073741823;i: -2;i: -1;i: 1;i: 2;i: 1073741823; |}]
+    i: -1073741823; i: -2; i: -1; i: 1; i: 2; i: 1073741823; |}]
 
 let%expect_test _ =
   let module T = Int_types.Int32 in
@@ -54,7 +54,7 @@ let%expect_test _ =
     i: -1;
     Expect  :{ i = -1 }
     Observed:{ i = 4294967295 }
-    i: 1;i: 2;i: 1073741823; |}]
+    i: 1; i: 2; i: 1073741823; |}]
 
 let%expect_test _ =
   let module T = Int_types.UInt64 in
@@ -62,7 +62,7 @@ let%expect_test _ =
   test_unsigned ~create (module T);
   [%expect {|
     Test Int_types.UInt64
-    i: 1;i: 2;i: 2147483647; |}]
+    i: 1; i: 2; i: 2147483647; |}]
 
 let%expect_test _ =
   let module T = Int_types.UInt32 in
@@ -70,4 +70,4 @@ let%expect_test _ =
   test_unsigned ~create (module T);
   [%expect {|
     Test Int_types.UInt32
-    i: 1;i: 2;i: 2147483647; |}]
+    i: 1; i: 2; i: 2147483647; |}]

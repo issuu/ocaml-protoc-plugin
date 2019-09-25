@@ -29,10 +29,13 @@ type _ spec =
   | Bool : bool spec
   | String : string spec
   | Bytes : bytes spec
-  | Message : (Reader.t -> 'a result) -> 'a option spec
   | Enum : (int -> 'a result) -> 'a spec
-  | Repeated : 'a spec -> 'a list spec
-  | RepeatedMessage : (Reader.t -> 'a result) -> 'a list spec
+
+type _ compound =
+  | Message: (Reader.t -> 'a result) -> 'a option compound
+  | RepeatedMessage : (Reader.t -> 'a result) -> 'a list compound
+  | Repeated : 'a spec -> 'a list compound
+  | Basic : 'a spec -> 'a compound
 
 type 'a sentinal = unit -> 'a
 
@@ -85,257 +88,131 @@ let read_fields : Reader.t -> (int * Spec.field) list result =
 let deserialize : (int * decoder) list -> Reader.t -> unit result =
  fun spec reader ->
   (* Exceptions here is an error in code-generation. Crash hard on that! *)
-  let decoder_map = Map.of_alist_exn (module Int) spec in
-  let%bind fields = read_fields reader in
-  List.fold_left
-    ~init:(Result.Ok ())
-    ~f:(fun acc (field_idx, field_val) ->
-      let%bind () = acc in
-      match Map.find decoder_map field_idx with
-      | None -> return ()
-      | Some f -> f field_val)
-    fields
+ let decoder_map = Map.of_alist_exn (module Int) spec in
+ let%bind fields = read_fields reader in
+ List.fold_left
+   ~init:(Result.Ok ())
+   ~f:(fun acc (field_idx, field_val) ->
+       let%bind () = acc in
+       match Map.find decoder_map field_idx with
+       | None -> return ()
+       | Some f -> f field_val)
+   fields
 
-let double_sentinal () =
-  let value = ref Defaults.float in
-  ( (fun () -> !value),
-    function
-    | Spec.Fixed_64_bit v ->
-      value := Int64.float_of_bits v;
-      Result.ok_unit
-    | field -> error_wrong_field "double" field )
-
-let float_sentinal () =
-  let value = ref Defaults.float in
-  ( (fun () -> !value),
-    function
-    | Spec.Fixed_32_bit v ->
-      value := Int32.float_of_bits v;
-      Result.ok_unit
-    | field -> error_wrong_field "float" field )
-
-let decode_signed_int v = v
-
-let int_sentinal ~signed ~type_name () =
-  let value = ref Defaults.int in
-  ( (fun () -> !value),
-    function
-    | Spec.Varint v when signed ->
-      (* Need to decode a signed int proper *)
-      value := decode_signed_int v;
-      Result.ok_unit
-    | Spec.Varint v ->
-      value := v;
-      Result.ok_unit
-    | field -> error_wrong_field type_name field )
-
-let varint_sentinal ~signed ~type_name =
-  let value = ref Defaults.int in
-  ( (fun () -> !value),
-    function
-    | Spec.Varint v ->
-      let v =
-        match signed with
+let read_varint ~signed ~type_name = function
+  | Spec.Varint v -> begin
+      let v = match signed with
         | true when v % 2 = 0 -> v / 2
         | true -> (v / 2 * -1) - 1
         | false -> v
       in
-      value := v;
-      Result.ok_unit
-    | field -> error_wrong_field type_name field )
+      return v
+    end
+  | field -> error_wrong_field type_name field
 
-let uint32_sentinal () = varint_sentinal ~signed:false ~type_name:"uint32"
+let ok_exn = function
+  | Ok v -> v
+  | Error _ -> failwith "Must contain a usable value"
 
-let sint32_sentinal () = varint_sentinal ~signed:true ~type_name:"sint32"
+let type_of_spec: type a. a spec -> a * 'b * (Spec.field -> a result) = function
+  | Double -> (0.0, `Fixed_64_bit, function Spec.Fixed_64_bit v -> return (Int64.float_of_bits v) | field -> error_wrong_field "double" field)
+  | Float -> (0.0, `Fixed_32_bit, function Spec.Fixed_32_bit v -> return (Int32.float_of_bits v) | field -> error_wrong_field "float" field)
+  | Int32 -> (0, `Varint, read_varint ~signed:false ~type_name:"int32")
+  | Int64 -> (0, `Varint, read_varint ~signed:false ~type_name:"int64")
+  | UInt32 -> (0, `Varint, read_varint ~signed:false ~type_name:"uint32")
+  | UInt64 -> (0, `Varint, read_varint ~signed:false ~type_name:"uint64")
+  | SInt32 -> (0, `Varint, read_varint ~signed:true ~type_name:"sint32")
+  | SInt64 -> (0, `Varint, read_varint ~signed:true ~type_name:"sint64")
+  | Fixed32 -> (0, `Fixed_32_bit, function Spec.Fixed_32_bit v -> return (Int32.to_int_exn v) | field -> error_wrong_field "fixed32" field)
+  | Fixed64 -> (0, `Fixed_64_bit, function Spec.Fixed_64_bit v -> return (Int64.to_int_exn v) | field -> error_wrong_field "fixed64" field)
+  | SFixed32 -> (0, `Fixed_32_bit, function Spec.Fixed_32_bit v -> return (Int32.to_int_exn v) | field -> error_wrong_field "sfixed32" field)
+  | SFixed64 -> (0, `Fixed_64_bit, function Spec.Fixed_64_bit v -> return (Int64.to_int_exn v) | field -> error_wrong_field "sfixed64" field)
+  | Bool -> (false, `Varint, function Spec.Varint v -> return (v <> 0) | field -> error_wrong_field "bool" field)
+  | Enum of_int -> (of_int 0 |> ok_exn, `Varint, function Spec.Varint v -> of_int v | field -> error_wrong_field "enum" field)
+  | String -> ("", `Length_delimited, function Spec.Length_delimited {offset; length; data} -> return (String.sub ~pos:offset ~len:length data)
+                                             | field -> error_wrong_field "string" field)
+  | Bytes -> (Bytes.create 0, `Length_delimited, function Spec.Length_delimited {offset; length; data} ->
+      return (String.sub ~pos:offset ~len:length data |> Bytes.of_string)
+                                            | field -> error_wrong_field "string" field)
 
-let int32_sentinal () = varint_sentinal ~signed:false ~type_name:"int32"
-
-let uint64_sentinal () = varint_sentinal ~signed:false ~type_name:"uint64"
-
-let sint64_sentinal () = varint_sentinal ~signed:true ~type_name:"sint64"
-
-let int64_sentinal () = varint_sentinal ~signed:false ~type_name:"int64"
-
-let fixed32_sentinal ~type_name =
-  let value = ref Defaults.int in
-  ( (fun () -> !value),
-    function
-    | Spec.Fixed_32_bit v ->
-      value := Int32.to_int_exn v;
+let sentinal: type a. a compound -> a sentinal * decoder = function
+  | Basic spec ->
+    let default, _, read = type_of_spec spec in
+    let v = ref default in
+    let get () = !v in
+    let read field =
+      let%bind value = read field in
+      v := value;
       return ()
-    | field -> error_wrong_field type_name field )
-
-let sfixed32_sentinal () = fixed32_sentinal ~type_name:"sfixed32"
-
-let fixed32_sentinal () = fixed32_sentinal ~type_name:"fixed32"
-
-let fixed64_sentinal ~type_name =
-  let value = ref Defaults.int in
-  ( (fun () -> !value),
-    function
-    | Spec.Fixed_64_bit v ->
-      value := Int64.to_int_exn v;
-      return ()
-    | field -> error_wrong_field type_name field )
-
-let sfixed64_sentinal () = fixed64_sentinal ~type_name:"sfixed64"
-
-let fixed64_sentinal () = fixed64_sentinal ~type_name:"fixed64"
-
-let bool_sentinal () =
-  let value = ref Defaults.bool in
-  ( (fun () -> !value),
-    function
-    | Spec.Varint v when v = 0 ->
-      value := false;
-      Result.ok_unit
-    | Spec.Varint v when v = 1 ->
-      value := true;
-      Result.ok_unit
-    | Spec.Varint _ as field -> error_illegal_value "bool" field
-    | field -> error_wrong_field "bool" field )
-
-let string_sentinal () =
-  let value = ref Defaults.string in
-  ( (fun () -> !value),
-    function
-    | Spec.Length_delimited {offset; length; data} ->
-      value := String.sub ~pos:offset ~len:length data;
-      Result.ok_unit
-    | field -> error_wrong_field "string" field )
-
-let bytes_sentinal () =
-  let get, read = string_sentinal () in
-  (fun () -> get () |> Bytes.of_string), read
-
-let message_sentinal deser =
-  let value = ref None in
-  ( (fun () -> !value),
-    function
-    | Spec.Length_delimited {offset; length; data} ->
-      let reader = Reader.create ~length ~offset data in
-      let%bind message = deser reader in
-      value := Some message;
-      return ()
-    | field -> error_wrong_field "message" field )
-
-let enum_sentinal deser =
-  let value =
-    match deser Defaults.enum with
-    | Ok v -> ref v
-    | Error _ -> failwith "Internal error: Enum _must_ allow default value."
-  in
-  ( (fun () -> !value),
-    function
-    | Spec.Varint v ->
-      let%bind v = deser v in
-      value := v;
-      return ()
-    | field -> error_wrong_field "enum" field )
-
-(** Repeated field. For scalar types, we allow a length delim, and
-    just read all values in it. For this reason, we need to know the exact type.
-*)
-let rec read_fields ~f reader acc =
-  match Reader.has_more reader with
-  | true ->
-    let%bind v = f reader in
-    read_fields ~f reader (v :: acc)
-  | false -> return acc
-
-let repeated_sentinal ~scalar_type (get, read) =
-  let value = ref [] in
-  let read_field v =
-    let%bind () = read v in
-    value := get () :: !value;
-    return ()
-  in
-  ( (fun () -> List.rev !value),
-    fun field ->
-      let%bind fields_rev =
-        match field, scalar_type with
-        | Spec.Length_delimited {offset; length; data}, `Fixed_64_bit ->
-          read_fields ~f:Reader.read_fixed64 (Reader.create ~offset ~length data) []
-        | Spec.Length_delimited {offset; length; data}, `Fixed_32_bit ->
-          read_fields ~f:Reader.read_fixed32 (Reader.create ~offset ~length data) []
-        | Spec.Length_delimited {offset; length; data}, `Varint ->
-          let () =
-            match String.length data >= offset + length with
-            | true -> ()
-            | false ->
-              Spec.failwithf
-                "Cannot read length delimited: { offset = %d; length = %d; data = %d }"
-                offset
-                length
-                (String.length data)
-          in
-          read_fields ~f:Reader.read_varint (Reader.create ~offset ~length data) []
-        | (Spec.Length_delimited _ as v), `Not_scalar -> return [v]
-        | (Spec.Fixed_32_bit _ as v), _ -> return [v]
-        | (Spec.Fixed_64_bit _ as v), _ -> return [v]
-        | (Spec.Varint _ as v), _ -> return [v]
-      in
-      List.fold_right
-        ~init:Result.ok_unit
-        ~f:(fun field acc ->
-          let%bind () = acc in
-          read_field field)
-        fields_rev )
-
-let scalar_type : type a. a spec -> 'b = function
-  | Double -> `Fixed_64_bit
-  | Float -> `Fixed_32_bit
-  | Int32 -> `Varint
-  | Int64 -> `Varint
-  | UInt32 -> `Varint
-  | UInt64 -> `Varint
-  | SInt32 -> `Varint
-  | SInt64 -> `Varint
-  | Fixed32 -> `Fixed_32_bit
-  | Fixed64 -> `Fixed_64_bit
-  | SFixed32 -> `Fixed_32_bit
-  | SFixed64 -> `Fixed_64_bit
-  | Bool -> `Varint
-  | Enum _ -> `Varint
-  | _ -> `Not_scalar
-
-let rec sentinal : type a. a spec -> a sentinal * decoder = function
-  | Double -> double_sentinal ()
-  | Float -> float_sentinal ()
-  | Int32 -> int32_sentinal ()
-  | Int64 -> int64_sentinal ()
-  | UInt32 -> uint32_sentinal ()
-  | UInt64 -> uint64_sentinal ()
-  | SInt32 -> sint32_sentinal ()
-  | SInt64 -> sint64_sentinal ()
-  | Fixed32 -> fixed32_sentinal ()
-  | Fixed64 -> fixed64_sentinal ()
-  | SFixed32 -> sfixed32_sentinal ()
-  | SFixed64 -> sfixed64_sentinal ()
-  | Bool -> bool_sentinal ()
-  | String -> string_sentinal ()
-  | Bytes -> bytes_sentinal ()
-  | Message deser -> message_sentinal deser
-  | Enum deser -> enum_sentinal deser
-  | Repeated tpe ->
-    let sentinal = sentinal tpe in
-    repeated_sentinal ~scalar_type:(scalar_type tpe) sentinal
-  | RepeatedMessage deser ->
-    let get, read = message_sentinal deser in
-    let get () =
-      Option.value_exn ~message:"Repeated messages cannot have None message" (get ())
     in
-    repeated_sentinal ~scalar_type:`Not_scalar (get, read)
+    get, read
 
-(* Oh, no. Do we need yet another gadt? *)
+  | Message deser ->
+    let v = ref None in
+    let get () = !v in
+    let read = function
+      | Spec.Length_delimited {offset; length; data} ->
+        let reader = Reader.create ~length ~offset data in
+        let%bind message = deser reader in
+        v := Some message;
+        return ()
+      | field -> error_wrong_field "message" field
+    in
+    (get, read)
+
+  | RepeatedMessage deser ->
+    let v = ref [] in
+    let get () = List.rev !v in
+    let read = function
+      | Spec.Length_delimited {offset; length; data} ->
+        let reader = Reader.create ~length ~offset data in
+        let%bind message = deser reader in
+        v := message :: !v;
+        return ()
+      | field -> error_wrong_field "message" field
+    in
+    (get, read)
+
+  | Repeated spec ->
+    let read_field = function
+      | `Length_delimited -> None
+      | `Varint -> Some Reader.read_varint
+      | `Fixed_64_bit -> Some Reader.read_fixed64
+      | `Fixed_32_bit -> Some Reader.read_fixed32
+    in
+    let rec read_repeated reader decode read_f = match Reader.has_more reader with
+      | false -> return ()
+      | true ->
+        let%bind field = decode reader in
+        let%bind () = read_f field in
+        read_repeated reader decode read_f
+    in
+    let (_, field_type, read_type) = type_of_spec spec in
+    let v = ref [] in
+    let get () = List.rev !v in
+    let rec read field = match field, read_field field_type with
+      | (Spec.Length_delimited _ as field), None ->
+        let%bind v' = read_type field in
+        v := v' :: !v;
+        return ()
+      | Spec.Length_delimited { offset; length; data }, Some read_field ->
+        read_repeated (Reader.create ~offset ~length data) read_field read
+      | field, _ -> let%bind v' = read_type field in
+        v := v' :: !v;
+        return ()
+    in
+    get, read
+
+
+(** Oneofs are handled a bit special *)
 type _ oneof =
-  | Oneof : (int * 'b spec * ('b -> 'a)) -> 'a oneof
+  | Oneof : (int * 'b compound * ('b -> 'a)) -> 'a oneof
 
 let oneof_sentinal: 'a oneof list -> (unit -> 'a result) * (int * decoder) list = fun oneofs ->
   let value = ref None in
   let create_sentinal: 'a oneof -> (int * decoder) = function
-    | Oneof (index, spec, constr) ->
-      let (get, read) = sentinal spec in
+    | Oneof (index, compound, constr) ->
+      let (get, read) = sentinal compound in
       let read field =
         let%bind () = read field in
         let v = get () in

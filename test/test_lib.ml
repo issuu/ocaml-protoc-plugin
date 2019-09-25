@@ -37,7 +37,7 @@ let test_encode ?dump (type t) (module M : T with type t = t) (expect : t) =
   (* flush *)
   let _:int = Stdlib.Sys.command
       (Printf.sprintf
-         "protoc --decode=%s %s < %s | tr \"\\n\" \"; \" | sed -E 's/ +/ /g'"
+         "protoc --decode=%s %s < %s | sed -E 's/ +/ /g' | tr '\\n' '%%' | sed 's/%%/; /g'"
          type_name
          protobuf_file
          filename)
@@ -50,4 +50,4 @@ let test_encode ?dump (type t) (module M : T with type t = t) (expect : t) =
   | Ok observed ->
     Stdlib.Printf.printf "\nExpect  :%s\nObserved:%s\n" ([%show: M.t] expect) ([%show: M.t] observed)
   | Error err ->
-    Stdlib.Printf.printf "\nDecode failed: %s\n" (Protobuf.Deserialize.show_error err)
+    Stdlib.Printf.printf "\nDecode failed: %s \n" (Protobuf.Deserialize.show_error err)

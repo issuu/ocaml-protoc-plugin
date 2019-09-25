@@ -64,11 +64,9 @@ let get_scoped_name ?postfix t = function
         let rec inner = function
           | x :: xs, y :: ys when String.Caseless.equal x y -> inner (xs, ys)
           | xs, _ ->
-            let stem =
-              List.map ~f:String.capitalize xs
-              |> String.concat ~sep:"."
-            in
-            Option.value_map ~default:stem ~f:(Printf.sprintf "%s.%s" stem) postfix
+            List.map ~f:String.capitalize xs
+            |> (fun stem -> Option.value_map ~default:stem ~f:(fun p -> stem @ [p]) postfix)
+            |> String.concat ~sep:"."
         in
         inner (module_name :: xs, List.rev t.path)
       | _ -> failwith "Expected name to start with a '.'"

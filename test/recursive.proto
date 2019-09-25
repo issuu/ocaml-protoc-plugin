@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+message Tree {
+  message Node {
+    Tree left = 1;
+    Tree right = 2;
+  }
+  message Leaf {
+    uint64 i = 1;
+  }
+  oneof X {
+    Node node = 1;
+    Leaf leaf = 2;
+  }
+}
+
+message Message {
+  message Message1 {
+    Message m = 1;
+  }
+  Message1 m = 1;
+}

@@ -72,12 +72,11 @@ let contents t =
   assert (next_offset = size);
   Bytes.to_string buffer
 
-(** Add the contents of src as a length_delimited field *)
-let concat t ~src =
-  let size = size src in
-  t.fields <- src.fields @ (Varint size :: t.fields)
-
 let add_field t field = t.fields <- field :: t.fields
+
+(** Add the contents of src as is *)
+let concat t ~src =
+  t.fields <- src.fields @ (t.fields)
 
 let write_field_header : t -> int -> int -> unit =
  fun t index field_type ->
