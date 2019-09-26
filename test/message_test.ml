@@ -6,7 +6,9 @@ let%expect_test _ =
   let t = T.{m = Some submessage} in
   Test_lib.test_encode  (module T) t;
   [%expect {|
-    m {;  i: 3; }; |}]
+    m {
+      i: 3
+    } |}]
 
 (** The message containing a submessage with all default values.
     The length of the submessage is 0, so
@@ -22,7 +24,8 @@ let%expect_test _ =
   let t = T.{m = Some submessage} in
   Test_lib.test_encode (module T) t;
   [%expect {|
-    m {; }; |}]
+    m {
+    } |}]
 
 let%expect_test _ =
   let module T = Message.Message in
@@ -30,7 +33,9 @@ let%expect_test _ =
   let t = T.{m = Some submessage} in
   Test_lib.test_encode (module T) t;
   [%expect {|
-    m {;  i: 1; }; |}]
+    m {
+      i: 1
+    } |}]
 
 let%expect_test _ =
   let module T = Message.Message in
@@ -43,7 +48,7 @@ let%expect_test _ =
   let t = T.{i = 2; m = None} in
   Test_lib.test_encode (module T) t;
   [%expect {|
-    i: 2; |}]
+    i: 2 |}]
 
 let%expect_test _ =
   let module T = Message.Message2 in
@@ -51,4 +56,6 @@ let%expect_test _ =
   let t = T.{i = 2; m = Some submessage} in
   Test_lib.test_encode (module T) t;
   [%expect {|
-    i: 2; m {; }; |}]
+    i: 2
+    m {
+    } |}]

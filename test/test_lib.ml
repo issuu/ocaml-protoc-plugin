@@ -37,7 +37,7 @@ let test_encode ?dump (type t) (module M : T with type t = t) (expect : t) =
   (* flush *)
   let _:int = Stdlib.Sys.command
       (Printf.sprintf
-         "protoc --decode=%s %s < %s | sed -E 's/ +/ /g' | tr '\\n' ';' | sed 's/;/; /g'"
+         "protoc --decode=%s %s < %s"
          type_name
          protobuf_file
          filename)
