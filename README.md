@@ -68,7 +68,6 @@ can generate the ocaml code by running
 | open        | Add open at top of generated files. May be given multiple times | `open=Base.Sexp`          |
 
 
-
 Parameters are seperated by `;`
 
 If `protoc-gen-ocaml` is not located in the path, it is possible to
@@ -99,20 +98,9 @@ Below is a dune rule for generating code for `test.proto`:
 ```
 
 ## Service interface
-!Note this is deprecated, and will change
-```ocaml
-
-module IO = struct
-  'a deferred;
-end
-
-val call: (string->string IO.deferred) -> request_type ->
-  (response_type, [> `Some_error_type)] result IO.deferred
-
-val service: (request_type -> (response_type, [> ]) result
-IO.deferred]) -> string -> string, [> ] result IO.Deferred
-
-```
+Service interfaces create a module with values that just references
+the request and reply pair. These binding can then be used with
+function in `Protobuf.Service`.
 
 The call function will take a `string -> string` function, which
 implement message sending -> receiving.
@@ -120,4 +108,77 @@ implement message sending -> receiving.
 The service function is a `string -> string` function which takes a
 handler working over the actual message types.
 
-Of course the the functions work of an IO monad.
+
+# Example:
+
+```proto3
+syntax = "proto3";
+message Address {
+  enum Planet {
+    Earth = 0;
+    Mars  = 1;
+    Pluto = 2;
+  }
+  string street = 1;
+  uint64 number = 2;
+  Planet planet = 3;
+}
+
+message Person {
+  uint64 id       = 1;
+  string name     = 2;
+  Address address = 3;
+}
+```
+
+`$ protoc --ocaml_out=. test.proto`
+Generates a file `test.ml` with the following signature:
+
+```ocaml
+module Address : sig
+  module rec Planet : sig
+    type t = Earth | Mars | Pluto
+    val to_int: t -> int
+    val from_int: int -> t Protobuf.Deserialize.result
+  end
+  val name: unit -> string
+  type t = {
+    street: string;
+    number: int;
+    planet: Planet.t;
+  }
+  val to_proto: t -> Protobuf.Writer.t
+  val from_proto: Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result
+
+module Person : sig
+  val name: unit -> string
+  type t = {
+    id: int;
+    name: string;
+    address: Address.t option;
+  }
+  val to_proto: t -> Protobuf.Writer.t
+  val from_proto: Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result
+end = struct
+```
+
+`Protobuf.Reader` and `Protobuf.Writer` is used then reading or
+writing protobuf data. Below is an example on how to decode a message
+and how to read a message.
+
+```ocaml
+let string_of_planet = function
+  | Address.Earth -> "earth"
+  | Mars -> "mars"
+  | Pluto -> "pluto"
+in
+
+let read_person binary_message =
+  let reader = Protobuf.Reader.create binary_message in
+  match Person.from_proto from_proto reader in
+  | Ok Person.{ id; name; address = Some Address { street; number; planet } } ->
+    Printf.printf "P: %d %s - %s %s %d\n" id name (string_of_planet planet) street number
+  | Ok Person.{ id; name; address = None } ->
+    Printf.printf "P: %d %s - Address unknown\n" id name
+  | Error _ -> failwith "Could not decode"
+```
