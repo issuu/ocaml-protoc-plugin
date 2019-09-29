@@ -3,7 +3,7 @@ open Base
 let read_all in_channel =
   let rec inner buffer =
     let b = Bytes.create 1024 in
-    match Stdlib.input in_channel b 0 1024 with
+    match Caml.input in_channel b 0 1024 with
     | 1024 ->
       Buffer.add_bytes buffer b;
       inner buffer
@@ -15,7 +15,7 @@ let read_all in_channel =
 
 (* Read from stdin *)
 let read () =
-  read_all Stdlib.stdin
+  read_all Caml.stdin
   |> Pbrt.Decoder.of_bytes
   |> Spec.Plugin.Pb.decode_code_generator_request
 
@@ -24,7 +24,7 @@ let write response =
   let encoder = Pbrt.Encoder.create () in
   Spec.Plugin.Pb.encode_code_generator_response response encoder;
   let response = Pbrt.Encoder.to_bytes encoder in
-  Stdlib.(output_bytes stdout) response
+  Caml.(output_bytes stdout) response
 
 let () =
   let request = read () in

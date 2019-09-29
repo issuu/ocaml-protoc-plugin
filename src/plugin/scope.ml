@@ -4,7 +4,7 @@ type t = { path: string list;
            type_db: (string, string, String.comparator_witness) Map.t }
 
 let module_name_of_proto file =
-  Stdlib.Filename.chop_extension file |> String.capitalize
+  Caml.Filename.chop_extension file |> String.capitalize
 
 (* Create a list of types *)
 let rec map_types ~path ~message_types ~enum_types =
@@ -56,7 +56,7 @@ let get_scoped_name ?postfix t = function
       let module_name = match Map.find t.type_db name with
         | Some x -> x
         | None -> (* Dump the type DB *)
-            Map.iteri ~f:(fun ~key ~data -> Stdlib.Printf.eprintf "     %s -> %s\n%!" key data) t.type_db;
+            Map.iteri ~f:(fun ~key ~data -> Caml.Printf.eprintf "     %s -> %s\n%!" key data) t.type_db;
             failwith ("Could not locate type in database: " ^ name)
       in
       match String.split ~on:'.' name with

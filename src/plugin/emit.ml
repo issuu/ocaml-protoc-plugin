@@ -72,8 +72,8 @@ type message = {
 
 let log fmt =
   match !debug with
-  | true -> Stdlib.(Printf.eprintf (fmt ^^ "\n%!"))
-  | false -> Stdlib.Printf.ifprintf Stdlib.stderr fmt
+  | true -> Caml.(Printf.eprintf (fmt ^^ "\n%!"))
+  | false -> Caml.Printf.ifprintf Caml.stderr fmt
 
 let emit_enum_type
     Spec.Descriptor.{name; value; options = _; reserved_range = _; reserved_name = _}

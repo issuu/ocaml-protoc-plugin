@@ -4,7 +4,7 @@ open Base
 open Spec
 
 let sprintf = Printf.sprintf
-let printf = Stdlib.Printf.printf
+let printf = Caml.Printf.printf
 
 type t = {mutable fields : Spec.field list}
 
