@@ -1,14 +1,18 @@
 # Ocaml protoc plugin
 
 [![BuildStatus](https://travis-ci.org/issuu/ocaml-protoc-plugin?branch=master)](https://travis-ci.org/issuu/ocaml-protoc-plugin)
+
 The goal of Ocaml protoc plugin is to create an up to date plugin for
 the google protobuf compiler (protoc) to generate ocaml types and
 serialization and de-serialization.
 
 The main features include:
-* Messages are mapped to idiomatic OCaml types
+* Messages are mapped to idiomatic OCaml types, using modules
 * Support service descriptions
-* proto3 compatibility
+* Full proto3 compliant
+
+
+
 
 ## Comparisson with other OCaml protobuf handlers.
 
@@ -18,7 +22,7 @@ The main features include:
 | Service endpoints | Not supported    | N/A             | Supported           |
 | proto3            | Partly supported | supported       | Supported           |
 
-(ocaml-protoc release 1.2.0 does not yet fully support proto3, the
+(`ocaml-protoc` release 1.2.0 does not yet fully support proto3, the
 master branch does, however)
 
 ## Types
@@ -111,13 +115,12 @@ handler working over the actual message types.
 
 # Example:
 
+`test.proto`
 ```proto3
 syntax = "proto3";
 message Address {
   enum Planet {
-    Earth = 0;
-    Mars  = 1;
-    Pluto = 2;
+    Earth = 0; Mars  = 1; Pluto = 2;
   }
   string street = 1;
   uint64 number = 2;
@@ -132,6 +135,7 @@ message Person {
 ```
 
 `$ protoc --ocaml_out=. test.proto`
+
 Generates a file `test.ml` with the following signature:
 
 ```ocaml
@@ -149,7 +153,7 @@ module Address : sig
   }
   val to_proto: t -> Protobuf.Writer.t
   val from_proto: Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result
-
+end
 module Person : sig
   val name: unit -> string
   type t = {
@@ -162,8 +166,8 @@ module Person : sig
 end = struct
 ```
 
-`Protobuf.Reader` and `Protobuf.Writer` is used then reading or
-writing protobuf data. Below is an example on how to decode a message
+`Protobuf.Reader` and `Protobuf.Writer` are used then reading or
+writing protobuf binary format. Below is an example on how to decode a message
 and how to read a message.
 
 ```ocaml
