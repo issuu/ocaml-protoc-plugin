@@ -18,19 +18,20 @@ type _ spec =
   | String : string spec
   | Bytes : bytes spec
   | Enum: ('a -> int) -> 'a spec
+  | Message: ('a -> Writer.t) -> 'a spec
+  | MessageOpt: ('a -> Writer.t) -> 'a option spec
+
+type _ oneof_elem =
+  | Oneof_elem : (int * 'b spec * 'b) -> unit oneof_elem
 
 type _ compound =
-  | Message: ('a -> Writer.t) -> 'a option compound
-  | RepeatedMessage : ('a -> Writer.t) -> 'a list compound
-  | Repeated : 'a spec -> 'a list compound
-  | Oneof : ('a -> Writer.t) -> 'a compound
-  | Basic : 'a spec -> 'a compound
+  | Repeated : (int * 'a spec) -> 'a list compound
+  | Basic : (int * 'a spec) -> 'a compound
+  | Oneof : ('a -> unit oneof_elem) -> 'a compound
 
 type (_, _) compound_list =
   | Nil : ('a, 'a) compound_list
-  | Cons :
-      (int * 'a compound) * ('b, 'c) compound_list
-      -> ('a -> 'b, 'c) compound_list
+  | Cons : 'a compound * ('b, 'c) compound_list -> ('a -> 'b, 'c) compound_list
 
 let ( ^:: ) a b = Cons (a, b)
 
@@ -78,24 +79,35 @@ let rec field_of_spec: type a. a spec -> a -> Spec.field = function
   | Enum f ->
     let to_field = field_of_spec UInt64 in
     fun v -> f v |> to_field
+  | Message to_proto ->
+    fun v ->
+      let writer = to_proto v in
+      Spec.length_delimited (Writer.contents writer)
+  | MessageOpt _ -> failwith "Cannot comply"
 
 let is_scalar: type a. a spec -> bool = function
   | String -> false
   | Bytes -> false
+  | Message _ -> false
+  | MessageOpt _ -> false
   | _ -> true
 
-let rec write: type a. index:int -> Writer.t -> a compound -> a -> unit = fun ~index writer ->
+let rec write: type a. Writer.t -> a compound -> a -> unit = fun writer ->
   function
-  | Message (to_proto) -> begin
+  | Basic (index, MessageOpt (to_proto)) -> begin
       function
       | Some v ->
         let v = to_proto v in
         Writer.concat_as_length_delimited writer ~src:v index
       | None -> ()
     end
-  | RepeatedMessage (to_proto) ->
-    fun vs -> List.iter ~f:(fun v -> write ~index writer (Message to_proto) (Some v)) vs
-  | Repeated spec when is_scalar spec -> begin
+  | Basic (index, Message (to_proto)) ->
+    fun v ->
+      let v = to_proto v in
+      Writer.concat_as_length_delimited writer ~src:v index
+  | Repeated (index, Message to_proto) ->
+    fun vs -> List.iter ~f:(fun v -> write writer (Basic (index, Message to_proto)) v) vs
+  | Repeated (index, spec) when is_scalar spec -> begin
       let f = field_of_spec spec in
       function
       | [] -> ()
@@ -104,10 +116,10 @@ let rec write: type a. index:int -> Writer.t -> a compound -> a -> unit = fun ~i
         List.iter ~f:(fun v -> Writer.add_field writer' (f v)) vs;
         Writer.concat_as_length_delimited writer ~src:writer' index
     end
-  | Repeated spec ->
+  | Repeated (index, spec) ->
       let f = field_of_spec spec in
       fun vs -> List.iter ~f:(fun v -> Writer.write_field writer index (f v)) vs
-  | Basic spec -> begin
+  | Basic (index, spec) -> begin
       let f = field_of_spec spec in
       fun v -> match f v with
         | Varint 0 -> ()
@@ -117,13 +129,45 @@ let rec write: type a. index:int -> Writer.t -> a compound -> a -> unit = fun ~i
         | field -> Writer.write_field writer index field
     end
   | Oneof f -> fun v ->
-    Writer.concat ~src:(f v) writer
+    let Oneof_elem (index, spec, v) = f v in
+    write writer (Basic (index, spec)) v
 
 (** Allow emitted code to present a protobuf specification. *)
 let rec serialize : type a. Writer.t -> (a, Writer.t) compound_list -> a = fun writer -> function
   | Nil -> writer
-  | Cons ((index, compound), rest) ->
-    fun v -> write ~index writer compound v;
+  | Cons (compound, rest) ->
+    fun v -> write writer compound v;
       serialize writer rest
 
 let serialize spec = serialize (Writer.init ()) spec
+
+
+(** Module to construct a spec *)
+module C = struct
+  let double = Double
+  let float = Float
+  let int32 = Int32
+  let int64 = Int64
+  let uint32 = UInt32
+  let uint64 = UInt64
+  let sint32 = SInt32
+  let sint64 = SInt64
+  let fixed32 = Fixed32
+  let fixed64 = Fixed64
+  let sfixed32 = SFixed32
+  let sfixed64 = SFixed64
+  let bool = Bool
+  let string = String
+  let bytes = Bytes
+  let enum f = Enum f
+  let message f = Message f
+  let messageopt f = MessageOpt f
+
+  let repeated s = Repeated s
+  let basic s = Basic s
+  let oneof s = Oneof s
+  let oneof_elem (a, b, c) = Oneof_elem (a, b, c)
+
+  let ( ^:: ) a b = Cons (a, b)
+  let nil = Nil
+end

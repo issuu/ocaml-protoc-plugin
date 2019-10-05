@@ -1,3 +1,5 @@
+(** Module for deserializing values *)
+
 open Base
 open Result.Let_syntax
 
@@ -10,8 +12,10 @@ type error =
   | `Oneof_missing ]
 [@@deriving show]
 
-(** Module for deserializing values *)
 type nonrec 'a result = ('a, error) Result.t
+
+type 'a sentinal = unit -> 'a result
+type 'a decoder = Spec.field -> 'a result
 
 type _ spec =
   | Double : float spec
@@ -29,59 +33,31 @@ type _ spec =
   | Bool : bool spec
   | String : string spec
   | Bytes : bytes spec
-  | Enum : (int -> 'a result) -> 'a spec
+  | Enum: (int -> 'a result) -> 'a spec
+  | Message: (Reader.t -> 'a result) -> 'a spec
+  | MessageOpt: (Reader.t -> 'a result) -> 'a option spec
+
+type _ oneof =
+  | Oneof_elem : (int * 'b spec * ('b -> 'a)) -> 'a oneof
 
 type _ compound =
-  | Message: (Reader.t -> 'a result) -> 'a option compound
-  | RepeatedMessage : (Reader.t -> 'a result) -> 'a list compound
-  | Repeated : 'a spec -> 'a list compound
-  | Basic : 'a spec -> 'a compound
+  | Basic : int * 'a spec -> 'a compound
+  | Repeated : int * 'a spec -> 'a list compound
+  | Oneof : 'a oneof list -> 'a compound
 
-type 'a sentinal = unit -> 'a
+type (_, _) compound_list =
+  | Nil : ('a, 'a) compound_list
+  | Cons : ('a compound) * ('b, 'c) compound_list -> ('a -> 'b, 'c) compound_list
 
-type decoder = Spec.field -> unit result
+type (_, _) sentinal_list =
+  | SNil : ('a, 'a) sentinal_list
+  | SCons : ('a sentinal) * ('b, 'c) sentinal_list -> ('a -> 'b, 'c) sentinal_list
+
 
 let error_wrong_field str field : _ result =
   `Wrong_field_type (str, field) |> Result.fail
 
 let error_illegal_value str field : _ result = `Illegal_value (str, field) |> Result.fail
-
-(** Deserialize a reader. *)
-let read_fields : Reader.t -> (int * Spec.field) list result =
- fun t ->
-  let rec inner acc =
-    match Reader.has_more t with
-    | false -> return (List.rev acc) (* Preserve order *)
-    | true ->
-      let%bind v = Reader.read_field t in
-      inner (v :: acc)
-  in
-  match inner [] with
-  | Ok v -> return v
-  | Error `Premature_end_of_input -> Result.fail `Premature_end_of_input
-  | Error (`Unknown_field_type n) -> Result.fail (`Unknown_field_type n)
-
-(** Deserialize takes a list of field sentinals and a reader for the
-    data. Data is decoded into a list of tags, fields
-    and the appropiate function for the tag is called.
-    After all fields have been processed,
-    data can be read from the sentinals, created by the caller
-
-    A helper function exists to create sentinals
-*)
-let deserialize : (int * decoder) list -> Reader.t -> unit result =
- fun spec reader ->
-  (* Exceptions here is an error in code-generation. Crash hard on that! *)
- let decoder_map = Map.of_alist_exn (module Int) spec in
- let%bind fields = read_fields reader in
- List.fold_left
-   ~init:(Result.Ok ())
-   ~f:(fun acc (field_idx, field_val) ->
-       let%bind () = acc in
-       match Map.find decoder_map field_idx with
-       | None -> return ()
-       | Some f -> f field_val)
-   fields
 
 let read_varint ~signed ~type_name = function
   | Spec.Varint v -> begin
@@ -98,45 +74,64 @@ let ok_exn = function
   | Ok v -> v
   | Error _ -> failwith "Must contain a usable value"
 
-let type_of_spec: type a. a spec -> a * 'b * (Spec.field -> a result) = function
-  | Double -> (0.0, `Fixed_64_bit, function Spec.Fixed_64_bit v -> return (Int64.float_of_bits v) | field -> error_wrong_field "double" field)
-  | Float -> (0.0, `Fixed_32_bit, function Spec.Fixed_32_bit v -> return (Int32.float_of_bits v) | field -> error_wrong_field "float" field)
-  | Int32 -> (0, `Varint, fun field ->
+let type_of_spec: type a. a spec -> 'b * a decoder = function
+  | Double -> (`Fixed_64_bit, function
+      | Spec.Fixed_64_bit v -> return (Int64.float_of_bits v)
+      | field -> error_wrong_field "double" field)
+  | Float -> (`Fixed_32_bit, function
+      | Spec.Fixed_32_bit v -> return (Int32.float_of_bits v)
+      | field -> error_wrong_field "float" field)
+  | Int32 -> (`Varint, fun field ->
       let%bind v = read_varint ~signed:false ~type_name:"int32" field in
       return (match v lsr 31 with 1 -> v lor 0x7fffffff00000000 | _ -> v)
     )
-  | Int64 -> (0, `Varint, read_varint ~signed:false ~type_name:"int64")
-  | UInt32 -> (0, `Varint, read_varint ~signed:false ~type_name:"uint32")
-  | UInt64 -> (0, `Varint, read_varint ~signed:false ~type_name:"uint64")
-  | SInt32 -> (0, `Varint, read_varint ~signed:true ~type_name:"sint32")
-  | SInt64 -> (0, `Varint, read_varint ~signed:true ~type_name:"sint64")
-  | Fixed32 -> (0, `Fixed_32_bit, function Spec.Fixed_32_bit v -> return (Int32.to_int_exn v) | field -> error_wrong_field "fixed32" field)
-  | Fixed64 -> (0, `Fixed_64_bit, function Spec.Fixed_64_bit v -> return (Int64.to_int_exn v) | field -> error_wrong_field "fixed64" field)
-  | SFixed32 -> (0, `Fixed_32_bit, function Spec.Fixed_32_bit v -> return (Int32.to_int_exn v) | field -> error_wrong_field "sfixed32" field)
-  | SFixed64 -> (0, `Fixed_64_bit, function Spec.Fixed_64_bit v -> return (Int64.to_int_exn v) | field -> error_wrong_field "sfixed64" field)
-  | Bool -> (false, `Varint, function Spec.Varint v -> return (v <> 0) | field -> error_wrong_field "bool" field)
-  | Enum of_int -> (of_int 0 |> ok_exn, `Varint, function Spec.Varint v -> of_int v | field -> error_wrong_field "enum" field)
-  | String -> ("", `Length_delimited, function Spec.Length_delimited {offset; length; data} -> return (String.sub ~pos:offset ~len:length data)
-                                             | field -> error_wrong_field "string" field)
-  | Bytes -> (Bytes.create 0, `Length_delimited, function Spec.Length_delimited {offset; length; data} ->
-      return (String.sub ~pos:offset ~len:length data |> Bytes.of_string)
-                                            | field -> error_wrong_field "string" field)
+  | Int64 -> (`Varint, read_varint ~signed:false ~type_name:"int64")
+  | UInt32 -> (`Varint, read_varint ~signed:false ~type_name:"uint32")
+  | UInt64 -> (`Varint, read_varint ~signed:false ~type_name:"uint64")
+  | SInt32 -> (`Varint, read_varint ~signed:true ~type_name:"sint32")
+  | SInt64 -> (`Varint, read_varint ~signed:true ~type_name:"sint64")
+  | Fixed32 -> (`Fixed_32_bit, function
+      | Spec.Fixed_32_bit v -> return (Int32.to_int_exn v)
+      | field -> error_wrong_field "fixed32" field)
+  | Fixed64 -> (`Fixed_64_bit, function
+      | Spec.Fixed_64_bit v -> return (Int64.to_int_exn v)
+      | field -> error_wrong_field "fixed64" field)
+  | SFixed32 -> (`Fixed_32_bit, function
+      | Spec.Fixed_32_bit v -> return (Int32.to_int_exn v)
+      | field -> error_wrong_field "sfixed32" field)
+  | SFixed64 -> (`Fixed_64_bit, function
+      | Spec.Fixed_64_bit v -> return (Int64.to_int_exn v)
+      | field -> error_wrong_field "sfixed64" field)
+  | Bool -> (`Varint, function
+      | Spec.Varint v -> return (v <> 0)
+      | field -> error_wrong_field "bool" field)
+  | Enum of_int -> (`Varint, function
+      | Spec.Varint v -> of_int v
+      | field -> error_wrong_field "enum" field)
+  | String -> (`Length_delimited, function
+      | Spec.Length_delimited {offset; length; data} -> return (String.sub ~pos:offset ~len:length data)
+      | field -> error_wrong_field "string" field)
+  | Bytes -> (`Length_delimited, function
+      | Spec.Length_delimited {offset; length; data} -> return (String.sub ~pos:offset ~len:length data |> Bytes.of_string)
+      | field -> error_wrong_field "string" field)
+  | Message from_proto -> (`Length_delimited, function
+      | Spec.Length_delimited {offset; length; data} -> from_proto (Reader.create ~offset ~length data)
+      | field ->  error_wrong_field "message" field)
+  | MessageOpt from_proto -> (`Length_delimited, function
+      | Spec.Length_delimited {offset; length; data} -> from_proto (Reader.create ~offset ~length data) |> Result.map ~f:Option.some
+      | field ->  error_wrong_field "message" field)
 
-let sentinal: type a. a compound -> a sentinal * decoder = function
-  | Basic spec ->
-    let default, _, read = type_of_spec spec in
-    let v = ref default in
-    let get () = !v in
-    let read field =
-      let%bind value = read field in
-      v := value;
-      return ()
-    in
-    get, read
 
-  | Message deser ->
+let default_of_field_type = function
+  | `Fixed_32_bit -> Spec.fixed_32_bit Int32.zero
+  | `Fixed_64_bit -> Spec.fixed_64_bit Int64.zero
+  | `Length_delimited -> Spec.length_delimited ""
+  | `Varint -> Spec.Varint 0
+
+let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = function
+  | Basic (index, (MessageOpt deser)) ->
     let v = ref None in
-    let get () = !v in
+    let get () = return !v in
     let read = function
       | Spec.Length_delimited {offset; length; data} ->
         let reader = Reader.create ~length ~offset data in
@@ -145,22 +140,19 @@ let sentinal: type a. a compound -> a sentinal * decoder = function
         return ()
       | field -> error_wrong_field "message" field
     in
-    (get, read)
+    ([index, read], get)
 
-  | RepeatedMessage deser ->
-    let v = ref [] in
-    let get () = List.rev !v in
-    let read = function
-      | Spec.Length_delimited {offset; length; data} ->
-        let reader = Reader.create ~length ~offset data in
-        let%bind message = deser reader in
-        v := message :: !v;
-        return ()
-      | field -> error_wrong_field "message" field
+  | Basic (index, spec) ->
+    let field_type, read = type_of_spec spec in
+    let v = ref (read (default_of_field_type field_type) |> function Ok v -> v | Error _ -> failwith "Default value not decodable") in
+    let get () = return !v in
+    let read field =
+      let%bind value = read field in
+      v := value;
+      return ()
     in
-    (get, read)
-
-  | Repeated spec ->
+    ([index, read], get)
+  | Repeated (index, spec) ->
     let read_field = function
       | `Length_delimited -> None
       | `Varint -> Some Reader.read_varint
@@ -174,9 +166,9 @@ let sentinal: type a. a compound -> a sentinal * decoder = function
         let%bind () = read_f field in
         read_repeated reader decode read_f
     in
-    let (_, field_type, read_type) = type_of_spec spec in
+    let (field_type, read_type) = type_of_spec spec in
     let v = ref [] in
-    let get () = List.rev !v in
+    let get () = return (List.rev !v) in
     let rec read field = match field, read_field field_type with
       | (Spec.Length_delimited _ as field), None ->
         let%bind v' = read_type field in
@@ -188,30 +180,99 @@ let sentinal: type a. a compound -> a sentinal * decoder = function
         v := v' :: !v;
         return ()
     in
-    get, read
-
-
-(** Oneofs are handled a bit special. *)
-type _ oneof =
-  | Oneof : (int * 'b compound * ('b -> 'a)) -> 'a oneof
-
-let oneof_sentinal: 'a oneof list -> (unit -> 'a result) * (int * decoder) list = fun oneofs ->
-  let value = ref None in
-  let create_sentinal: 'a oneof -> (int * decoder) = function
-    | Oneof (index, compound, constr) ->
-      let (get, read) = sentinal compound in
+    ([index, read], get)
+  | Oneof oneofs ->
+    let make_reader: a result ref -> a oneof -> (int * unit decoder) = fun v (Oneof_elem (index, spec, constr)) ->
+      let _, read = type_of_spec spec in
       let read field =
-        let%bind () = read field in
-        let v = get () in
-        value := Some (constr v);
+        let%bind value = read field in
+        v := Ok (constr value);
         return ()
       in
-      index, read
+      (index, read)
+    in
+    let v = ref (Error `Oneof_missing) in
+    let get () = !v in
+    List.map ~f:(make_reader v) oneofs, get
+
+(** Read fields and apply to a map *)
+let rec read_fields_map reader map =
+  match Reader.has_more reader with
+  | false -> return ()
+  | true ->
+    let%bind (index, field) = match Reader.read_field reader with
+      | Ok (index, field) -> return  (index, field)
+      | Error err -> Error (err :> error)
+    in
+    let%bind () = match Map.find map index with
+      | Some reader -> reader field
+      | None -> return () (* Just ignore *)
+    in
+    read_fields_map reader map
+
+let deserialize: type constr t. (constr, t) compound_list -> constr -> Reader.t -> t result = fun spec constr reader ->
+  let rec apply: type constr t. constr -> (constr, t) sentinal_list -> t result = fun constr -> function
+    | SCons (sentinal, rest) ->
+      let%bind v = sentinal () in
+      apply (constr v) rest
+    | SNil -> return constr
   in
-  let read () =
-    match !value with
-    | None -> Result.fail `Oneof_missing
-    | Some v -> return v
+  (* We first make a list of sentinal_getters, which we can map to the constr *)
+  let rec make_sentinals: type a b. (a, b) compound_list -> (a, b) sentinal_list * (int * unit decoder) list = function
+    | Cons (spec, rest) ->
+      (* Ouch. Oneofs would return multiple reads and indexes, but only one sentinal *)
+      let (readers, sentinal) = sentinal spec in
+      (* Fuck. This is getting all backwards. *)
+      let (sentinals, reader_list) = make_sentinals rest in
+      SCons (sentinal, sentinals), List.rev_append readers reader_list
+    | Nil -> SNil, []
   in
-    let decoders = List.map ~f:create_sentinal oneofs in
-    (read, decoders)
+  let sentinals, reader_list = make_sentinals spec in
+  (* Create a map for nlogn lookup *)
+  let map = Map.of_alist_exn (module Int) reader_list in
+
+  (* Read the fields one by one, and apply the reader - if found *)
+  let%bind () = read_fields_map reader map in
+  apply constr sentinals
+
+
+(* Idea - We could use a O(n) lookup, where the head is the expected type to read *)
+(* If we receive another id, we place the reader in the tail (an accumulator). *)
+(* So if we receive everythin in order, its a o(1). Worst case its O(N^2). *)
+(* The hard part is to throw away values which has no decoders. *)
+
+(* Another solution is to make an array - If the max id is small enough *)
+
+(* Rather than using sentinals, it would be preferred to update a state.
+   But it would need a map, containing different types of values - which is not possible AFAIK.
+   We could have an array, again different types are not easy.
+*)
+(** Module to construct a spec *)
+module C = struct
+  let double = Double
+  let float = Float
+  let int32 = Int32
+  let int64 = Int64
+  let uint32 = UInt32
+  let uint64 = UInt64
+  let sint32 = SInt32
+  let sint64 = SInt64
+  let fixed32 = Fixed32
+  let fixed64 = Fixed64
+  let sfixed32 = SFixed32
+  let sfixed64 = SFixed64
+  let bool = Bool
+  let string = String
+  let bytes = Bytes
+  let enum f = Enum f
+  let message f = Message f
+  let messageopt f = MessageOpt f
+
+  let repeated (i, s) = Repeated (i, s)
+  let basic (i, s) = Basic (i, s)
+  let oneof s = Oneof s
+  let oneof_elem s = Oneof_elem s
+
+  let ( ^:: ) a b = Cons (a, b)
+  let nil = Nil
+end

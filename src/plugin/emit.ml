@@ -89,49 +89,54 @@ let is_message_type = function
   | Spec.Descriptor.{type_ = Some Type_message; _ } -> true
   | _ -> false
 
-let protobuf_type_of_field ~prefix scope field_descriptor =
+let spec_of_field ~prefix scope field_descriptor =
   let open Spec.Descriptor in
-  let type_spec type_name = function
-    | Type_double -> "Double"
-    | Type_float -> "Float"
-    | Type_int64 -> "Int64"
-    | Type_uint64 -> "UInt64"
-    | Type_int32 -> "Int32"
-    | Type_fixed64 -> "Fixed64"
-    | Type_fixed32 -> "Fixed32"
-    | Type_sfixed32 -> "SFixed32"
-    | Type_sfixed64 -> "SFixed64"
-    | Type_sint32 -> "SInt32"
-    | Type_sint64 -> "SInt64"
-    | Type_uint32 -> "UInt32"
-    | Type_bool -> "Bool"
-    | Type_string -> "String"
-    | Type_bytes -> "Bytes"
-    | Type_enum ->
-      let to_int_func =
-        Scope.get_scoped_name ~postfix:(prefix ^ "_int") scope type_name
-      in
-      sprintf "Enum %s" to_int_func
-    | Type_message -> failwith "Message types are not basic"
-    | _ -> failwith "Unknown type";
-  in
   match field_descriptor with
-  | {label = Some Label_repeated; type_ = Some Type_message; type_name; _} ->
+  | { type_ = Some Type_double; _ } -> "double"
+  | { type_ = Some Type_float; _ } -> "float"
+  | { type_ = Some Type_int64; _ } -> "int64"
+  | { type_ = Some Type_uint64; _ } -> "uint64"
+  | { type_ = Some Type_int32; _ } -> "int32"
+  | { type_ = Some Type_fixed64; _ } -> "fixed64"
+  | { type_ = Some Type_fixed32; _ } -> "fixed32"
+  | { type_ = Some Type_sfixed32; _ } -> "sfixed32"
+  | { type_ = Some Type_sfixed64; _ } -> "sfixed64"
+  | { type_ = Some Type_sint32; _ } -> "sint32"
+  | { type_ = Some Type_sint64; _ } -> "sint64"
+  | { type_ = Some Type_uint32; _ } -> "uint32"
+  | { type_ = Some Type_bool; _ } -> "bool"
+  | { type_ = Some Type_string; _ } -> "string"
+  | { type_ = Some Type_bytes; _ } -> "bytes"
+  | { type_ = Some Type_enum; type_name; _ } ->
+    let to_int_func =
+      Scope.get_scoped_name ~postfix:(prefix ^ "_int") scope type_name
+    in
+    sprintf "enum %s" to_int_func
+  | { type_ = Some Type_message; type_name; label = Some Label_repeated; _ } ->
     let proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
-    sprintf "RepeatedMessage %s" proto_func
-  | {label = Some Label_repeated; type_ = Some type_; type_name; _} -> sprintf "Repeated (%s)" (type_spec type_name type_)
-  | { type_ = None; _ } -> failwith "Abstract types not supported"
-  | {label = _; type_ = Some Type_message; type_name; _} ->
+    sprintf "message %s" proto_func
+  | { type_ = Some Type_message; type_name; oneof_index = Some _; _ } ->
     let proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
-    sprintf "Message %s" proto_func
-  | {label = _; type_ = Some type_; type_name; _} ->
-    sprintf "Basic (%s)" (type_spec type_name type_)
+    sprintf "message %s" proto_func
+  | { type_ = Some Type_message; type_name; _ } ->
+    let proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
+    sprintf "messageopt %s" proto_func
+  | _ -> failwith "Unknown type"
 
 
+let compound_of_field ~prefix scope field_descriptor =
+  let open Spec.Descriptor in
+  let spec = spec_of_field ~prefix scope field_descriptor in
+  match field_descriptor with
+  | {oneof_index = Some _; _} -> failwith "oneofs not supported here"
+  | {number = None; _} -> failwith "all fields must have a number"
+  | {label = Some Label_repeated; number = Some index; _} ->
+    sprintf "repeated (%d, %s)" index spec;
+  | {number = Some index; _} ->
+    sprintf "basic (%d, %s)" index spec
 
 (** Get the stringified name of a type.
     Consider moving this to Protocol somewhere. So types are next to each other.
-    Currently this needs to be in sync with the Protobuf.Serialize.protobuf_type
 *)
 let type_of_field scope field_descriptor =
   let open Spec.Descriptor in
@@ -217,55 +222,41 @@ let emit_deserialization_function ~is_map_entry scope all_fields (oneof_decls: S
   let implementation = Code.init () in
   Code.emit signature `None "val from_proto: Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result";
   let _field_names = List.map ~f:(fun field -> field_name field.name) fields in
-  Code.emit implementation `Begin "let rec from_proto data =";
-  Code.emit implementation `None "let open Base.Result.Monad_infix in";
-  List.iter ~f:(fun field ->
-      let index = Option.value_exn field.number in
-      let typ = protobuf_type_of_field ~prefix:"from" scope field in
-      Code.emit implementation `None "let (sentinal_%d, deser_%d) = Protobuf.Deserialize.sentinal (%s) in"
-        index index typ
-    ) fields;
-  let spec = List.map ~f:(fun field ->
-      sprintf "(%d, deser_%d)" (Option.value_exn field.number) (Option.value_exn field.number)
-    ) fields
-  in
-  List.iteri ~f:(fun idx (_decl, fields) ->
-      let spec = List.map ~f:(fun field ->
-          let constr = match is_message_type field with
-            | true -> sprintf "function Some v -> `%s v | None -> failwith \"oneof fields cannot be null.\"" (variant_name field.name)
-            | false -> sprintf "fun v -> `%s v" (variant_name field.name)
-          in
-          let index = Option.value_exn field.number in
-          let spec = protobuf_type_of_field ~prefix:"from" scope field in
-          sprintf "Oneof (%d, %s, %s)" index spec constr;
-        ) fields
-      in
-      Code.emit implementation `None "let (oneof_sentinal_%d, oneof_spec_%d) = Protobuf.Deserialize.oneof_sentinal [ %s ] in"
-        idx idx (String.concat ~sep:"; " spec)
-    ) oneof_decls;
-  let oneof_specs = List.mapi ~f:(fun idx _ -> sprintf "oneof_spec_%d" idx) oneof_decls in
-  Code.emit implementation `None "let spec = %s @ [ %s ] in" (String.concat ~sep:" @ " ("[]" :: oneof_specs)) (String.concat ~sep:"; " spec);
-  Code.emit implementation `None "Protobuf.Deserialize.deserialize spec data >>= fun () -> ";
-  List.iteri ~f:(fun idx _ ->
-      Code.emit implementation `None "oneof_sentinal_%d () >>= fun oneof_%d -> " idx idx
-    ) oneof_decls;
+  Code.emit implementation `Begin "let rec from_proto =";
 
-  (* Construct the record *)
-  let fields = List.map ~f:(fun field ->
-      let name = field_name field.name in
-      let index = Option.value_exn field.number in
-      sprintf "%s = sentinal_%d ()" name index
-    ) fields
-  in
-  let oneof_fields = List.mapi ~f:(fun idx (decl, _) -> sprintf "%s = oneof_%d" (field_name decl.name) idx) oneof_decls in
-  let construct = match all_fields with
-    | [] -> "()"
-    | [_; _] when is_map_entry ->
-      "( sentinal_1 (), sentinal_2 () )"
+  (* Create a constructor *)
+  let (args, constructor) = match all_fields with
+    | [] -> "", "()"
+    | [_; _] when is_map_entry -> "a b",  "(a, b)"
     | _  ->
-      sprintf "{ %s }" (String.concat ~sep:"; " (fields @ oneof_fields))
+      (* Construct the record *)
+      let fields = List.map ~f:(fun field -> field_name field.name) fields in
+      let oneof_fields = List.map ~f:(fun (decl, _) -> (field_name decl.name)) oneof_decls in
+      let args = String.concat ~sep:" " (fields @ oneof_fields) in
+      let constructor = sprintf "{ %s }" (String.concat ~sep:"; " (fields @ oneof_fields)) in
+      (args, constructor)
   in
-  Code.emit implementation `None "Base.Result.return %s" construct;
+  Code.emit implementation `None "let constructor %s = %s in " args constructor;
+
+  (* Create the spec *)
+  let spec =
+    let specs = List.map ~f:(compound_of_field ~prefix:"from" scope) fields in
+    let oneofs =
+      List.map ~f:(fun (_, specs) ->
+          List.map ~f:(fun field ->
+              let index = Option.value_exn field.number in
+              let spec = spec_of_field ~prefix:"from" scope field in
+              let constr = sprintf "fun v -> `%s v" (variant_name field.name) in
+              sprintf "oneof_elem (%d, %s, %s)" index spec constr
+            ) specs
+          |> String.concat ~sep:"; "
+          |> sprintf "oneof [ %s ]"
+        ) oneof_decls
+    in
+    String.concat ~sep:" ^:: " (specs @ oneofs @ ["nil"])
+  in
+  Code.emit implementation `None "let spec () = Protobuf.Deserialize.C.( %s ) in" spec;
+  Code.emit implementation `None "fun reader -> Protobuf.Deserialize.deserialize (spec ()) constructor reader";
   Code.emit implementation `End "[@@warning \"-39\"]";
   signature, implementation
 
@@ -275,43 +266,43 @@ let emit_serialization_function ~is_map_entry scope all_fields (oneof_decls: Spe
   let signature = Code.init () in
   let implementation = Code.init () in
   Code.emit signature `None "val to_proto: t -> Protobuf.Writer.t";
+  (* Oneofs here should be `A v -> index, spec (basic), v *)
   let oneof_field_spec =
     oneof_decls
     |> List.map ~f:(fun (_decl, fields) ->
         let cases =
           List.map ~f:(fun (field : Spec.Descriptor.field_descriptor_proto) ->
-              let wrap_some = match is_message_type field with
-                | true -> "Some"
-                | false -> ""
-              in
-              sprintf "`%s v -> Protobuf.Serialize.(serialize ((%d, %s) ^:: Nil) (%s v))" (variant_name field.name) (Option.value_exn field.number) (protobuf_type_of_field ~prefix:"to" scope field) wrap_some
+              let variant_name = variant_name field.name in
+              let index = Option.value_exn field.number in
+              let spec = spec_of_field ~prefix:"to" scope field in
+              sprintf "`%s v -> oneof_elem (%d, %s, v)" variant_name index spec
             ) fields
         in
-        sprintf "(0, Oneof (function %s)) ^:: " (String.concat ~sep:"| " cases)
+        sprintf "oneof (function %s)" (String.concat ~sep:" | " cases)
       )
-    |> String.concat
   in
-  let protocol_field_spec =
-    fields
-    |> List.map ~f:(fun (field : Spec.Descriptor.field_descriptor_proto) ->
-        field.number, protobuf_type_of_field ~prefix:"to" scope field)
-    |> List.map ~f:(fun (index, tpe) -> sprintf "(%d, %s) ^:: " (Option.value_exn index) tpe)
-    |> String.concat
-  in
+  let field_spec = List.map ~f:(compound_of_field ~prefix:"to" scope) fields in
+  let spec = String.concat ~sep:" ^:: " (field_spec @ oneof_field_spec @ ["nil"]) in
   (* Destruct the type. *)
-  let field_names = List.map ~f:(fun field -> field_name field.name) fields in
-  let oneof_names = List.map ~f:(fun (decl, _) -> field_name decl.name) oneof_decls in
-  let destruct =
+  let destruct, args =
     match all_fields with
-    | [] -> "()"
-    | [key; value] when is_map_entry ->
-      sprintf "( %s, %s )" (field_name key.name) (field_name value.name)
-    | _ -> String.concat ~sep:"; " (field_names @ oneof_names) |> sprintf "{ %s }"
+    | [] -> "()", ""
+    | [_; _] when is_map_entry ->
+      sprintf "( a, b )", "a b"
+    | _ ->
+      let field_names = List.map ~f:(fun field -> field_name field.name) fields in
+      let oneof_names = List.map ~f:(fun (decl, _) -> field_name decl.name) oneof_decls in
+      let args = String.concat ~sep:" " (field_names @ oneof_names) in
+      let destruct = String.concat ~sep:"; " (field_names @ oneof_names) |> sprintf "{ %s }" in
+      (destruct, args)
   in
-  Code.emit implementation `Begin "let rec to_proto %s = " destruct;
-  Code.emit implementation `None "let open Protobuf.Serialize in";
-  Code.emit implementation `None "serialize (%s %sNil) %s %s"
-    protocol_field_spec oneof_field_spec (String.concat ~sep:" " field_names) (String.concat ~sep:" " oneof_names);
+  Code.emit implementation `Begin "let rec to_proto = ";
+  Code.emit implementation `Begin "let spec () = ";
+  Code.emit implementation `None "let open Protobuf.Serialize.C in";
+  Code.emit implementation `None "%s" spec;
+  Code.emit implementation `End "in";
+
+  Code.emit implementation `None "fun %s -> Protobuf.Serialize.serialize (spec ()) %s" destruct args;
   Code.emit implementation `End "[@@warning \"-39\"]";
   signature, implementation
 
