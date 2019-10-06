@@ -1,18 +1,23 @@
 .PHONY: build
 build: ## Build
-	dune build
+	@dune build
 
 .PHONY: clean
 clean: ## Clean
-	dune clean
-
-.PHONY: install
-install: dune install
+	@dune clean
 
 .PHONY: test
 test: build
 test: ## Run tests
 	@dune runtest --force
+
+.PHONY: install
+install: build ## Install
+	@dune install
+
+.PHONY: uninstall
+uninstall: build ## uninstall
+	@dune uninstall
 
 RUN_OCAML_PROTOC = @dune exec -- ocaml-protoc \
 		-I "$(abspath $(GOOGLE_PROTOBUF_FOLDER)/../..)" \
