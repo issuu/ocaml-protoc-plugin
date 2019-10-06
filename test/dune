@@ -36,6 +36,16 @@
        "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
+ (targets int_types_native.ml)
+ (deps
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
+  (:proto int_types_native.proto))
+ (action
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=use_int32;use_int64;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+
+(rule
  (targets repeated.ml)
  (deps
   (:plugin ../src/plugin/protoc_gen_ocaml.exe)

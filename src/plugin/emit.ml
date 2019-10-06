@@ -4,6 +4,8 @@ let sprintf = Printf.sprintf
 let annot = ref ""
 let debug = ref false
 let opens = ref []
+let int64_as_int = ref true
+let int32_as_int = ref true
 
 let parse_parameters parameters =
   String.split ~on:';' parameters
@@ -11,6 +13,8 @@ let parse_parameters parameters =
       match String.split ~on:'=' param with
       | "annot" :: values -> annot := String.concat ~sep:"=" values
       | "open" :: values -> opens := String.concat ~sep:"=" values :: !opens
+      | ["use_int32"] -> int32_as_int := false;
+      | ["use_int64"] -> int64_as_int := false;
       | ["debug"] -> debug := true
       | _ -> failwith ("Unknown parameter: " ^ param)
     )
@@ -94,16 +98,30 @@ let spec_of_field ~prefix scope field_descriptor =
   match field_descriptor with
   | { type_ = Some Type_double; _ } -> "double"
   | { type_ = Some Type_float; _ } -> "float"
+
+  | { type_ = Some Type_int64; _ } when !int64_as_int -> "int64_int"
+  | { type_ = Some Type_uint64; _ } when !int64_as_int -> "uint64_int"
+  | { type_ = Some Type_fixed64; _ } when !int64_as_int -> "fixed64_int"
+  | { type_ = Some Type_sint64; _ } when !int64_as_int -> "sint64_int"
+  | { type_ = Some Type_sfixed64; _ } when !int64_as_int -> "sfixed64_int"
+
+  | { type_ = Some Type_int32; _ } when !int32_as_int -> "int32_int"
+  | { type_ = Some Type_fixed32; _ } when !int32_as_int -> "fixed32_int"
+  | { type_ = Some Type_sfixed32; _ } when !int32_as_int -> "sfixed32_int"
+  | { type_ = Some Type_sint32; _ } when !int32_as_int -> "sint32_int"
+  | { type_ = Some Type_uint32; _ } when !int32_as_int -> "uint32_int"
+
   | { type_ = Some Type_int64; _ } -> "int64"
   | { type_ = Some Type_uint64; _ } -> "uint64"
-  | { type_ = Some Type_int32; _ } -> "int32"
   | { type_ = Some Type_fixed64; _ } -> "fixed64"
+  | { type_ = Some Type_sint64; _ } -> "sint64"
+  | { type_ = Some Type_int32; _ } -> "int32"
   | { type_ = Some Type_fixed32; _ } -> "fixed32"
   | { type_ = Some Type_sfixed32; _ } -> "sfixed32"
   | { type_ = Some Type_sfixed64; _ } -> "sfixed64"
   | { type_ = Some Type_sint32; _ } -> "sint32"
-  | { type_ = Some Type_sint64; _ } -> "sint64"
   | { type_ = Some Type_uint32; _ } -> "uint32"
+
   | { type_ = Some Type_bool; _ } -> "bool"
   | { type_ = Some Type_string; _ } -> "string"
   | { type_ = Some Type_bytes; _ } -> "bytes"
@@ -143,16 +161,21 @@ let type_of_field scope field_descriptor =
   let base_type =
     match field_descriptor with
     | {type_ = Some Type_double; _} | {type_ = Some Type_float; _} -> "float"
+
     | {type_ = Some Type_int64; _}
     | {type_ = Some Type_uint64; _}
-    | {type_ = Some Type_int32; _}
     | {type_ = Some Type_fixed64; _}
+    | {type_ = Some Type_sfixed64; _}
+    | {type_ = Some Type_sint64; _} ->
+      (match !int64_as_int with true -> "int" | false -> "int64")
+
+    | {type_ = Some Type_int32; _}
     | {type_ = Some Type_fixed32; _}
     | {type_ = Some Type_sfixed32; _}
-    | {type_ = Some Type_sfixed64; _}
     | {type_ = Some Type_sint32; _}
-    | {type_ = Some Type_sint64; _}
-    | {type_ = Some Type_uint32; _} -> "int"
+    | {type_ = Some Type_uint32; _} ->
+      (match !int32_as_int with true -> "int" | false -> "int32")
+
     | {type_ = Some Type_bool; _} -> "bool"
     | {type_ = Some Type_string; _} -> "string"
     | {type_ = Some Type_group; _} -> failwith "Groups are deprecated"

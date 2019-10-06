@@ -1,6 +1,6 @@
-[ ] Add options to switch between Int64.t|Int32.t and int
 
-0.9.1:
+0.9.1: Unreleased
+[x] Add options to switch between Int64.t|Int32.t and int
 [x] Fix name clash problem with special enum names
 [x] Refactor serializaton and deserialization to simplify emitted code
 [x] Eagerly optimize serialization.

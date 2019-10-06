@@ -56,19 +56,21 @@ let read_raw_varint t =
   in
   let%bind v = inner [] in
   let v = List.fold_left ~init:0L ~f:(fun acc c -> (acc lsl 7) + c) v in
-  return (to_int_exn v)
+  return v
 
 let read_varint t = read_raw_varint t >>| fun v -> Varint v
 
 let read_field_header : t -> (int * int, error) Result.t =
- fun t ->
+  fun t ->
+  let open Int64 in
   let%bind v = read_raw_varint t in
-  let tpe = v land 0x7 in
-  let field_number = v / 8 in
+  let tpe = v land 0x7L |> to_int_exn in
+  let field_number = v / 8L |> to_int_exn in
   return (tpe, field_number)
 
 let read_length_delimited t =
   let%bind length = read_raw_varint t in
+  let length = Int64.to_int_exn length in
   let%bind () = validate_capacity t length in
   let v = Length_delimited {offset = t.offset; length; data = t.data} in
   t.offset <- t.offset + length;

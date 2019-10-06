@@ -20,16 +20,31 @@ type 'a decoder = Spec.field -> 'a result
 type _ spec =
   | Double : float spec
   | Float : float spec
-  | Int32 : int spec
-  | Int64 : int spec
-  | UInt32 : int spec
-  | UInt64 : int spec
-  | SInt32 : int spec
-  | SInt64 : int spec
-  | Fixed32 : int spec
-  | Fixed64 : int spec
-  | SFixed32 : int spec
-  | SFixed64 : int spec
+
+  | Int32 : Int32.t spec
+  | UInt32 : Int32.t spec
+  | SInt32 : Int32.t spec
+  | Fixed32 : Int32.t spec
+  | SFixed32 : Int32.t spec
+
+  | Int32_int : int spec
+  | UInt32_int : int spec
+  | SInt32_int : int spec
+  | Fixed32_int : int spec
+  | SFixed32_int : int spec
+
+  | UInt64 : Int64.t spec
+  | Int64 : Int64.t spec
+  | SInt64 : Int64.t spec
+  | Fixed64 : Int64.t spec
+  | SFixed64 : Int64.t spec
+
+  | UInt64_int : int spec
+  | Int64_int : int spec
+  | SInt64_int : int spec
+  | Fixed64_int : int spec
+  | SFixed64_int : int spec
+
   | Bool : bool spec
   | String : string spec
   | Bytes : bytes spec
@@ -59,54 +74,87 @@ let error_wrong_field str field : _ result =
 
 let error_illegal_value str field : _ result = `Illegal_value (str, field) |> Result.fail
 
-let read_varint ~signed ~type_name = function
+let read_varint ~signed ~type_name =
+  let open Int64 in
+  function
   | Spec.Varint v -> begin
       let v = match signed with
-        | true when v % 2 = 0 -> v / 2
-        | true -> (v / 2 * -1) - 1
+        | true when v % 2L = 0L -> v / 2L
+        | true -> (v / 2L * -1L) - 1L
         | false -> v
       in
       return v
     end
   | field -> error_wrong_field type_name field
 
+let read_varint32 ~signed ~type_name field =
+  let%bind v = read_varint ~signed ~type_name field in
+  return (Stdlib.Int64.to_int32 v)
+
 let ok_exn = function
   | Ok v -> v
   | Error _ -> failwith "Must contain a usable value"
 
-let type_of_spec: type a. a spec -> 'b * a decoder = function
+
+let rec type_of_spec: type a. a spec -> 'b * a decoder =
+  let int_of_int32 spec =
+    let (tpe, f) = type_of_spec spec in
+    let f field =
+      let%bind v = f field in
+      return (Int32.to_int_exn v)
+    in
+    (tpe, f)
+  in
+
+  let int_of_int64 spec =
+    let (tpe, f) = type_of_spec spec in
+    let f field =
+      let%bind v = f field in
+      return (Stdlib.Int64.to_int v)
+    in
+    (tpe, f)
+  in
+  function
   | Double -> (`Fixed_64_bit, function
       | Spec.Fixed_64_bit v -> return (Int64.float_of_bits v)
       | field -> error_wrong_field "double" field)
   | Float -> (`Fixed_32_bit, function
       | Spec.Fixed_32_bit v -> return (Int32.float_of_bits v)
       | field -> error_wrong_field "float" field)
-  | Int32 -> (`Varint, fun field ->
-      let%bind v = read_varint ~signed:false ~type_name:"int32" field in
-      return (match v lsr 31 with 1 -> v lor 0x7fffffff00000000 | _ -> v)
-    )
-  | Int64 -> (`Varint, read_varint ~signed:false ~type_name:"int64")
-  | UInt32 -> (`Varint, read_varint ~signed:false ~type_name:"uint32")
+  | Int32 -> (`Varint, read_varint32 ~signed:false ~type_name:"int32")
+  | Int32_int -> int_of_int32 Int32
+  | Int64 ->  (`Varint, read_varint ~signed:false ~type_name:"int64")
+  | Int64_int -> int_of_int64 Int64
+  | UInt32 -> (`Varint, read_varint32 ~signed:false ~type_name:"uint32")
+  | UInt32_int -> int_of_int32 UInt32
   | UInt64 -> (`Varint, read_varint ~signed:false ~type_name:"uint64")
-  | SInt32 -> (`Varint, read_varint ~signed:true ~type_name:"sint32")
+  | UInt64_int -> int_of_int64 UInt64
+  | SInt32 -> (`Varint, read_varint32 ~signed:true ~type_name:"sint32")
+  | SInt32_int -> int_of_int32 SInt32
   | SInt64 -> (`Varint, read_varint ~signed:true ~type_name:"sint64")
+  | SInt64_int -> int_of_int64 SInt64
   | Fixed32 -> (`Fixed_32_bit, function
-      | Spec.Fixed_32_bit v -> return (Int32.to_int_exn v)
+      | Spec.Fixed_32_bit v -> return (v)
       | field -> error_wrong_field "fixed32" field)
+  | Fixed32_int -> int_of_int32 Fixed32
   | Fixed64 -> (`Fixed_64_bit, function
-      | Spec.Fixed_64_bit v -> return (Int64.to_int_exn v)
+      | Spec.Fixed_64_bit v -> return v
       | field -> error_wrong_field "fixed64" field)
+  | Fixed64_int -> int_of_int64 Fixed64
+
   | SFixed32 -> (`Fixed_32_bit, function
-      | Spec.Fixed_32_bit v -> return (Int32.to_int_exn v)
+      | Spec.Fixed_32_bit v -> return v
       | field -> error_wrong_field "sfixed32" field)
+  | SFixed32_int -> int_of_int32 SFixed32
   | SFixed64 -> (`Fixed_64_bit, function
-      | Spec.Fixed_64_bit v -> return (Int64.to_int_exn v)
+      | Spec.Fixed_64_bit v -> return v
       | field -> error_wrong_field "sfixed64" field)
+  | SFixed64_int -> int_of_int64 SFixed64
   | Bool -> (`Varint, function
-      | Spec.Varint v -> return (v <> 0)
+      | Spec.Varint v -> return (Int64.equal v 0L |> not)
       | field -> error_wrong_field "bool" field)
   | Enum of_int -> (`Varint, function
-      | Spec.Varint v -> of_int v
+      | Spec.Varint v -> of_int (Stdlib.Int64.to_int v)
       | field -> error_wrong_field "enum" field)
   | String -> (`Length_delimited, function
       | Spec.Length_delimited {offset; length; data} -> return (String.sub ~pos:offset ~len:length data)
@@ -126,7 +174,7 @@ let default_of_field_type = function
   | `Fixed_32_bit -> Spec.fixed_32_bit Int32.zero
   | `Fixed_64_bit -> Spec.fixed_64_bit Int64.zero
   | `Length_delimited -> Spec.length_delimited ""
-  | `Varint -> Spec.Varint 0
+  | `Varint -> Spec.Varint 0L
 
 let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = function
   | Basic (index, (MessageOpt deser)) ->
@@ -261,6 +309,18 @@ module C = struct
   let fixed64 = Fixed64
   let sfixed32 = SFixed32
   let sfixed64 = SFixed64
+
+  let int32_int = Int32_int
+  let int64_int = Int64_int
+  let uint32_int = UInt32_int
+  let uint64_int = UInt64_int
+  let sint32_int = SInt32_int
+  let sint64_int = SInt64_int
+  let fixed32_int = Fixed32_int
+  let fixed64_int = Fixed64_int
+  let sfixed32_int = SFixed32_int
+  let sfixed64_int = SFixed64_int
+
   let bool = Bool
   let string = String
   let bytes = Bytes

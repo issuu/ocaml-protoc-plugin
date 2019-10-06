@@ -4,16 +4,31 @@ open Spec
 type _ spec =
   | Double : float spec
   | Float : float spec
-  | Int32 : int spec
-  | Int64 : int spec
-  | UInt32 : int spec
-  | UInt64 : int spec
-  | SInt32 : int spec
-  | SInt64 : int spec
-  | Fixed32 : int spec
-  | Fixed64 : int spec
-  | SFixed32 : int spec
-  | SFixed64 : int spec
+
+  | Int32 : Int32.t spec
+  | UInt32 : Int32.t spec
+  | SInt32 : Int32.t spec
+  | Fixed32 : Int32.t spec
+  | SFixed32 : Int32.t spec
+
+  | Int32_int : int spec
+  | UInt32_int : int spec
+  | SInt32_int : int spec
+  | Fixed32_int : int spec
+  | SFixed32_int : int spec
+
+  | UInt64 : Int64.t spec
+  | Int64 : Int64.t spec
+  | SInt64 : Int64.t spec
+  | Fixed64 : Int64.t spec
+  | SFixed64 : Int64.t spec
+
+  | UInt64_int : int spec
+  | Int64_int : int spec
+  | SInt64_int : int spec
+  | Fixed64_int : int spec
+  | SFixed64_int : int spec
+
   | Bool : bool spec
   | String : string spec
   | Bytes : bytes spec
@@ -43,45 +58,53 @@ let serialize_message : (int * field) list -> string =
 let unsigned_varint v = Varint v
 
 let signed_varint v =
+  let open Int64 in
   let v =
     match v with
-    | v when v < 0 -> (((v * -1) - 1) * 2) + 1
-    | v -> v * 2
+    | v when is_negative v -> v lsl 1 lxor (-1L)
+    | v -> v lsl 1
   in
   Varint v
 
-let (=) = Poly.(=)
-let%test _ = signed_varint 0 = Varint 0
-let%test _ = signed_varint (-1) = Varint 1
-let%test _ = signed_varint 1 = Varint 2
-let%test _ = signed_varint (-2) = Varint 3
-let%test _ = signed_varint 2147483647 = Varint 4294967294
-let%test _ = signed_varint (-2147483648) = Varint 4294967295
 
 let rec field_of_spec: type a. a spec -> a -> Spec.field = function
   | Double -> fun v -> Fixed_64_bit (Int64.bits_of_float v)
   | Float -> fun v -> Fixed_32_bit (Int32.bits_of_float v)
   | Int64 -> unsigned_varint
+  | Int64_int -> fun v -> unsigned_varint (Int64.of_int v)
   | UInt64 -> unsigned_varint
+  | UInt64_int -> fun v -> unsigned_varint (Int64.of_int v)
   | SInt64 -> signed_varint
-  | Int32 -> fun v -> unsigned_varint (v land 0xffffffff)
-  | UInt32 -> unsigned_varint
-  | SInt32 -> signed_varint
-  | Fixed32 -> fun v -> Fixed_32_bit (Int32.of_int_exn v)
-  | Fixed64 -> fun v -> Fixed_64_bit (Int64.of_int_exn v)
-  | SFixed32 -> fun v -> Fixed_32_bit (Int32.of_int_exn v)
-  | SFixed64 -> fun v -> Fixed_64_bit (Int64.of_int_exn v)
-  | Bool -> fun v -> unsigned_varint (match v with | true -> 1 | false -> 0)
+  | SInt64_int -> fun v -> signed_varint (Int64.of_int v)
+
+  | Int32 -> fun v -> unsigned_varint (Int64.of_int32 v)
+  | Int32_int -> fun v -> unsigned_varint (Int64.of_int v)
+  | UInt32 -> fun v -> unsigned_varint (Int64.of_int32 v)
+  | UInt32_int -> fun v -> unsigned_varint (Int64.of_int v)
+  | SInt32 -> fun v -> signed_varint (Int64.of_int32 v)
+  | SInt32_int -> fun v -> signed_varint (Int64.of_int v)
+
+  | Fixed64 -> fixed_64_bit
+  | Fixed64_int -> fun v -> Fixed_64_bit (Int64.of_int_exn v)
+  | SFixed64 -> fixed_64_bit
+  | SFixed64_int -> fun v -> Fixed_64_bit (Int64.of_int_exn v)
+  | Fixed32 -> fixed_32_bit
+  | Fixed32_int -> fun v -> Fixed_32_bit (Int32.of_int_exn v)
+  | SFixed32 -> fixed_32_bit
+  | SFixed32_int -> fun v -> Fixed_32_bit (Int32.of_int_exn v)
+
+  | Bool -> fun v -> unsigned_varint (match v with | true -> 1L | false -> 0L)
   | String -> fun v -> Length_delimited {offset = 0; length = String.length v; data = v}
   | Bytes -> fun v -> Length_delimited {offset = 0; length = Bytes.length v; data = Bytes.to_string v}
   | Enum f ->
     let to_field = field_of_spec UInt64 in
-    fun v -> f v |> to_field
+    fun v -> f v |> Int64.of_int |> to_field
   | Message to_proto ->
     fun v ->
       let writer = to_proto v in
       Spec.length_delimited (Writer.contents writer)
   | MessageOpt _ -> failwith "Cannot comply"
+
 
 let is_scalar: type a. a spec -> bool = function
   | String -> false
@@ -120,9 +143,9 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
   | Basic (index, spec) -> begin
       let f = field_of_spec spec in
       fun writer v -> match f v with
-        | Varint 0 -> ()
-        | Fixed_64_bit v when v = Int64.zero -> ()
-        | Fixed_32_bit v when v = Int32.zero -> ()
+        | Varint 0L -> ()
+        | Fixed_64_bit 0L -> ()
+        | Fixed_32_bit 0l -> ()
         | Length_delimited {length = 0; _} -> ()
         | field -> Writer.write_field writer index field
     end
@@ -159,6 +182,18 @@ module C = struct
   let fixed64 = Fixed64
   let sfixed32 = SFixed32
   let sfixed64 = SFixed64
+
+  let int32_int = Int32_int
+  let int64_int = Int64_int
+  let uint32_int = UInt32_int
+  let uint64_int = UInt64_int
+  let sint32_int = SInt32_int
+  let sint64_int = SInt64_int
+  let fixed32_int = Fixed32_int
+  let fixed64_int = Fixed64_int
+  let sfixed32_int = SFixed32_int
+  let sfixed64_int = SFixed64_int
+
   let bool = Bool
   let string = String
   let bytes = Bytes
@@ -173,4 +208,14 @@ module C = struct
 
   let ( ^:: ) a b = Cons (a, b)
   let nil = Nil
+end
+
+module Test = struct
+  let (=) = Poly.(=)
+  let%test "signed_varint 0L"  = signed_varint 0L = Varint 0L
+  let%test "signed_varint -1L" = signed_varint (-1L) = Varint 1L
+  let%test "signed_varint 1L" = signed_varint 1L = Varint 2L
+  let%test "signed_varint -2L" = signed_varint (-2L) = Varint 3L
+  let%test "signed_varint 2147483647L"  = signed_varint 2147483647L = Varint 4294967294L
+  let%test "signed_varint -2147483648L"  = signed_varint (-2147483648L) = Varint 4294967295L
 end

@@ -70,6 +70,8 @@ can generate the ocaml code by running
 | annot       | Type annotations.                                               | `annot=[@@deriving show]` |
 | debug       | Enable debugging                                                | `debug`                   |
 | open        | Add open at top of generated files. May be given multiple times | `open=Base.Sexp`          |
+| use_int64   | Map all 64 bit integertypes to Int64.t                          | `use_int64`               |
+| use_int32   | Map all 64 bit integertypes to Int64.t                          | `use_int32`               |
 
 
 Parameters are seperated by `;`
