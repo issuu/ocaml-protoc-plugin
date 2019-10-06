@@ -229,7 +229,7 @@ let emit_service_type scope Spec.Descriptor.{ name; method_ = methods; _ } =
     Code.emit t `None "( (module %s : Protobuf.Service.Message with type t = %s ), "
       (Scope.get_scoped_name scope input_type)
       (Scope.get_scoped_name ~postfix:"t" scope input_type);
-    Code.emit t `None "  (module %s : Protobuf.Service.Message with type t = %s ) ) "
+    Code.emit t `End "  (module %s : Protobuf.Service.Message with type t = %s ) ) "
       (Scope.get_scoped_name scope output_type)
       (Scope.get_scoped_name ~postfix:"t" scope output_type)
   in
@@ -251,7 +251,6 @@ let emit_deserialization_function ~is_map_entry scope all_fields (oneof_decls: S
   let implementation = Code.init () in
   Code.emit signature `None "val from_proto: Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result";
   let _field_names = List.map ~f:(fun field -> field_name field.name) fields in
-  Code.emit implementation `Begin "let rec from_proto =";
 
   (* Create a constructor *)
   let (args, constructor) = match all_fields with
@@ -265,7 +264,6 @@ let emit_deserialization_function ~is_map_entry scope all_fields (oneof_decls: S
       let constructor = sprintf "{ %s }" (String.concat ~sep:"; " (fields @ oneof_fields)) in
       (args, constructor)
   in
-  Code.emit implementation `None "let constructor %s = %s in " args constructor;
 
   (* Create the spec *)
   let spec =
@@ -284,14 +282,15 @@ let emit_deserialization_function ~is_map_entry scope all_fields (oneof_decls: S
     in
     String.concat ~sep:" ^:: " (specs @ oneofs @ ["nil"])
   in
-  let as_function = match is_recursive scope all_fields with
+  let is_recursive = is_recursive scope all_fields in
+  let as_function = match is_recursive with
     | true -> " ()"
     | false -> ""
   in
-
+  Code.emit implementation `Begin "let %sfrom_proto =" (match is_recursive with true -> "rec " | false -> "");
+  Code.emit implementation `None "let constructor %s = %s in " args constructor;
   Code.emit implementation `None "let spec%s = Protobuf.Deserialize.C.( %s ) in" as_function spec;
   Code.emit implementation `None "fun reader -> Protobuf.Deserialize.deserialize (spec%s) constructor reader" as_function;
-  Code.emit implementation `End "[@@warning \"-39\"]";
   signature, implementation
 
 (* Return code for signature and implementation *)
@@ -330,15 +329,15 @@ let emit_serialization_function ~is_map_entry scope all_fields (oneof_decls: Spe
       let destruct = String.concat ~sep:"; " (field_names @ oneof_names) |> sprintf "{ %s }" in
       (destruct, args)
   in
-  let as_function = match is_recursive scope all_fields with
+  let is_recursive = is_recursive scope all_fields in
+  let as_function = match is_recursive with
     | true -> " ()"
     | false -> ""
   in
-  Code.emit implementation `Begin "let rec to_proto = ";
+  Code.emit implementation `Begin "let %sto_proto = " (match is_recursive with true -> "rec " | false -> "");
   Code.emit implementation `None "let spec%s = Protobuf.Serialize.C.( %s ) in" as_function spec;
-  Code.emit implementation `None "let serialize'%s = Protobuf.Serialize.serialize (spec%s) in" as_function as_function;
-  Code.emit implementation `None "fun %s -> serialize'%s () %s" destruct as_function args;
-  Code.emit implementation `End "[@@warning \"-39\"]";
+  Code.emit implementation `None "let serialize%s = Protobuf.Serialize.serialize (spec%s) in" as_function as_function;
+  Code.emit implementation `None "fun %s -> serialize%s () %s" destruct as_function args;
   signature, implementation
 
 let emit_message_type ~is_map_entry scope all_fields oneof_decls =
