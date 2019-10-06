@@ -27,3 +27,9 @@ message Mutual1 {
 message Mutual2 {
   Mutual1 m1 = 17;
 }
+
+message StdTree {
+  StdTree left = 1;
+  int64 value = 2;
+  StdTree right = 3;
+}

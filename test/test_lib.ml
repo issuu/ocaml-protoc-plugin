@@ -14,28 +14,20 @@ let hexlify data =
   |> String.concat ~sep:"-"
   |> Stdlib.Printf.printf "Buffer: '%s'\n"
 
-(** Create a common function for testing. *)
-let test_encode ?dump (type t) (module M : T with type t = t) (expect : t) =
+let dump_protoc name data =
   let protobuf_file, type_name =
-    match String.split ~on:'.' (M.name ()) with
-      | protobuf_name :: type_name ->
-          Printf.sprintf "%s.proto" (String.uncapitalize protobuf_name),
-          String.concat ~sep:"." type_name
+    match String.split ~on:'.' name with
+    | protobuf_name :: type_name ->
+      Printf.sprintf "%s.proto" (String.uncapitalize protobuf_name),
+      String.concat ~sep:"." type_name
       | _ -> failwith "Illegal type name"
   in
-  let filename = Stdlib.Filename.temp_file (M.name ())".bin" in
+  let filename = Stdlib.Filename.temp_file name ".bin" in
   let cout = Stdlib.open_out filename in
-  let data = M.to_proto expect |> Protobuf.Writer.contents in
-  let () =
-    match dump with
-    | Some _ -> hexlify data
-    | None -> ()
-  in
   Stdlib.output_string cout data;
   Stdlib.close_out cout;
   Stdlib.Printf.printf "%!";
-  (* flush *)
-  let _:int = Stdlib.Sys.command
+  let res = Stdlib.Sys.command
       (Printf.sprintf
          "protoc --decode=%s %s < %s"
          type_name
@@ -43,6 +35,23 @@ let test_encode ?dump (type t) (module M : T with type t = t) (expect : t) =
          filename)
   in
   Stdlib.Sys.remove filename;
+  match res with
+  | 0 -> ()
+  | n -> Stdlib.Printf.printf "'protoc' exited with status code: %d\n" n
+
+
+(** Create a common function for testing. *)
+let test_encode (type t) ?dump ?(protoc=true) (module M : T with type t = t) (expect : t) =
+  let data = M.to_proto expect |> Protobuf.Writer.contents in
+  let () =
+    match dump with
+    | Some _ -> hexlify data
+    | None -> ()
+  in
+  let () = match protoc with
+    | true -> dump_protoc (M.name ()) data
+    | false -> ()
+  in
   (* Decode the message *)
   let in_data = Protobuf.Reader.create data in
   match M.from_proto in_data with
