@@ -74,3 +74,6 @@ let get_scoped_name ?postfix t = function
   | None -> failwith "Does not contain a name"
 
 let get_current_scope t = String.concat ~sep:"." (List.rev t.path)
+
+let in_current_scope t name =
+  String.equal (get_scoped_name t (Some name)) ""

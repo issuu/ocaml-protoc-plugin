@@ -216,6 +216,12 @@ let emit_service_type scope Spec.Descriptor.{ name; method_ = methods; _ } =
   Code.emit t `End "end";
   t
 
+let is_recursive scope fields =
+  (* Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name *)
+  List.exists ~f:(function
+      | Spec.Descriptor.{ type_ = Some Type_message; type_name = Some name; _ } -> Scope.in_current_scope scope name
+      | _ -> false) fields
+
 let emit_deserialization_function ~is_map_entry scope all_fields (oneof_decls: Spec.Descriptor.oneof_descriptor_proto list) =
   let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
   let signature = Code.init () in
@@ -255,8 +261,13 @@ let emit_deserialization_function ~is_map_entry scope all_fields (oneof_decls: S
     in
     String.concat ~sep:" ^:: " (specs @ oneofs @ ["nil"])
   in
-  Code.emit implementation `None "let spec () = Protobuf.Deserialize.C.( %s ) in" spec;
-  Code.emit implementation `None "fun reader -> Protobuf.Deserialize.deserialize (spec ()) constructor reader";
+  let as_function = match is_recursive scope all_fields with
+    | true -> " ()"
+    | false -> ""
+  in
+
+  Code.emit implementation `None "let spec%s = Protobuf.Deserialize.C.( %s ) in" as_function spec;
+  Code.emit implementation `None "fun reader -> Protobuf.Deserialize.deserialize (spec%s) constructor reader" as_function;
   Code.emit implementation `End "[@@warning \"-39\"]";
   signature, implementation
 
@@ -296,9 +307,13 @@ let emit_serialization_function ~is_map_entry scope all_fields (oneof_decls: Spe
       let destruct = String.concat ~sep:"; " (field_names @ oneof_names) |> sprintf "{ %s }" in
       (destruct, args)
   in
+  let as_function = match is_recursive scope all_fields with
+    | true -> " ()"
+    | false -> ""
+  in
   Code.emit implementation `Begin "let rec to_proto = ";
-  Code.emit implementation `None "let spec () = Protobuf.Serialize.C.( %s ) in" spec;
-  Code.emit implementation `None "fun %s -> Protobuf.Serialize.serialize (spec ()) %s" destruct args;
+  Code.emit implementation `None "let spec%s = Protobuf.Serialize.C.( %s ) in" as_function spec;
+  Code.emit implementation `None "fun %s -> Protobuf.Serialize.serialize (spec%s) %s" destruct as_function args;
   Code.emit implementation `End "[@@warning \"-39\"]";
   signature, implementation
 
