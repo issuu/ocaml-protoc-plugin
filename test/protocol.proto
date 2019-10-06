@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+message Message {
+  int64 i = 3;
+}
+
+message Old {
+  repeated Message messages = 1;
+  repeated Message oneof_messages = 10;
+  string oneof_i = 20;
+  int64 oneof_j = 30;
+}
+
+message New {
+  Message message = 1;
+  oneof oneof {
+    Message oneof_messages = 10;
+    string oneof_i = 20;
+    int64 oneof_j = 30;
+  }
+}
+
+message List {
+  repeated int64 is = 1;
+}
