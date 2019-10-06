@@ -92,24 +92,24 @@ let is_scalar: type a. a spec -> bool = function
   | MessageOpt _ -> false
   | _ -> true
 
-let rec write: type a. Writer.t -> a compound -> a -> unit = fun writer ->
-  function
+let rec write: type a. a compound -> Writer.t -> a -> unit = function
   | Basic (index, MessageOpt (to_proto)) -> begin
-      function
+      fun writer -> function
       | Some v ->
         let v = to_proto v in
         Writer.concat_as_length_delimited writer ~src:v index
       | None -> ()
     end
   | Basic (index, Message (to_proto)) ->
-    fun v ->
+    fun writer v ->
       let v = to_proto v in
       Writer.concat_as_length_delimited writer ~src:v index
   | Repeated (index, Message to_proto) ->
-    fun vs -> List.iter ~f:(fun v -> write writer (Basic (index, Message to_proto)) v) vs
+    let write = write (Basic (index, Message to_proto)) in
+    fun writer vs -> List.iter ~f:(fun v -> write writer v) vs
   | Repeated (index, spec) when is_scalar spec -> begin
       let f = field_of_spec spec in
-      function
+      fun writer -> function
       | [] -> ()
       | vs ->
         let writer' = Writer.init () in
@@ -118,29 +118,34 @@ let rec write: type a. Writer.t -> a compound -> a -> unit = fun writer ->
     end
   | Repeated (index, spec) ->
       let f = field_of_spec spec in
-      fun vs -> List.iter ~f:(fun v -> Writer.write_field writer index (f v)) vs
+      fun writer vs -> List.iter ~f:(fun v -> Writer.write_field writer index (f v)) vs
   | Basic (index, spec) -> begin
       let f = field_of_spec spec in
-      fun v -> match f v with
+      fun writer v -> match f v with
         | Varint 0 -> ()
         | Fixed_64_bit v when v = Int64.zero -> ()
         | Fixed_32_bit v when v = Int32.zero -> ()
         | Length_delimited {length = 0; _} -> ()
         | field -> Writer.write_field writer index field
     end
-  | Oneof f -> fun v ->
-    let Oneof_elem (index, spec, v) = f v in
-    write writer (Basic (index, spec)) v
+  | Oneof f ->
+    fun writer v ->
+      let Oneof_elem (index, spec, v) = f v in
+      write (Basic (index, spec)) writer v
 
 (** Allow emitted code to present a protobuf specification. *)
-let rec serialize : type a. Writer.t -> (a, Writer.t) compound_list -> a = fun writer -> function
-  | Nil -> writer
+let rec serialize : type a. (a, Writer.t) compound_list -> Writer.t -> a = function
+  | Nil -> fun writer -> writer
   | Cons (compound, rest) ->
-    fun v -> write writer compound v;
-      serialize writer rest
+    let cont = serialize rest in
+    let write = write compound in
+    fun writer v ->
+      write writer v;
+      cont writer
 
-let serialize spec = serialize (Writer.init ()) spec
-
+let serialize spec =
+  let serialize = serialize spec in
+  fun () -> serialize (Writer.init ())
 
 (** Module to construct a spec *)
 module C = struct

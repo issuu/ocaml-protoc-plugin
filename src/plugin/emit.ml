@@ -313,7 +313,8 @@ let emit_serialization_function ~is_map_entry scope all_fields (oneof_decls: Spe
   in
   Code.emit implementation `Begin "let rec to_proto = ";
   Code.emit implementation `None "let spec%s = Protobuf.Serialize.C.( %s ) in" as_function spec;
-  Code.emit implementation `None "fun %s -> Protobuf.Serialize.serialize (spec%s) %s" destruct as_function args;
+  Code.emit implementation `None "let serialize'%s = Protobuf.Serialize.serialize (spec%s) in" as_function as_function;
+  Code.emit implementation `None "fun %s -> serialize'%s () %s" destruct as_function args;
   Code.emit implementation `End "[@@warning \"-39\"]";
   signature, implementation
 
