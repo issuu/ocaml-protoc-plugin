@@ -33,8 +33,6 @@ type (_, _) compound_list =
   | Nil : ('a, 'a) compound_list
   | Cons : 'a compound * ('b, 'c) compound_list -> ('a -> 'b, 'c) compound_list
 
-let ( ^:: ) a b = Cons (a, b)
-
 (* Take a list of fields and return a field *)
 let serialize_message : (int * field) list -> string =
  fun fields ->
