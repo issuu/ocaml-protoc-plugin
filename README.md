@@ -32,10 +32,15 @@ Primitive types:
 
 | Protobuf Type | Ocaml type      |
 | ------------- | ----------      |
-| Integers      | int             |
-| Real          | float           |
+| int32, int64, uint32, uint64, sint32, sint64, fixed64, sfixed64, fixed32, sfixed32   | int*    |
+| bool          | bool|
+| float, double | float           |
 | string        | string          |
 | bytes         | bytes           |
+
+(*) The plugin supports changing the type for scalar types to
+int64/int32. See options section below
+
 
 A message <name> declaration is compiled to a module <Name> with a record type
 `t`. However, messages without any fields are mapped to unit.
@@ -47,13 +52,13 @@ their fill name.
 
 Compound types are mapped like:
 
-| Protobuf Type | Ocaml type                                                            |
+| Protobuf Type | Ocaml type                                                              |
 | ------------- | ----------                                                              |
-| oneof         | Polymorphic variants:  `[ Field1 of fieldtype1, Field1 of fieldtype2 ]`  |
+| oneof         | Polymorphic variants:  `[ Field1 of fieldtype1, Field1 of fieldtype2 ]` |
 | repeated 'a   | 'a list                                                                 |
-| message       | message option                                                         |
-| enum          | Abstract data types: `` Enum1, Enum2, Enum3 ``                           |
-| map<'a, 'b>   | ('a * 'b) list |
+| message       | message option                                                          |
+| enum          | Abstract data types: `` Enum1, Enum2, Enum3 ``                          |
+| map<'a, 'b>   | ('a * 'b) list                                                          |
 
 ## Invocation
 If the plugin is available in the path as `protoc-gen-ocaml`, then you
@@ -70,9 +75,8 @@ can generate the ocaml code by running
 | annot       | Type annotations.                                               | `annot=[@@deriving show]` |
 | debug       | Enable debugging                                                | `debug`                   |
 | open        | Add open at top of generated files. May be given multiple times | `open=Base.Sexp`          |
-| use_int64   | Map all 64 bit integertypes to Int64.t                          | `use_int64`               |
-| use_int32   | Map all 64 bit integertypes to Int64.t                          | `use_int32`               |
-
+| use_int64   | Map all 64 bit integertypes to int64                            | `use_int64`               |
+| use_int32   | Map all 32 bit integertypes to int32                            | `use_int32`               |
 
 Parameters are seperated by `;`
 
