@@ -1,6 +1,8 @@
 open Base
 open Spec
 
+type 'a default = Not_set | Default of 'a | Always
+
 type _ spec =
   | Double : float spec
   | Float : float spec
@@ -41,7 +43,7 @@ type _ oneof_elem =
 
 type _ compound =
   | Repeated : (int * 'a spec) -> 'a list compound
-  | Basic : (int * 'a spec) -> 'a compound
+  | Basic : (int * 'a spec * 'a default) -> 'a compound
   | Oneof : ('a -> unit oneof_elem) -> 'a compound
 
 type (_, _) compound_list =
@@ -114,19 +116,19 @@ let is_scalar: type a. a spec -> bool = function
   | _ -> true
 
 let rec write: type a. a compound -> Writer.t -> a -> unit = function
-  | Basic (index, Message_opt (to_proto)) -> begin
+  | Basic (index, Message_opt (to_proto), _) -> begin
       fun writer -> function
       | Some v ->
         let v = to_proto v in
         Writer.concat_as_length_delimited writer ~src:v index
       | None -> ()
     end
-  | Basic (index, Message (to_proto)) ->
+  | Basic (index, Message (to_proto), _) ->
     fun writer v ->
       let v = to_proto v in
       Writer.concat_as_length_delimited writer ~src:v index
   | Repeated (index, Message to_proto) ->
-    let write = write (Basic (index, Message to_proto)) in
+    let write = write (Basic (index, Message to_proto, Always)) in
     fun writer vs -> List.iter ~f:(fun v -> write writer v) vs
   | Repeated (index, spec) when is_scalar spec -> begin
       let f = field_of_spec spec in
@@ -140,19 +142,28 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
   | Repeated (index, spec) ->
       let f = field_of_spec spec in
       fun writer vs -> List.iter ~f:(fun v -> Writer.write_field writer index (f v)) vs
-  | Basic (index, spec) -> begin
+  | Basic (index, spec, default) -> begin
       let f = field_of_spec spec in
-      fun writer v -> match f v with
-        | Varint 0L -> ()
-        | Fixed_64_bit 0L -> ()
-        | Fixed_32_bit 0l -> ()
-        | Length_delimited {length = 0; _} -> ()
-        | field -> Writer.write_field writer index field
+      match default with
+      | Default default -> begin
+          fun writer v -> match Poly.equal v default with
+            | true -> ()
+            | false -> Writer.write_field writer index (f v)
+        end
+      | Not_set -> begin
+          fun writer v -> match f v with
+            | Varint 0L -> ()
+            | Fixed_64_bit 0L -> ()
+            | Fixed_32_bit 0l -> ()
+            | Length_delimited {length = 0; _} -> ()
+            | field -> Writer.write_field writer index field
+        end
+      | Always -> fun writer v -> Writer.write_field writer index (f v)
     end
   | Oneof f ->
     fun writer v ->
-      let Oneof_elem (index, spec, v) = f v in
-      write (Basic (index, spec)) writer v
+      let Oneof_elem (index, spec, v) = f v in (* Ouch. We do not write oneof fields with default values??? *)
+      write (Basic (index, spec, Always)) writer v
 
 (** Allow emitted code to present a protobuf specification. *)
 let rec serialize : type a. (a, Writer.t) compound_list -> Writer.t -> a = function
@@ -205,6 +216,10 @@ module C = struct
   let basic s = Basic s
   let oneof s = Oneof s
   let oneof_elem (a, b, c) = Oneof_elem (a, b, c)
+
+  let not_set = Not_set
+  let default v = Default v
+  let always = Always
 
   let ( ^:: ) a b = Cons (a, b)
   let nil = Nil

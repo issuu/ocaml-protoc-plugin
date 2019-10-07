@@ -13,3 +13,21 @@ let%expect_test _ =
   Test_lib.test_encode (module T) t;
   [%expect {|
     f3: "test" |}]
+
+let%expect_test "Multiple oneofs" =
+  let module T = Oneof.Test3 in
+  let t = T.{ x = `X1 3; y = `Y2 5; z = `Z1 7 } in
+  Test_lib.test_encode (module T) t;
+  [%expect {|
+    x1: 3
+    y2: 5
+    z1: 7 |}]
+
+let%expect_test "Default values in oneof" =
+  let module T = Oneof.Test3 in
+  let t = T.{ x = `X1 0; y = `Y2 0; z = `Z2 0 } in
+  Test_lib.test_encode (module T) t;
+  [%expect {|
+    x1: 0
+    y2: 0
+    z2: 0 |}]

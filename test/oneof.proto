@@ -22,3 +22,20 @@ message Test2 {
     string f3 = 2;
   }
 }
+
+message Test3 {
+  oneof x {
+    sint64 x1 = 10;
+    sint64 x2 = 20;
+  }
+
+  oneof y {
+    sint64 y1 = 100;
+    sint64 y2 = 200;
+  }
+
+  oneof z {
+    sint64 z1 = 1000;
+    sint64 z2 = 2000;
+  }
+}

@@ -16,6 +16,7 @@ type nonrec 'a result = ('a, error) Result.t
 
 type 'a sentinal = unit -> 'a result
 type 'a decoder = Spec.field -> 'a result
+type 'a default = Not_set | Default of 'a | Always
 
 type _ spec =
   | Double : float spec
@@ -56,7 +57,7 @@ type _ oneof =
   | Oneof_elem : (int * 'b spec * ('b -> 'a)) -> 'a oneof
 
 type _ compound =
-  | Basic : int * 'a spec -> 'a compound
+  | Basic : int * 'a spec * 'a default -> 'a compound
   | Repeated : int * 'a spec -> 'a list compound
   | Oneof : 'a oneof list -> 'a compound
 
@@ -177,7 +178,7 @@ let default_of_field_type = function
   | `Varint -> Spec.Varint 0L
 
 let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = function
-  | Basic (index, (Message_opt deser)) ->
+  | Basic (index, (Message_opt deser), _) ->
     let v = ref None in
     let get () = return !v in
     let read = function
@@ -190,9 +191,20 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
     in
     ([index, read], get)
 
-  | Basic (index, spec) ->
+  | Basic (index, spec, default) ->
     let field_type, read = type_of_spec spec in
-    let v = ref (read (default_of_field_type field_type) |> function Ok v -> v | Error _ -> failwith "Default value not decodable") in
+    let default = match default with
+      | Default default -> default
+      | Always
+      | Not_set -> begin
+          default_of_field_type field_type
+          |> read
+          |> function
+          | Ok v -> v
+          | Error _ -> failwith "Default value not decodable"
+        end
+    in
+    let v = ref default in
     let get () = return !v in
     let read field =
       let%bind value = read field in
@@ -328,8 +340,12 @@ module C = struct
   let message f = Message f
   let message_opt f = Message_opt f
 
+  let not_set = Not_set
+  let default v = Default v
+  let always = Always
+
   let repeated (i, s) = Repeated (i, s)
-  let basic (i, s) = Basic (i, s)
+  let basic (i, s, d) = Basic (i, s, d)
   let oneof s = Oneof s
   let oneof_elem s = Oneof_elem s
 

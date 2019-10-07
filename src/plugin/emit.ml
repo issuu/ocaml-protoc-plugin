@@ -151,7 +151,7 @@ let compound_of_field ~prefix scope field_descriptor =
   | {label = Some Label_repeated; number = Some index; _} ->
     sprintf "repeated (%d, %s)" index spec;
   | {number = Some index; _} ->
-    sprintf "basic (%d, %s)" index spec
+    sprintf "basic (%d, %s, not_set)" index spec
 
 (** Get the stringified name of a type.
     Consider moving this to Protocol somewhere. So types are next to each other.
@@ -299,7 +299,6 @@ let emit_serialization_function ~is_map_entry scope all_fields (oneof_decls: Spe
   let signature = Code.init () in
   let implementation = Code.init () in
   Code.emit signature `None "val to_proto: t -> Protobuf.Writer.t";
-  (* Oneofs here should be `A v -> index, spec (basic), v *)
   let oneof_field_spec =
     oneof_decls
     |> List.map ~f:(fun (_decl, fields) ->
