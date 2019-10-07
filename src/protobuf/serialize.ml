@@ -34,7 +34,7 @@ type _ spec =
   | Bytes : bytes spec
   | Enum: ('a -> int) -> 'a spec
   | Message: ('a -> Writer.t) -> 'a spec
-  | MessageOpt: ('a -> Writer.t) -> 'a option spec
+  | Message_opt: ('a -> Writer.t) -> 'a option spec
 
 type _ oneof_elem =
   | Oneof_elem : (int * 'b spec * 'b) -> unit oneof_elem
@@ -103,18 +103,18 @@ let rec field_of_spec: type a. a spec -> a -> Spec.field = function
     fun v ->
       let writer = to_proto v in
       Spec.length_delimited (Writer.contents writer)
-  | MessageOpt _ -> failwith "Cannot comply"
+  | Message_opt _ -> failwith "Cannot comply"
 
 
 let is_scalar: type a. a spec -> bool = function
   | String -> false
   | Bytes -> false
   | Message _ -> false
-  | MessageOpt _ -> false
+  | Message_opt _ -> false
   | _ -> true
 
 let rec write: type a. a compound -> Writer.t -> a -> unit = function
-  | Basic (index, MessageOpt (to_proto)) -> begin
+  | Basic (index, Message_opt (to_proto)) -> begin
       fun writer -> function
       | Some v ->
         let v = to_proto v in
@@ -199,7 +199,7 @@ module C = struct
   let bytes = Bytes
   let enum f = Enum f
   let message f = Message f
-  let messageopt f = MessageOpt f
+  let message_opt f = Message_opt f
 
   let repeated s = Repeated s
   let basic s = Basic s

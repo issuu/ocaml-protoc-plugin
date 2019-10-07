@@ -138,7 +138,7 @@ let spec_of_field ~prefix scope field_descriptor =
     sprintf "message %s" proto_func
   | { type_ = Some Type_message; type_name; _ } ->
     let proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
-    sprintf "messageopt %s" proto_func
+    sprintf "message_opt %s" proto_func
   | _ -> failwith "Unknown type"
 
 

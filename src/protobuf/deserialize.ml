@@ -50,7 +50,7 @@ type _ spec =
   | Bytes : bytes spec
   | Enum: (int -> 'a result) -> 'a spec
   | Message: (Reader.t -> 'a result) -> 'a spec
-  | MessageOpt: (Reader.t -> 'a result) -> 'a option spec
+  | Message_opt: (Reader.t -> 'a result) -> 'a option spec
 
 type _ oneof =
   | Oneof_elem : (int * 'b spec * ('b -> 'a)) -> 'a oneof
@@ -165,7 +165,7 @@ let rec type_of_spec: type a. a spec -> 'b * a decoder =
   | Message from_proto -> (`Length_delimited, function
       | Spec.Length_delimited {offset; length; data} -> from_proto (Reader.create ~offset ~length data)
       | field ->  error_wrong_field "message" field)
-  | MessageOpt from_proto -> (`Length_delimited, function
+  | Message_opt from_proto -> (`Length_delimited, function
       | Spec.Length_delimited {offset; length; data} -> from_proto (Reader.create ~offset ~length data) |> Result.map ~f:Option.some
       | field ->  error_wrong_field "message" field)
 
@@ -177,7 +177,7 @@ let default_of_field_type = function
   | `Varint -> Spec.Varint 0L
 
 let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = function
-  | Basic (index, (MessageOpt deser)) ->
+  | Basic (index, (Message_opt deser)) ->
     let v = ref None in
     let get () = return !v in
     let read = function
@@ -326,7 +326,7 @@ module C = struct
   let bytes = Bytes
   let enum f = Enum f
   let message f = Message f
-  let messageopt f = MessageOpt f
+  let message_opt f = Message_opt f
 
   let repeated (i, s) = Repeated (i, s)
   let basic (i, s) = Basic (i, s)
