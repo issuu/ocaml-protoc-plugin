@@ -1,5 +1,7 @@
-- [ ] Support proto2
 - [ ] Make fixed scalar types default to int32 and int64
+- [ ] Support default values (proto2)
+- [ ] Support required (proto2) fields
+- [ ] Honour [packed=false] flag.
 
 ## 0.9.1: Unreleased
 - [x] Add options to switch between int64|int32 and int
