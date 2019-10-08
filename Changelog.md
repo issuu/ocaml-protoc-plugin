@@ -1,5 +1,5 @@
 - [ ] Unify spec
-- [ ] Bootstrap self
+- [ ] Support enum entries with same id
 
 ## 0.9.1: Unreleased
 - [x] Honour [packed=...] flag.
@@ -10,7 +10,7 @@
 - [x] Add options to switch between int64|int32 and int
 - [x] Fix name clash problem with special enum names
 - [x] Refactor serializaton and deserialization to simplify emitted code
-- [x] Eagerly optimize serialization.
+- [x] Eagerly evaluate serialization (for speed).
 
 ## 0.9: 2019-09-25
 - [x] Initial Release
