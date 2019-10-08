@@ -18,6 +18,7 @@ type nonrec 'a result = ('a, error) Result.t
 type 'a sentinal = unit -> 'a result
 type 'a decoder = Spec.field -> 'a result
 type 'a default = Proto3 | Proto2 of 'a option | Required
+type packed = Packed | Not_packed
 
 type _ spec =
   | Double : float spec
@@ -59,7 +60,7 @@ type _ oneof =
 
 type _ compound =
   | Basic : int * 'a spec * 'a default -> 'a compound
-  | Repeated : int * 'a spec -> 'a list compound
+  | Repeated : int * 'a spec * packed -> 'a list compound
   | Oneof : 'a oneof list -> 'a compound
 
 type (_, _) compound_list =
@@ -223,7 +224,7 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
       return ()
     in
     ([index, read], get)
-  | Repeated (index, spec) ->
+  | Repeated (index, spec, _) ->
     let read_field = function
       | `Length_delimited -> None
       | `Varint -> Some Reader.read_varint
@@ -358,10 +359,13 @@ module C = struct
   let proto3 = Proto3
   let required = Required
 
-  let repeated (i, s) = Repeated (i, s)
+  let repeated (i, s, p) = Repeated (i, s, p)
   let basic (i, s, d) = Basic (i, s, d)
   let oneof s = Oneof s
   let oneof_elem s = Oneof_elem s
+
+  let packed = Packed
+  let not_packed = Not_packed
 
   let ( ^:: ) a b = Cons (a, b)
   let nil = Nil

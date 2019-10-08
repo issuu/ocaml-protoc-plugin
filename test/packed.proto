@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+message Packed {
+  repeated uint64 i = 1;
+}
+
+message Not_packed {
+  repeated uint64 i = 1 [packed = false];
+}
+
+message UInt {
+  uint64 i = 1;
+}
+
+message String {
+  string s = 1;
+}

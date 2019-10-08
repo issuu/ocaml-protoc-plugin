@@ -179,14 +179,22 @@ let make_default_value ~type_name scope default =
     |> sprintf "proto2 (some %s)"
   | _ -> failwith "Unsupported default value"
 
+
+let get_packed ~syntax options =
+  match syntax, options with
+  | _, Some (Spec.Descriptor.{ packed = Some true; _ }) -> "packed"
+  | _, Some (Spec.Descriptor.{ packed = Some false; _ }) -> "not_packed"
+  | Proto2, _ -> "not_packed"
+  | Proto3, _ -> "packed"
+
 let compound_of_field ~syntax ~prefix scope field_descriptor =
   let open Spec.Descriptor in
   let spec = spec_of_field ~prefix scope field_descriptor in
   match field_descriptor with
   | {oneof_index = Some _; _} -> failwith "oneofs not supported here"
   | {number = None; _} -> failwith "all fields must have a number"
-  | {label = Some Label_repeated; number = Some index; _} ->
-    sprintf "repeated (%d, %s)" index spec;
+  | {label = Some Label_repeated; number = Some index; options; _} ->
+    sprintf "repeated (%d, %s, %s)" index spec (get_packed ~syntax options);
   | {number = Some index; label = Some Label_required; _} ->
     sprintf "basic (%d, %s, required)" index spec
   | {number = Some index; default_value = Some default; type_ = Some type_; type_name; _} when Poly.equal syntax Proto2 ->

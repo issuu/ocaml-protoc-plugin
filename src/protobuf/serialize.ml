@@ -2,6 +2,7 @@ open Base
 open Spec
 
 type 'a default = Proto3 | Proto2 of 'a option | Required
+type packed = Packed | Not_packed
 
 type _ spec =
   | Double : float spec
@@ -39,11 +40,11 @@ type _ spec =
   | Message_opt: ('a -> Writer.t) -> 'a option spec
 
 type _ oneof_elem =
-  | Oneof_elem : (int * 'b spec * 'b) -> unit oneof_elem
+  | Oneof_elem : int * 'b spec * 'b -> unit oneof_elem
 
 type _ compound =
-  | Repeated : (int * 'a spec) -> 'a list compound
-  | Basic : (int * 'a spec * 'a default) -> 'a compound
+  | Repeated : int * 'a spec * packed -> 'a list compound
+  | Basic : int * 'a spec * 'a default -> 'a compound
   | Oneof : ('a -> unit oneof_elem) -> 'a compound
 
 type (_, _) compound_list =
@@ -127,10 +128,10 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
     fun writer v ->
       let v = to_proto v in
       Writer.concat_as_length_delimited writer ~src:v index
-  | Repeated (index, Message to_proto) ->
+  | Repeated (index, Message to_proto, _) ->
     let write = write (Basic (index, Message to_proto, Required)) in
     fun writer vs -> List.iter ~f:(fun v -> write writer v) vs
-  | Repeated (index, spec) when is_scalar spec -> begin
+  | Repeated (index, spec, Packed) when is_scalar spec -> begin
       let f = field_of_spec spec in
       fun writer -> function
       | [] -> ()
@@ -139,7 +140,7 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
         List.iter ~f:(fun v -> Writer.add_field writer' (f v)) vs;
         Writer.concat_as_length_delimited writer ~src:writer' index
     end
-  | Repeated (index, spec) ->
+  | Repeated (index, spec, _) ->
       let f = field_of_spec spec in
       fun writer vs -> List.iter ~f:(fun v -> Writer.write_field writer index (f v)) vs
   | Basic (index, spec, default) -> begin
@@ -208,8 +209,8 @@ module C = struct
   let message f = Message f
   let message_opt f = Message_opt f
 
-  let repeated s = Repeated s
-  let basic s = Basic s
+  let repeated (a, b, c) = Repeated (a, b, c)
+  let basic (a, b, c) = Basic (a, b, c)
   let oneof s = Oneof s
   let oneof_elem (a, b, c) = Oneof_elem (a, b, c)
 
@@ -219,6 +220,9 @@ module C = struct
   let proto2_bytes v = Proto2 (Some (Bytes.of_string v))
   let proto3 = Proto3
   let required = Required
+
+  let packed = Packed
+  let not_packed = Not_packed
 
   let ( ^:: ) a b = Cons (a, b)
   let nil = Nil

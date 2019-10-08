@@ -1,6 +1,8 @@
-- [ ] Honour [packed=false] flag.
+- [ ] Unify spec
+- [ ] Bootstrap self
 
 ## 0.9.1: Unreleased
+- [x] Honour [packed=...] flag.
 - [x] Make fixed scalar types default to int32 and int64
 - [x] Always serialize proto2 type fields
 - [x] Support default values (proto2)
