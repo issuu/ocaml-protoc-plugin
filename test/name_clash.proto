@@ -1,0 +1,32 @@
+
+syntax = "proto3";
+
+message Protobuf {
+  int64 Protobuf = 1;
+}
+message Enum {
+  int64 enum = 1;
+}
+message Enum1 {
+  int64 Enum1 = 1;
+}
+message struct {
+  int64 struct = 1;
+}
+message end {
+  int64 End = 1;
+}
+message basic {
+  int64 Basic = 1;
+  int64 Int64 = 2;
+}
+message _Enum {
+  int64 i = 1;
+}
+message _enum {
+  int64 i = 1;
+}
+
+message equal {
+  int64 equal = 1;
+}

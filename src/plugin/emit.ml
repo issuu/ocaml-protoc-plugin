@@ -30,11 +30,16 @@ let is_reserved = function
   | "private" | "rec" | "sig" | "struct" | "then" | "to" | "true" | "try" | "type"
   | "val" | "virtual" | "when" | "while" | "with" ->
     true
-  | "from_proto" | "to_proto" -> true
   | _ -> false
 
 (* Remember to mangle reserved keywords *)
-let module_name name = String.capitalize (Option.value_exn name)
+let module_name name =
+  let name = Option.value_exn name in
+  let name = match String.get name 0 with
+    | '_' -> "P" ^ name ^ "'" (* Change to a name that protobuf cannot create *)
+    | _ -> name
+  in
+  String.capitalize name
 
 (* Remember to mangle reserved keywords *)
 let field_name (field_name : string option) =

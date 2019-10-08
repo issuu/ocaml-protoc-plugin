@@ -1,0 +1,16 @@
+syntax = "proto2";
+
+message A {
+  optional uint64 i = 2 [default = 4];
+}
+
+
+message Message {
+  enum E {
+    A = 0;
+    B = 1;
+    C = 2;
+  }
+  optional E enum = 1;
+  optional uint64 i = 2 [default = 4];
+}

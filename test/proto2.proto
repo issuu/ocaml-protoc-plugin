@@ -1,0 +1,14 @@
+
+syntax = "proto2";
+
+package protoc.plugin.test;
+
+message Message {
+    optional int32 optional_field = 1;
+    required int32 required_field = 2;
+    optional string optional_string_with_default = 3 [default = "default string"];
+    optional uint32 optional_int_with_default = 4 [default = 27];
+
+    oneof protobuf {
+    }
+}

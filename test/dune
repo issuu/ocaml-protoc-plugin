@@ -167,6 +167,25 @@
        "--plugin=protoc-gen-ocaml=%{plugin}"
        "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
+(rule
+ (targets name_clash.ml)
+ (deps
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
+  (:proto name_clash.proto))
+ (action
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+
+(rule
+ (targets default.ml)
+ (deps
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
+  (:proto default.proto))
+ (action
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 
 ; (rule
