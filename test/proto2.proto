@@ -1,14 +1,28 @@
-
 syntax = "proto2";
 
-package protoc.plugin.test;
+message A {
+  optional uint64 i = 2 [default = 4];
+}
+
 
 message Message {
-    optional int32 optional_field = 1;
-    required int32 required_field = 2;
-    optional string optional_string_with_default = 3 [default = "default string"];
-    optional uint32 optional_int_with_default = 4 [default = 27];
+  enum E {
+    A = 0;
+    B = 1;
+    C = 2;
+  }
+  optional E enum = 1;
+  optional uint64 i = 2 [default = 4];
+}
 
-    oneof protobuf {
-    }
+message Message1 {
+  enum E { A = 0; B = 1; C = 2; };
+  optional int32 opt = 1;
+  required int32 req = 2;
+  optional string s = 3 [default = "default string"];
+  optional uint32 u = 4 [default = 27];
+  optional bytes  b = 5 [default = "default bytes"];
+  optional uint64 c = 6 [default = 27];
+  optional float  f = 7 [default = 27];
+  optional E e = 8 [default = B];
 }

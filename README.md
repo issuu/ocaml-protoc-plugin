@@ -10,8 +10,9 @@ The main features include:
 * Messages are mapped to idiomatic OCaml types, using modules
 * Support service descriptions
 * Full proto3 compliant
+* Partial proto2 compliant(*)
 
-
+(*) See section about proto2 compliance.
 
 
 ## Comparisson with other OCaml protobuf handlers.
@@ -46,8 +47,8 @@ A message <name> declaration is compiled to a module <Name> with a record type
 `t`. However, messages without any fields are mapped to unit.
 
 Packages are trivially mapped to modules.
-Included proto files (<name>.proto) are assumed to have been compiled
-to <name>.ml, and types in included proto files are referenced by
+Included proto files (`<name>.proto`) are assumed to have been compiled
+to `<name>.ml`, and types in included proto files are referenced by
 their fill name.
 
 Compound types are mapped like:
@@ -59,6 +60,32 @@ Compound types are mapped like:
 | message       | message option                                                          |
 | enum          | Abstract data types: `` Enum1, Enum2, Enum3 ``                          |
 | map<'a, 'b>   | ('a * 'b) list                                                          |
+
+
+## Proto2 type support
+The specification for proto2 states that when deserializing a message,
+fields which are not transmitted should be set the the default value
+(either 0, or the value of the default option).
+
+The specification is vague when it comes to serializing
+fields (i.e. should fields with default values be serialized?).
+This implementation chooses to always serialize all values, default or otherwise.
+(proto3 explicitly states that fields with default values does not
+need to be transmitted)
+
+Most proto2 implementations keep track of which fields have been
+received and which have not. `ocaml-protoc-plugin` chooses not to hold
+on to this information, which means that for field of `uint64` with the
+value of 0 (or the default value if specified), the user cannot know
+if the fields was present in the deserialized message or not. This
+also means that serialization and deserialization is not
+symmetrical.
+
+There are examples where this can cause ambiguities when interpreting
+a proto2 message. My advice would be to set an 'illegal' default
+value on fields where its important to know if the field was
+transmitted or not.
+
 
 ## Invocation
 If the plugin is available in the path as `protoc-gen-ocaml`, then you
@@ -75,8 +102,8 @@ can generate the ocaml code by running
 | annot       | Type annotations.                                               | `annot=[@@deriving show]` |
 | debug       | Enable debugging                                                | `debug`                   |
 | open        | Add open at top of generated files. May be given multiple times | `open=Base.Sexp`          |
-| use_int64   | Map all 64 bit integertypes to int64                            | `use_int64`               |
-| use_int32   | Map all 32 bit integertypes to int32                            | `use_int32`               |
+| use_int64   | Map all 64 bit integer types to int64                            | `use_int64`               |
+| use_int32   | Map all 32 bit integer types to int32                            | `use_int32`               |
 
 Parameters are seperated by `;`
 

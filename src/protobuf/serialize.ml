@@ -1,7 +1,7 @@
 open Base
 open Spec
 
-type 'a default = Not_set | Default of 'a | Always
+type 'a default = Not_set | Default of 'a | Required
 
 type _ spec =
   | Double : float spec
@@ -128,7 +128,7 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
       let v = to_proto v in
       Writer.concat_as_length_delimited writer ~src:v index
   | Repeated (index, Message to_proto) ->
-    let write = write (Basic (index, Message to_proto, Always)) in
+    let write = write (Basic (index, Message to_proto, Required)) in
     fun writer vs -> List.iter ~f:(fun v -> write writer v) vs
   | Repeated (index, spec) when is_scalar spec -> begin
       let f = field_of_spec spec in
@@ -145,11 +145,6 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
   | Basic (index, spec, default) -> begin
       let f = field_of_spec spec in
       match default with
-      | Default default -> begin
-          fun writer v -> match Poly.equal v default with
-            | true -> ()
-            | false -> Writer.write_field writer index (f v)
-        end
       | Not_set -> begin
           fun writer v -> match f v with
             | Varint 0L -> ()
@@ -158,12 +153,13 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
             | Length_delimited {length = 0; _} -> ()
             | field -> Writer.write_field writer index field
         end
-      | Always -> fun writer v -> Writer.write_field writer index (f v)
+      | Default _ (* A proto2 feature - we transmit always in this case *)
+      | Required -> fun writer v -> Writer.write_field writer index (f v)
     end
   | Oneof f ->
     fun writer v ->
       let Oneof_elem (index, spec, v) = f v in (* Ouch. We do not write oneof fields with default values??? *)
-      write (Basic (index, spec, Always)) writer v
+      write (Basic (index, spec, Required)) writer v
 
 (** Allow emitted code to present a protobuf specification. *)
 let rec serialize : type a. (a, Writer.t) compound_list -> Writer.t -> a = function
@@ -219,7 +215,8 @@ module C = struct
 
   let not_set = Not_set
   let default v = Default v
-  let always = Always
+  let default_bytes v = Default (Bytes.of_string v)
+  let required = Required
 
   let ( ^:: ) a b = Cons (a, b)
   let nil = Nil

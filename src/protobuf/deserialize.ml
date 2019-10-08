@@ -9,14 +9,15 @@ type error =
   | `Illegal_value of string * Spec.field
   | `Not_implemented
   | `Unknown_enum_value of int
-  | `Oneof_missing ]
+  | `Oneof_missing
+  | `Required_field_missing ]
 [@@deriving show]
 
 type nonrec 'a result = ('a, error) Result.t
 
 type 'a sentinal = unit -> 'a result
 type 'a decoder = Spec.field -> 'a result
-type 'a default = Not_set | Default of 'a | Always
+type 'a default = Not_set | Default of 'a | Required
 
 type _ spec =
   | Double : float spec
@@ -91,11 +92,6 @@ let read_varint ~signed ~type_name =
 let read_varint32 ~signed ~type_name field =
   let%bind v = read_varint ~signed ~type_name field in
   return (Stdlib.Int64.to_int32 v)
-
-let ok_exn = function
-  | Ok v -> v
-  | Error _ -> failwith "Must contain a usable value"
-
 
 let rec type_of_spec: type a. a spec -> 'b * a decoder =
   let int_of_int32 spec =
@@ -178,6 +174,7 @@ let default_of_field_type = function
   | `Varint -> Spec.Varint 0L
 
 let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = function
+  | Basic (_index, (Message_opt _deser), Required) -> failwith "Required messages should be option types"
   | Basic (index, (Message_opt deser), _) ->
     let v = ref None in
     let get () = return !v in
@@ -191,17 +188,30 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
     in
     ([index, read], get)
 
+  | Basic (index, spec, Required) ->
+    let _, read = type_of_spec spec in
+    let v = ref None in
+    let get () = match !v with
+      | Some v -> return v
+      | None -> Error `Required_field_missing
+    in
+    let read field =
+      let%bind value = read field in
+      v := Some value;
+      return ()
+    in
+    ([index, read], get)
   | Basic (index, spec, default) ->
     let field_type, read = type_of_spec spec in
     let default = match default with
       | Default default -> default
-      | Always
+      | Required
       | Not_set -> begin
           default_of_field_type field_type
           |> read
           |> function
           | Ok v -> v
-          | Error _ -> failwith "Default value not decodable"
+          | Error _ -> failwith "Default value not decodeable"
         end
     in
     let v = ref default in
@@ -342,7 +352,8 @@ module C = struct
 
   let not_set = Not_set
   let default v = Default v
-  let always = Always
+  let default_bytes v = Default (Bytes.of_string v)
+  let required = Required
 
   let repeated (i, s) = Repeated (i, s)
   let basic (i, s, d) = Basic (i, s, d)

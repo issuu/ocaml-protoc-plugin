@@ -136,9 +136,8 @@ let spec_of_field ~prefix scope field_descriptor =
       Scope.get_scoped_name ~postfix:(prefix ^ "_int") scope type_name
     in
     sprintf "enum %s" to_int_func
-  | { type_ = Some Type_message; type_name; label = Some Label_repeated; _ } ->
-    let proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
-    sprintf "message %s" proto_func
+  | { type_ = Some Type_message; type_name; label = Some Label_required; _ }
+  | { type_ = Some Type_message; type_name; label = Some Label_repeated; _ }
   | { type_ = Some Type_message; type_name; oneof_index = Some _; _ } ->
     let proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
     sprintf "message %s" proto_func
@@ -147,6 +146,30 @@ let spec_of_field ~prefix scope field_descriptor =
     sprintf "message_opt %s" proto_func
   | _ -> failwith "Unknown type"
 
+let make_default_value ~type_name scope default =
+  let open Spec.Descriptor in
+  function
+  | Type_double | Type_float -> sprintf "default %s" (Float.of_string default |> Float.to_string)
+  | Type_int64 | Type_uint64 | Type_fixed64 | Type_sint64 | Type_sfixed64 ->
+    begin
+      match !int64_as_int with
+      | true -> sprintf "default %s" default
+      | false -> sprintf "default %sL" default
+    end
+
+  | Type_int32 | Type_fixed32 | Type_sfixed32 | Type_sint32 | Type_uint32 ->
+    begin
+      match !int32_as_int with
+      | true -> sprintf "default %s" default
+      | false -> sprintf "default %sl" default
+    end
+  | Type_bool -> sprintf "default %s" default
+  | Type_string -> sprintf "default {|%s|}" default
+  | Type_bytes -> sprintf "default_bytes {|%s|}" default
+  | Type_enum ->
+    Scope.get_scoped_name ~postfix:default scope type_name
+    |> sprintf "default %s"
+  | _ -> failwith "Unsupported default value"
 
 let compound_of_field ~prefix scope field_descriptor =
   let open Spec.Descriptor in
@@ -156,6 +179,10 @@ let compound_of_field ~prefix scope field_descriptor =
   | {number = None; _} -> failwith "all fields must have a number"
   | {label = Some Label_repeated; number = Some index; _} ->
     sprintf "repeated (%d, %s)" index spec;
+  | {number = Some index; label = Some Label_required; _} ->
+    sprintf "basic (%d, %s, required)" index spec
+  | {number = Some index; default_value = Some default; type_ = Some type_; type_name; _} ->
+    sprintf "basic (%d, %s, %s)" index spec (make_default_value ~type_name scope default type_)
   | {number = Some index; _} ->
     sprintf "basic (%d, %s, not_set)" index spec
 
