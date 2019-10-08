@@ -6,6 +6,7 @@ let debug = ref false
 let opens = ref []
 let int64_as_int = ref true
 let int32_as_int = ref true
+let fixed_as_int = ref false
 
 type syntax = Proto2 | Proto3
 
@@ -17,6 +18,9 @@ let parse_parameters parameters =
       | "open" :: values -> opens := String.concat ~sep:"=" values :: !opens
       | ["use_int32"] -> int32_as_int := false;
       | ["use_int64"] -> int64_as_int := false;
+      | ["fixed_as_int"; ("true"|"false") as v] -> fixed_as_int := (Bool.of_string v);
+      | ["int64_as_int"; ("true"|"false") as v] -> int64_as_int := (Bool.of_string v);
+      | ["int32_as_int"; ("true"|"false") as v] -> int32_as_int := (Bool.of_string v);
       | ["debug"] -> debug := true
       | _ -> failwith ("Unknown parameter: " ^ param)
     );
@@ -109,13 +113,14 @@ let spec_of_field ~prefix scope field_descriptor =
 
   | { type_ = Some Type_int64; _ } when !int64_as_int -> "int64_int"
   | { type_ = Some Type_uint64; _ } when !int64_as_int -> "uint64_int"
-  | { type_ = Some Type_fixed64; _ } when !int64_as_int -> "fixed64_int"
   | { type_ = Some Type_sint64; _ } when !int64_as_int -> "sint64_int"
-  | { type_ = Some Type_sfixed64; _ } when !int64_as_int -> "sfixed64_int"
+
+  | { type_ = Some Type_fixed64; _ } when !fixed_as_int -> "fixed64_int"
+  | { type_ = Some Type_sfixed64; _ } when !fixed_as_int -> "sfixed64_int"
+  | { type_ = Some Type_fixed32; _ } when !fixed_as_int -> "fixed32_int"
+  | { type_ = Some Type_sfixed32; _ } when !fixed_as_int -> "sfixed32_int"
 
   | { type_ = Some Type_int32; _ } when !int32_as_int -> "int32_int"
-  | { type_ = Some Type_fixed32; _ } when !int32_as_int -> "fixed32_int"
-  | { type_ = Some Type_sfixed32; _ } when !int32_as_int -> "sfixed32_int"
   | { type_ = Some Type_sint32; _ } when !int32_as_int -> "sint32_int"
   | { type_ = Some Type_uint32; _ } when !int32_as_int -> "uint32_int"
 
@@ -202,17 +207,20 @@ let type_of_field scope field_descriptor =
 
     | {type_ = Some Type_int64; _}
     | {type_ = Some Type_uint64; _}
-    | {type_ = Some Type_fixed64; _}
-    | {type_ = Some Type_sfixed64; _}
     | {type_ = Some Type_sint64; _} ->
       (match !int64_as_int with true -> "int" | false -> "int64")
 
     | {type_ = Some Type_int32; _}
-    | {type_ = Some Type_fixed32; _}
-    | {type_ = Some Type_sfixed32; _}
     | {type_ = Some Type_sint32; _}
     | {type_ = Some Type_uint32; _} ->
       (match !int32_as_int with true -> "int" | false -> "int32")
+
+    | {type_ = Some Type_fixed64; _}
+    | {type_ = Some Type_sfixed64; _} ->
+      (match !fixed_as_int with true -> "int" | false -> "int64")
+    | {type_ = Some Type_fixed32; _}
+    | {type_ = Some Type_sfixed32; _} ->
+      (match !fixed_as_int with true -> "int" | false -> "int32")
 
     | {type_ = Some Type_bool; _} -> "bool"
     | {type_ = Some Type_string; _} -> "string"

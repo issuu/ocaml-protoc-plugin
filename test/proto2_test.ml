@@ -34,4 +34,6 @@ let%expect_test "Only tramitting the required field" =
     | Ok t -> print_endline (T.show t)
     | Error e  -> Printf.printf "Decode failure: %s\n" (Protobuf.Deserialize.show_error e)
   in ();
-  [%expect {| Decode failure: `Required_field_missing |}]
+  [%expect {|
+    { opt = 0; req = 0; s = "default string"; u = 27; b = "default bytes";
+      c = 27; f = 27.; e = B } |}]

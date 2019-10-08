@@ -97,13 +97,14 @@ can generate the ocaml code by running
 
 *Options* control the code generated.
 
-| Option      | Description                                                     | Example                   |
-| ----------- | ------------------------------                                  | -----------------------   |
-| annot       | Type annotations.                                               | `annot=[@@deriving show]` |
-| debug       | Enable debugging                                                | `debug`                   |
-| open        | Add open at top of generated files. May be given multiple times | `open=Base.Sexp`          |
-| use_int64   | Map all 64 bit integer types to int64                            | `use_int64`               |
-| use_int32   | Map all 32 bit integer types to int32                            | `use_int32`               |
+| Option         | Description                                                     | Example                   | Default |
+| -----------    | ------------------------------                                  | -----------------------   | ------- |
+| annot          | Type annotations.                                               | `annot=[@@deriving show]` | ""      |
+| debug          | Enable debugging                                                | `debug`                   | Not set |
+| open           | Add open at top of generated files. May be given multiple times | `open=Base.Sexp`          | []      |
+| int64\_as\_int | Map \*int64 types to int instead of `int64`                     | `int64_as_int=false`      | true    |
+| int32\_as\_int | Map \*int32 types to int instead of `int32`                     | `int32_as_int=false`      | true    |
+| fixed\_as\_int | Map \*fixed\* types to `int`                                    | `fixed_as_int=true`       | false   |
 
 Parameters are seperated by `;`
 
