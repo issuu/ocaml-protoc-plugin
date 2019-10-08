@@ -1,7 +1,7 @@
 open Base
 open Spec
 
-type 'a default = Not_set | Default of 'a | Required
+type 'a default = Proto3 | Proto2 of 'a option | Required
 
 type _ spec =
   | Double : float spec
@@ -145,7 +145,7 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
   | Basic (index, spec, default) -> begin
       let f = field_of_spec spec in
       match default with
-      | Not_set -> begin
+      | Proto3 -> begin
           fun writer v -> match f v with
             | Varint 0L -> ()
             | Fixed_64_bit 0L -> ()
@@ -153,7 +153,7 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
             | Length_delimited {length = 0; _} -> ()
             | field -> Writer.write_field writer index field
         end
-      | Default _ (* A proto2 feature - we transmit always in this case *)
+      | Proto2 _
       | Required -> fun writer v -> Writer.write_field writer index (f v)
     end
   | Oneof f ->
@@ -213,9 +213,11 @@ module C = struct
   let oneof s = Oneof s
   let oneof_elem (a, b, c) = Oneof_elem (a, b, c)
 
-  let not_set = Not_set
-  let default v = Default v
-  let default_bytes v = Default (Bytes.of_string v)
+  let some v = Some v
+  let none = None
+  let proto2 v = Proto2 v
+  let proto2_bytes v = Proto2 (Some (Bytes.of_string v))
+  let proto3 = Proto3
   let required = Required
 
   let ( ^:: ) a b = Cons (a, b)

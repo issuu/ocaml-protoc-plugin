@@ -7,6 +7,8 @@ let opens = ref []
 let int64_as_int = ref true
 let int32_as_int = ref true
 
+type syntax = Proto2 | Proto3
+
 let parse_parameters parameters =
   String.split ~on:';' parameters
   |> List.iter ~f:(fun param ->
@@ -149,29 +151,30 @@ let spec_of_field ~prefix scope field_descriptor =
 let make_default_value ~type_name scope default =
   let open Spec.Descriptor in
   function
-  | Type_double | Type_float -> sprintf "default %s" (Float.of_string default |> Float.to_string)
+  | Type_double | Type_float ->
+    sprintf "proto2 (some %s)" (Float.of_string default |> Float.to_string)
   | Type_int64 | Type_uint64 | Type_fixed64 | Type_sint64 | Type_sfixed64 ->
     begin
       match !int64_as_int with
-      | true -> sprintf "default %s" default
-      | false -> sprintf "default %sL" default
+      | true -> sprintf "proto2 (some %s)" default
+      | false -> sprintf "proto2 (some %sL)" default
     end
 
   | Type_int32 | Type_fixed32 | Type_sfixed32 | Type_sint32 | Type_uint32 ->
     begin
       match !int32_as_int with
-      | true -> sprintf "default %s" default
-      | false -> sprintf "default %sl" default
+      | true -> sprintf "proto2 (some %s)" default
+      | false -> sprintf "proto2 (some %sl)" default
     end
-  | Type_bool -> sprintf "default %s" default
-  | Type_string -> sprintf "default {|%s|}" default
-  | Type_bytes -> sprintf "default_bytes {|%s|}" default
+  | Type_bool -> sprintf "proto2 (some %s)" default
+  | Type_string -> sprintf "proto2 (some {|%s|})" default
+  | Type_bytes -> sprintf "proto2_bytes {|%s|}" default
   | Type_enum ->
     Scope.get_scoped_name ~postfix:default scope type_name
-    |> sprintf "default %s"
+    |> sprintf "proto2 (some %s)"
   | _ -> failwith "Unsupported default value"
 
-let compound_of_field ~prefix scope field_descriptor =
+let compound_of_field ~syntax ~prefix scope field_descriptor =
   let open Spec.Descriptor in
   let spec = spec_of_field ~prefix scope field_descriptor in
   match field_descriptor with
@@ -181,10 +184,12 @@ let compound_of_field ~prefix scope field_descriptor =
     sprintf "repeated (%d, %s)" index spec;
   | {number = Some index; label = Some Label_required; _} ->
     sprintf "basic (%d, %s, required)" index spec
-  | {number = Some index; default_value = Some default; type_ = Some type_; type_name; _} ->
+  | {number = Some index; default_value = Some default; type_ = Some type_; type_name; _} when Poly.equal syntax Proto2 ->
     sprintf "basic (%d, %s, %s)" index spec (make_default_value ~type_name scope default type_)
+  | {number = Some index; _} when Poly.equal syntax Proto2 ->
+    sprintf "basic (%d, %s, proto2 none)" index spec
   | {number = Some index; _} ->
-    sprintf "basic (%d, %s, not_set)" index spec
+     sprintf "basic (%d, %s, proto3)" index spec
 
 (** Get the stringified name of a type.
     Consider moving this to Protocol somewhere. So types are next to each other.
@@ -223,6 +228,7 @@ let type_of_field scope field_descriptor =
   in
   match field_descriptor with
   | {label = Some Label_repeated; _} -> base_type ^ " list"
+  | {type_ = Some Type_message; label = Some Label_required; _} -> base_type
   | {oneof_index = None; type_ = Some Type_message; _} -> base_type ^ " option"
   | _ -> base_type
 
@@ -278,7 +284,7 @@ let is_recursive scope fields =
       | Spec.Descriptor.{ type_ = Some Type_message; type_name = Some name; _ } -> Scope.in_current_scope scope name
       | _ -> false) fields
 
-let emit_deserialization_function ~is_map_entry scope all_fields (oneof_decls: Spec.Descriptor.oneof_descriptor_proto list) =
+let emit_deserialization_function ~syntax ~is_map_entry scope all_fields (oneof_decls: Spec.Descriptor.oneof_descriptor_proto list) =
   let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
   let signature = Code.init () in
   let implementation = Code.init () in
@@ -300,7 +306,7 @@ let emit_deserialization_function ~is_map_entry scope all_fields (oneof_decls: S
 
   (* Create the spec *)
   let spec =
-    let specs = List.map ~f:(compound_of_field ~prefix:"from" scope) fields in
+    let specs = List.map ~f:(compound_of_field ~syntax ~prefix:"from" scope) fields in
     let oneofs =
       List.map ~f:(fun (_, specs) ->
           List.map ~f:(fun field ->
@@ -327,7 +333,7 @@ let emit_deserialization_function ~is_map_entry scope all_fields (oneof_decls: S
   signature, implementation
 
 (* Return code for signature and implementation *)
-let emit_serialization_function ~is_map_entry scope all_fields (oneof_decls: Spec.Descriptor.oneof_descriptor_proto list) =
+let emit_serialization_function ~syntax ~is_map_entry scope all_fields (oneof_decls: Spec.Descriptor.oneof_descriptor_proto list) =
   let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
   let signature = Code.init () in
   let implementation = Code.init () in
@@ -346,7 +352,7 @@ let emit_serialization_function ~is_map_entry scope all_fields (oneof_decls: Spe
         sprintf "oneof (function %s)" (String.concat ~sep:" | " cases)
       )
   in
-  let field_spec = List.map ~f:(compound_of_field ~prefix:"to" scope) fields in
+  let field_spec = List.map ~f:(compound_of_field ~syntax ~prefix:"to" scope) fields in
   let spec = String.concat ~sep:" ^:: " (field_spec @ oneof_field_spec @ ["nil"]) in
   (* Destruct the type. *)
   let destruct, args =
@@ -395,22 +401,10 @@ let is_map_entry options =
   | Some Spec.Descriptor.{ map_entry = Some true; _ } -> true
   | _ -> false
 
-let rec emit_message scope
-    Spec.Descriptor.
-      {
-        name;
-        field = fields;
-        extension = _;
-        nested_type = nested_types;
-        enum_type = enum_types;
-        extension_range = _;
-        oneof_decl = oneof_decls;
-        options;
-        reserved_range = _;
-        reserved_name = _;
-      }
-  : message =
-  let rec emit_nested_types ~signature ~implementation ?(is_first = true) nested_types =
+let rec emit_message ~syntax scope
+    Spec.Descriptor.{ name; field = fields; extension = _; nested_type = nested_types; enum_type = enum_types;
+        extension_range = _; oneof_decl = oneof_decls; options; reserved_range = _; reserved_name = _; } : message =
+  let rec emit_nested_types ~syntax ~signature ~implementation ?(is_first = true) nested_types =
     let emit_sub dest ~is_implementation ~is_first {module_name; signature; implementation} =
       let () =
         match is_first with
@@ -433,7 +427,7 @@ let rec emit_message scope
     | sub :: subs ->
       emit_sub ~is_implementation:false signature ~is_first sub;
       emit_sub ~is_implementation:true implementation ~is_first sub;
-      emit_nested_types ~signature ~implementation ~is_first:false subs
+      emit_nested_types ~syntax ~signature ~implementation ~is_first:false subs
   in
   let signature = Code.init () in
   let implementation = Code.init () in
@@ -445,8 +439,8 @@ let rec emit_message scope
       let module_name = module_name name in
       module_name, Scope.push scope module_name
   in
-  List.map ~f:emit_enum_type enum_types @ List.map ~f:(emit_message scope) nested_types
-  |> emit_nested_types ~signature ~implementation;
+  List.map ~f:emit_enum_type enum_types @ List.map ~f:(emit_message ~syntax scope) nested_types
+  |> emit_nested_types ~syntax ~signature ~implementation;
   let () =
     match name with
     | Some _name ->
@@ -457,20 +451,20 @@ let rec emit_message scope
       Code.append signature t;
       Code.append implementation t;
       inject
-        (emit_serialization_function ~is_map_entry scope fields oneof_decls)
+        (emit_serialization_function ~syntax ~is_map_entry scope fields oneof_decls)
         signature
         implementation;
       inject
-        (emit_deserialization_function ~is_map_entry scope fields oneof_decls)
+        (emit_deserialization_function ~syntax ~is_map_entry scope fields oneof_decls)
         signature
         implementation
     | None -> ()
   in
   {module_name; signature; implementation}
 
-let rec wrap_packages scope message_type services = function
+let rec wrap_packages ~syntax scope message_type services = function
   | [] ->
-    let {module_name = _; implementation; _} = emit_message scope message_type in
+    let {module_name = _; implementation; _} = emit_message ~syntax scope message_type in
     List.iter ~f:(fun service ->
         Code.append implementation (emit_service_type scope service)
       ) services;
@@ -481,7 +475,7 @@ let rec wrap_packages scope message_type services = function
     let package_name = module_name (Some package) in
     let scope = Scope.push scope package in
     Code.emit implementation `Begin "module %s = struct" package_name;
-    Code.append implementation (wrap_packages scope message_type services packages);
+    Code.append implementation (wrap_packages ~syntax scope message_type services packages);
     Code.emit implementation `End "end";
     implementation
 
@@ -497,6 +491,12 @@ let parse_proto_file
     (to_string_opt package)
     (to_string_opt syntax)
     (List.length enum_types);
+
+  let syntax = match syntax with
+    | None | Some "proto2" -> Proto2
+    | Some "proto3" -> Proto3
+    | _ -> failwith "Unsupported syntax"
+  in
   let message_type =
     Spec.Descriptor.default_descriptor_proto ~name:None ~nested_type:message_types ~enum_type:enum_types ()
   in
@@ -510,6 +510,7 @@ let parse_proto_file
   Code.emit implementation `None "(************************************************)";
   Code.emit implementation `None "(*";
   Code.emit implementation `None "   Source: %s" (to_string_opt name);
+  Code.emit implementation `None "   Syntax: %s " (match syntax with Proto2 -> "proto2" | Proto3 -> "proto3");
   Code.emit implementation `None "   Parameters:";
   Code.emit implementation `None "     annot='%s'" !annot;
   Code.emit implementation `None "     debug=%b" !debug;
@@ -520,7 +521,7 @@ let parse_proto_file
   Code.emit implementation `None "module Protobuf' = Protobuf";
   List.iter ~f:(Code.emit implementation `None "open %s") !opens;
 
-  wrap_packages scope message_type services (Option.value_map ~default:[] ~f:(String.split ~on:'.') package)
+  wrap_packages ~syntax scope message_type services (Option.value_map ~default:[] ~f:(String.split ~on:'.') package)
   |> Code.append implementation;
 
 

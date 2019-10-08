@@ -4,8 +4,10 @@ message A {
   optional uint64 i = 2 [default = 4];
 }
 
-
 message Message {
+  message Required {
+    optional uint64 a = 1;
+  }
   enum E {
     A = 0;
     B = 1;
@@ -13,6 +15,8 @@ message Message {
   }
   optional E enum = 1;
   optional uint64 i = 2 [default = 4];
+  required uint64 j = 3 [default = 4]; //Setting default on a required field really does not make sense
+  required Required required = 4;
 }
 
 message Message1 {
@@ -25,4 +29,8 @@ message Message1 {
   optional uint64 c = 6 [default = 27];
   optional float  f = 7 [default = 27];
   optional E e = 8 [default = B];
+}
+
+message Message1_ {
+  required int32 req = 2;
 }

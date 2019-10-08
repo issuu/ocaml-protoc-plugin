@@ -17,7 +17,7 @@ type nonrec 'a result = ('a, error) Result.t
 
 type 'a sentinal = unit -> 'a result
 type 'a decoder = Spec.field -> 'a result
-type 'a default = Not_set | Default of 'a | Required
+type 'a default = Proto3 | Proto2 of 'a option | Required
 
 type _ spec =
   | Double : float spec
@@ -204,9 +204,10 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
   | Basic (index, spec, default) ->
     let field_type, read = type_of_spec spec in
     let default = match default with
-      | Default default -> default
+      | Proto2 (Some default) -> default
       | Required
-      | Not_set -> begin
+      | Proto2 None
+      | Proto3 -> begin
           default_of_field_type field_type
           |> read
           |> function
@@ -350,9 +351,11 @@ module C = struct
   let message f = Message f
   let message_opt f = Message_opt f
 
-  let not_set = Not_set
-  let default v = Default v
-  let default_bytes v = Default (Bytes.of_string v)
+  let some v = Some v
+  let none = None
+  let proto2 v = Proto2 v
+  let proto2_bytes v = Proto2 (Some (Bytes.of_string v))
+  let proto3 = Proto3
   let required = Required
 
   let repeated (i, s) = Repeated (i, s)
