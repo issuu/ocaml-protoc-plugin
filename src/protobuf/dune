@@ -1,8 +1,8 @@
 (library
  (name protobuf)
  (public_name ocaml-protoc-plugin.protobuf)
- (libraries base ocplib-endian)
+ (libraries ocplib-endian)
  (inline_tests)
  (synopsis "Serialization and deserialization of protobuf types")
  (preprocess
-  (pps ppx_let ppx_deriving.show ppx_expect ppx_inline_test)))
+  (pps ppx_deriving.show ppx_expect ppx_inline_test)))

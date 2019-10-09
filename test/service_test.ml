@@ -31,11 +31,11 @@ let call i =
   |> (function Ok r -> r.Service.Response.s | Error _ -> failwith "Error")
 
 let%expect_test _ =
-  Stdlib.Printf.printf "%d -> \"%s\"\n" 0 (call 0);
-  Stdlib.Printf.printf "%d -> \"%s\"\n" 5 (call 5);
-  Stdlib.Printf.printf "%d -> \"%s\"\n" 50 (call 50);
-  Stdlib.Printf.printf "%d -> \"%s\"\n" (-5) (call (-5));
-  Stdlib.Printf.printf "%d -> \"%s\"\n" (-100) (call (-100));
+  Caml.Printf.printf "%d -> \"%s\"\n" 0 (call 0);
+  Caml.Printf.printf "%d -> \"%s\"\n" 5 (call 5);
+  Caml.Printf.printf "%d -> \"%s\"\n" 50 (call 50);
+  Caml.Printf.printf "%d -> \"%s\"\n" (-5) (call (-5));
+  Caml.Printf.printf "%d -> \"%s\"\n" (-100) (call (-100));
   ();
   [%expect {|
     0 -> "0"

@@ -1,10 +1,10 @@
 (** Some buffer to hold data, and to read and write data *)
 
-open Base
+open StdLabels
 open Spec
 
 let sprintf = Printf.sprintf
-let printf = Stdlib.Printf.printf
+let printf = Printf.printf
 
 type t = {mutable fields : Spec.field list}
 
@@ -16,10 +16,10 @@ type error =
 let init () = {fields = []}
 
 let rec size_of_field = function
-  | Varint v when Int64.is_positive v ->
-    let bits = Float.(iround_down_exn (log (Int64.to_float v) /. log 2.0)) + 1 in
+  | Varint v when Int64Compare.is_positive v ->
+    let bits = int_of_float (log (Int64.to_float v) /. log 2.0) + 1 in
     ((bits - 1) / 7) + 1
-  | Varint v when Int64.is_negative v -> 10
+  | Varint v when Int64Compare.is_negative v -> 10
   | Varint _ -> 1 (* Zero *)
   | Fixed_32_bit _ -> 4
   | Fixed_64_bit _ -> 8
@@ -31,13 +31,16 @@ let size t =
 let write_varint buffer ~offset v =
   let rec inner ~offset v : int =
     let open Int64 in
+    let open! Infix.Int64 in
     match v land 0x7FL, v lsr 7 with
     | v, 0L ->
-      Bytes.set buffer offset (v |> to_int_exn |> Char.of_int_exn);
-      Int.(offset + 1)
+      Bytes.set buffer offset (v |> to_int |> Char.chr);
+      let open! Infix.Int in
+      offset + 1
     | v, rem ->
-      Bytes.set buffer offset (v lor 0x80L |> to_int_exn |> Char.of_int_exn);
-      inner ~offset:Int.(offset + 1) rem
+      Bytes.set buffer offset (v lor 0x80L |> to_int |> Char.chr);
+      let open! Infix.Int in
+      inner ~offset:(offset + 1) rem
   in
   inner ~offset v
 
@@ -102,10 +105,10 @@ let concat_as_length_delimited t ~src index =
   t.fields <- src.fields @ t.fields
 
 let dump t =
-  contents t
-  |> String.to_list
-  |> List.map ~f:Char.to_int
-  |> List.map ~f:(sprintf "%02x")
+  let string_contents = contents t in
+  List.init ~len:(String.length string_contents) ~f:(fun i -> 
+    sprintf "%02x" (Char.code (String.get string_contents i))
+  )
   |> String.concat ~sep:"-"
   |> printf "Buffer: %s\n"
 

@@ -12,7 +12,7 @@ let hexlify data =
   |> List.map ~f:Char.to_int
   |> List.map ~f:(Printf.sprintf "%02x")
   |> String.concat ~sep:"-"
-  |> Stdlib.Printf.printf "Buffer: '%s'\n"
+  |> Caml.Printf.printf "Buffer: '%s'\n"
 
 let dump_protoc name data =
   let protobuf_file, type_name =
@@ -22,22 +22,22 @@ let dump_protoc name data =
       String.concat ~sep:"." type_name
       | _ -> failwith "Illegal type name"
   in
-  let filename = Stdlib.Filename.temp_file name ".bin" in
-  let cout = Stdlib.open_out filename in
-  Stdlib.output_string cout data;
-  Stdlib.close_out cout;
-  Stdlib.Printf.printf "%!";
-  let res = Stdlib.Sys.command
+  let filename = Caml.Filename.temp_file name ".bin" in
+  let cout = Caml.open_out filename in
+  Caml.output_string cout data;
+  Caml.close_out cout;
+  Caml.Printf.printf "%!";
+  let res = Caml.Sys.command
       (Printf.sprintf
          "protoc --decode=%s %s < %s"
          type_name
          protobuf_file
          filename)
   in
-  Stdlib.Sys.remove filename;
+  Caml.Sys.remove filename;
   match res with
   | 0 -> ()
-  | n -> Stdlib.Printf.printf "'protoc' exited with status code: %d\n" n
+  | n -> Caml.Printf.printf "'protoc' exited with status code: %d\n" n
 
 
 (** Create a common function for testing. *)
@@ -57,6 +57,6 @@ let test_encode (type t) ?dump ?(protoc=true) (module M : T with type t = t) (ex
   match M.from_proto in_data with
   | Ok observed when M.equal expect observed -> ()
   | Ok observed ->
-    Stdlib.Printf.printf "\nExpect  :%s\nObserved:%s\n" ([%show: M.t] expect) ([%show: M.t] observed)
+    Caml.Printf.printf "\nExpect  :%s\nObserved:%s\n" ([%show: M.t] expect) ([%show: M.t] observed)
   | Error err ->
-    Stdlib.Printf.printf "\nDecode failed: %s \n" (Protobuf.Deserialize.show_error err)
+    Caml.Printf.printf "\nDecode failed: %s \n" (Protobuf.Deserialize.show_error err)

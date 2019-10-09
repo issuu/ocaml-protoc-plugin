@@ -1,4 +1,4 @@
-open Base
+open StdLabels
 open Spec
 
 type 'a default = Proto3 | Proto2 of 'a option | Required
@@ -61,10 +61,10 @@ let serialize_message : (int * field) list -> string =
 let unsigned_varint v = Varint v
 
 let signed_varint v =
-  let open Int64 in
+  let open! Infix.Int64 in
   let v =
     match v with
-    | v when is_negative v -> v lsl 1 lxor (-1L)
+    | v when Int64Compare.is_negative v -> v lsl 1 lxor (-1L)
     | v -> v lsl 1
   in
   Varint v
@@ -88,13 +88,13 @@ let rec field_of_spec: type a. a spec -> a -> Spec.field = function
   | SInt32_int -> fun v -> signed_varint (Int64.of_int v)
 
   | Fixed64 -> fixed_64_bit
-  | Fixed64_int -> fun v -> Fixed_64_bit (Int64.of_int_exn v)
+  | Fixed64_int -> fun v -> Fixed_64_bit (Int64.of_int v)
   | SFixed64 -> fixed_64_bit
-  | SFixed64_int -> fun v -> Fixed_64_bit (Int64.of_int_exn v)
+  | SFixed64_int -> fun v -> Fixed_64_bit (Int64.of_int v)
   | Fixed32 -> fixed_32_bit
-  | Fixed32_int -> fun v -> Fixed_32_bit (Int32.of_int_exn v)
+  | Fixed32_int -> fun v -> Fixed_32_bit (Int32.of_int v)
   | SFixed32 -> fixed_32_bit
-  | SFixed32_int -> fun v -> Fixed_32_bit (Int32.of_int_exn v)
+  | SFixed32_int -> fun v -> Fixed_32_bit (Int32.of_int v)
 
   | Bool -> fun v -> unsigned_varint (match v with | true -> 1L | false -> 0L)
   | String -> fun v -> Length_delimited {offset = 0; length = String.length v; data = v}
@@ -229,7 +229,6 @@ module C = struct
 end
 
 module Test = struct
-  let (=) = Poly.(=)
   let%test "signed_varint 0L"  = signed_varint 0L = Varint 0L
   let%test "signed_varint -1L" = signed_varint (-1L) = Varint 1L
   let%test "signed_varint 1L" = signed_varint 1L = Varint 2L

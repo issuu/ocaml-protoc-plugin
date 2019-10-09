@@ -1,7 +1,8 @@
 (** Module for deserializing values *)
 
-open Base
-open Result.Let_syntax
+open StdLabels
+open Result
+open Infix.Result
 
 type error =
   [ Reader.error
@@ -78,7 +79,7 @@ let error_wrong_field str field : _ result =
 let error_illegal_value str field : _ result = `Illegal_value (str, field) |> Result.fail
 
 let read_varint ~signed ~type_name =
-  let open Int64 in
+  let open! Infix.Int64 in
   function
   | Spec.Varint v -> begin
       let v = match signed with
@@ -91,15 +92,13 @@ let read_varint ~signed ~type_name =
   | field -> error_wrong_field type_name field
 
 let read_varint32 ~signed ~type_name field =
-  let%bind v = read_varint ~signed ~type_name field in
-  return (Stdlib.Int64.to_int32 v)
+  read_varint ~signed ~type_name field >>| Int64.to_int32
 
 let rec type_of_spec: type a. a spec -> 'b * a decoder =
   let int_of_int32 spec =
     let (tpe, f) = type_of_spec spec in
     let f field =
-      let%bind v = f field in
-      return (Int32.to_int_exn v)
+      f field >>| Int32.to_int
     in
     (tpe, f)
   in
@@ -107,8 +106,7 @@ let rec type_of_spec: type a. a spec -> 'b * a decoder =
   let int_of_int64 spec =
     let (tpe, f) = type_of_spec spec in
     let f field =
-      let%bind v = f field in
-      return (Stdlib.Int64.to_int v)
+      f field >>| Int64.to_int
     in
     (tpe, f)
   in
@@ -152,7 +150,7 @@ let rec type_of_spec: type a. a spec -> 'b * a decoder =
       | Spec.Varint v -> return (Int64.equal v 0L |> not)
       | field -> error_wrong_field "bool" field)
   | Enum of_int -> (`Varint, function
-      | Spec.Varint v -> of_int (Stdlib.Int64.to_int v)
+      | Spec.Varint v -> of_int (Int64.to_int v)
       | field -> error_wrong_field "enum" field)
   | String -> (`Length_delimited, function
       | Spec.Length_delimited {offset; length; data} -> return (String.sub ~pos:offset ~len:length data)
@@ -164,7 +162,7 @@ let rec type_of_spec: type a. a spec -> 'b * a decoder =
       | Spec.Length_delimited {offset; length; data} -> from_proto (Reader.create ~offset ~length data)
       | field ->  error_wrong_field "message" field)
   | Message_opt from_proto -> (`Length_delimited, function
-      | Spec.Length_delimited {offset; length; data} -> from_proto (Reader.create ~offset ~length data) |> Result.map ~f:Option.some
+      | Spec.Length_delimited {offset; length; data} -> from_proto (Reader.create ~offset ~length data) >>| Option.some
       | field ->  error_wrong_field "message" field)
 
 
@@ -182,9 +180,7 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
     let read = function
       | Spec.Length_delimited {offset; length; data} ->
         let reader = Reader.create ~length ~offset data in
-        let%bind message = deser reader in
-        v := Some message;
-        return ()
+        deser reader >>| fun message -> v := Some message
       | field -> error_wrong_field "message" field
     in
     ([index, read], get)
@@ -197,9 +193,7 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
       | None -> Error `Required_field_missing
     in
     let read field =
-      let%bind value = read field in
-      v := Some value;
-      return ()
+      read field >>| fun value -> v := Some value
     in
     ([index, read], get)
   | Basic (index, spec, default) ->
@@ -219,9 +213,7 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
     let v = ref default in
     let get () = return !v in
     let read field =
-      let%bind value = read field in
-      v := value;
-      return ()
+      read field >>| fun value -> v := value
     in
     ([index, read], get)
   | Repeated (index, spec, _) ->
@@ -234,32 +226,26 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
     let rec read_repeated reader decode read_f = match Reader.has_more reader with
       | false -> return ()
       | true ->
-        let%bind field = decode reader in
-        let%bind () = read_f field in
-        read_repeated reader decode read_f
+        decode reader >>= fun field ->
+          read_f field >>= fun () ->
+            read_repeated reader decode read_f
     in
     let (field_type, read_type) = type_of_spec spec in
     let v = ref [] in
     let get () = return (List.rev !v) in
     let rec read field = match field, read_field field_type with
       | (Spec.Length_delimited _ as field), None ->
-        let%bind v' = read_type field in
-        v := v' :: !v;
-        return ()
+        read_type field >>| fun v' -> v := v' :: !v
       | Spec.Length_delimited { offset; length; data }, Some read_field ->
         read_repeated (Reader.create ~offset ~length data) read_field read
-      | field, _ -> let%bind v' = read_type field in
-        v := v' :: !v;
-        return ()
+      | field, _ -> read_type field >>| fun v' -> v := v' :: !v
     in
     ([index, read], get)
   | Oneof oneofs ->
     let make_reader: a result ref -> a oneof -> (int * unit decoder) = fun v (Oneof_elem (index, spec, constr)) ->
       let _, read = type_of_spec spec in
       let read field =
-        let%bind value = read field in
-        v := Ok (constr value);
-        return ()
+        read field >>| fun value -> v := Ok (constr value)
       in
       (index, read)
     in
@@ -267,26 +253,36 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
     let get () = !v in
     List.map ~f:(make_reader v) oneofs, get
 
+module Map = struct
+  include Map.Make (struct type t = int let compare = compare end)
+  let of_alist_exn l = List.fold_left ~init:empty ~f:(fun acc (k, v) -> 
+    if mem k acc then
+      invalid_arg "Duplicate keys in list"
+    else
+      add k v acc
+  ) l
+end
+
 (** Read fields and apply to a map *)
 let rec read_fields_map reader map =
   match Reader.has_more reader with
   | false -> return ()
   | true ->
-    let%bind (index, field) = match Reader.read_field reader with
-      | Ok (index, field) -> return  (index, field)
-      | Error err -> Error (err :> error)
-    in
-    let%bind () = match Map.find map index with
-      | Some reader -> reader field
-      | None -> return () (* Just ignore *)
-    in
-    read_fields_map reader map
+    (match Reader.read_field reader with
+     | Ok (index, field) -> return (index, field)
+     | Error err -> Error (err :> error))
+    >>= fun (index, field) ->
+      (match Map.find_opt index map with
+       | Some reader -> reader field
+       | None -> return () (* Just ignore *))
+      >>= fun () ->
+        read_fields_map reader map
+      
 
 let deserialize: type constr t. (constr, t) compound_list -> constr -> Reader.t -> t result = fun spec constr reader ->
   let rec apply: type constr t. constr -> (constr, t) sentinal_list -> t result = fun constr -> function
     | SCons (sentinal, rest) ->
-      let%bind v = sentinal () in
-      apply (constr v) rest
+      sentinal () >>= fun v -> apply (constr v) rest
     | SNil -> return constr
   in
   (* We first make a list of sentinal_getters, which we can map to the constr *)
@@ -301,11 +297,10 @@ let deserialize: type constr t. (constr, t) compound_list -> constr -> Reader.t 
   in
   let sentinals, reader_list = make_sentinals spec in
   (* Create a map for nlogn lookup *)
-  let map = Map.of_alist_exn (module Int) reader_list in
+  let map = Map.of_alist_exn reader_list in
 
   (* Read the fields one by one, and apply the reader - if found *)
-  let%bind () = read_fields_map reader map in
-  apply constr sentinals
+  read_fields_map reader map >>= fun () -> apply constr sentinals
 
 
 (* Idea - We could use a O(n) lookup, where the head is the expected type to read *)
