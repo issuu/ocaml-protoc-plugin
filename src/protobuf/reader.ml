@@ -44,8 +44,8 @@ let read_byte t =
     (Char.code v)
 
 let read_raw_varint t =
-  let open Infix.Int64 in
-  let open Int64 in
+  let open! Infix.Int64 in
+  let open! Int64 in
   let rec inner acc =
     read_byte t
     >>= fun v ->
@@ -64,7 +64,7 @@ let read_varint t = read_raw_varint t >>| fun v -> Varint v
 
 let read_field_header : t -> (int * int, error) Result.t =
   fun t ->
-  let open Infix.Int64 in
+  let open! Infix.Int64 in
   read_raw_varint t 
   >>| fun v ->
     let tpe = v land 0x7L |> Int64.to_int in

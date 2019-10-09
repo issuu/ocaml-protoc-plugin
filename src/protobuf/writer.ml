@@ -31,14 +31,16 @@ let size t =
 let write_varint buffer ~offset v =
   let rec inner ~offset v : int =
     let open Int64 in
-    let open Infix.Int64 in
+    let open! Infix.Int64 in
     match v land 0x7FL, v lsr 7 with
     | v, 0L ->
       Bytes.set buffer offset (v |> to_int |> Char.chr);
-      Infix.Int.(offset + 1)
+      let open! Infix.Int in
+      offset + 1
     | v, rem ->
       Bytes.set buffer offset (v lor 0x80L |> to_int |> Char.chr);
-      inner ~offset:Infix.Int.(offset + 1) rem
+      let open! Infix.Int in
+      inner ~offset:(offset + 1) rem
   in
   inner ~offset v
 

@@ -79,7 +79,7 @@ let error_wrong_field str field : _ result =
 let error_illegal_value str field : _ result = `Illegal_value (str, field) |> Result.fail
 
 let read_varint ~signed ~type_name =
-  let open Infix.Int64 in
+  let open! Infix.Int64 in
   function
   | Spec.Varint v -> begin
       let v = match signed with
