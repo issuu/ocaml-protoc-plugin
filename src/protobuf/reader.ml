@@ -37,19 +37,16 @@ let validate_capacity t count =
 let has_more t = t.offset < t.end_offset
 
 let read_byte t =
-  validate_capacity t 1 
-  >>| fun () ->
+  validate_capacity t 1 >>| fun () ->
     let v = t.data.[t.offset] in
     t.offset <- t.offset + 1;
     (Char.code v)
 
 let read_raw_varint t =
-  let open! Infix.Int64 in
-  let open! Int64 in
+  let open Infix.Int64 in
   let rec inner acc =
-    read_byte t
-    >>= fun v ->
-      let v = of_int v in
+    read_byte t >>= fun v ->
+      let v = Int64.of_int v in
       let acc = (v land 0x7FL) :: acc in
       match v > 127L with
       | true ->
@@ -64,36 +61,32 @@ let read_varint t = read_raw_varint t >>| fun v -> Varint v
 
 let read_field_header : t -> (int * int, error) Result.t =
   fun t ->
-  let open! Infix.Int64 in
-  read_raw_varint t 
-  >>| fun v ->
+  let open Infix.Int64 in
+  read_raw_varint t >>| fun v ->
     let tpe = v land 0x7L |> Int64.to_int in
     let field_number = v / 8L |> Int64.to_int in
     (tpe, field_number)
-  
+
 
 let read_length_delimited t =
-  read_raw_varint t 
-  >>= fun length -> 
+  read_raw_varint t >>= fun length ->
     let length = Int64.to_int length in
-    validate_capacity t length
-    >>| fun () -> 
+    validate_capacity t length >>| fun () ->
       let v = Length_delimited {offset = t.offset; length; data = t.data} in
       t.offset <- t.offset + length;
       v
 
 let read_fixed32 t =
   let size = 4 in
-  validate_capacity t size
-  >>| fun () -> 
+  validate_capacity t size >>| fun () ->
     let v = EndianString.LittleEndian.get_int32 t.data t.offset in
     t.offset <- t.offset + size;
     (Fixed_32_bit v)
-  
+
 
 let read_fixed64 t =
   let size = 8 in
-  validate_capacity t size >>| (fun () -> 
+  validate_capacity t size >>| (fun () ->
   let v = EndianString.LittleEndian.get_int64 t.data t.offset in
   t.offset <- t.offset + size;
   (Fixed_64_bit v)

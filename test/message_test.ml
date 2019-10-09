@@ -1,5 +1,3 @@
-open Base
-
 let%expect_test _ =
   let module T = Message.Message in
   let submessage = Message.Submessage.{i = 3} in

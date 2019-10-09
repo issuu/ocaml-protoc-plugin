@@ -1,5 +1,3 @@
-open Base
-
 let%expect_test _ =
   let module T = Primitive_types.Types in
   let t =

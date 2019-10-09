@@ -1,5 +1,3 @@
-open Base
-
 let service reader =
   let (s_deser, s_ser) =
     Protobuf.Service.make_service_functions Service.String_of_int.call
@@ -10,7 +8,7 @@ let service reader =
   in
   let s =
     req.Service.Request.i
-    |> Int.to_string
+    |> string_of_int
   in
   Service.Response.{ s }
   |> s_ser

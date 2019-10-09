@@ -13,9 +13,6 @@ module Int64 = struct
     let rval = rem x y in
     if rval < zero then rval + y else rval
 end
-module Int = struct
-  let (+) = (+)
-end
 module Result = struct
   let ( >>| ) res f = Result.map f res
   let ( >>= ) res f = Result.bind f res
