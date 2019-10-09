@@ -2,7 +2,7 @@
 
 open Base
 open Spec
-open Result.Let_syntax
+open Result
 
 type t = {
   mutable offset : int;
@@ -37,68 +37,75 @@ let validate_capacity t count =
 let has_more t = t.offset < t.end_offset
 
 let read_byte t =
-  let%bind () = validate_capacity t 1 in
-  let v = t.data.[t.offset] in
-  t.offset <- t.offset + 1;
-  return (Char.to_int v)
+  validate_capacity t 1 
+  >>| fun () ->
+    let v = t.data.[t.offset] in
+    t.offset <- t.offset + 1;
+    (Char.code v)
 
 let read_raw_varint t =
   let open Int64 in
   let rec inner acc =
-    let%bind v = read_byte t in
-    let v = of_int v in
-    let acc = (v land 0x7FL) :: acc in
-    match v > 127L with
-    | true ->
-      (* Still More data *)
-      inner acc
-    | false -> return acc
+    read_byte t
+    >>= fun v ->
+      let v = of_int v in
+      let acc = (v land 0x7FL) :: acc in
+      match v > 127L with
+      | true ->
+        (* Still More data *)
+        inner acc
+      | false -> return acc
   in
-  let%bind v = inner [] in
-  let v = List.fold_left ~init:0L ~f:(fun acc c -> (acc lsl 7) + c) v in
-  return v
+  inner [] >>|
+  List.fold_left ~init:0L ~f:(fun acc c -> (acc lsl 7) + c)
 
 let read_varint t = read_raw_varint t >>| fun v -> Varint v
 
 let read_field_header : t -> (int * int, error) Result.t =
   fun t ->
   let open Int64 in
-  let%bind v = read_raw_varint t in
-  let tpe = v land 0x7L |> to_int_exn in
-  let field_number = v / 8L |> to_int_exn in
-  return (tpe, field_number)
+  read_raw_varint t 
+  >>| fun v ->
+    let tpe = v land 0x7L |> to_int in
+    let field_number = v / 8L |> to_int in
+    (tpe, field_number)
+  
 
 let read_length_delimited t =
-  let%bind length = read_raw_varint t in
-  let length = Int64.to_int_exn length in
-  let%bind () = validate_capacity t length in
-  let v = Length_delimited {offset = t.offset; length; data = t.data} in
-  t.offset <- t.offset + length;
-  return v
+  read_raw_varint t 
+  >>= fun length -> 
+    let length = Int64.to_int length in
+    validate_capacity t length
+    >>| fun () -> 
+      let v = Length_delimited {offset = t.offset; length; data = t.data} in
+      t.offset <- t.offset + length;
+      v
 
 let read_fixed32 t =
   let size = 4 in
-  let%bind () = validate_capacity t size in
-  let v = EndianString.LittleEndian.get_int32 t.data t.offset in
-  t.offset <- t.offset + size;
-  return (Fixed_32_bit v)
+  validate_capacity t size
+  >>| fun () -> 
+    let v = EndianString.LittleEndian.get_int32 t.data t.offset in
+    t.offset <- t.offset + size;
+    (Fixed_32_bit v)
+  
 
 let read_fixed64 t =
   let size = 8 in
-  let%bind () = validate_capacity t size in
+  validate_capacity t size >>| (fun () -> 
   let v = EndianString.LittleEndian.get_int64 t.data t.offset in
   t.offset <- t.offset + size;
-  return (Fixed_64_bit v)
+  (Fixed_64_bit v)
+  )
 
 let read_field : t -> (int * field, error) Result.t =
  fun t ->
-  let%bind field_type, field_number = read_field_header t in
-  let%bind field =
-    match field_type with
+  read_field_header t >>= (fun (field_type, field_number) ->
+    (match field_type with
     | 0 -> read_varint t
     | 1 -> read_fixed64 t
     | 2 -> read_length_delimited t
     | 5 -> read_fixed32 t
-    | n -> Result.fail (`Unknown_field_type n)
-  in
-  return (field_number, field)
+    | n -> Result.fail (`Unknown_field_type n))
+    >>| fun field -> (field_number, field)
+  )
