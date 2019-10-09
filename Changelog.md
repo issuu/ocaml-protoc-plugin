@@ -2,6 +2,7 @@
 - [ ] Support enum entries with same id
 
 ## 0.9.1: Unreleased
+- [x] Optimize deserialization for messages with max_id < 1024
 - [x] Dont depend on Base in runtime
 - [x] Slim runtime dependencies: Remove need for base, ocplib-endian
       and ppx_let

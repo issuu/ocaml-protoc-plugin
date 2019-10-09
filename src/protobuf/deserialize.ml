@@ -255,7 +255,7 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
 
 module Map = struct
   include Map.Make (struct type t = int let compare = compare end)
-  let of_alist_exn l = List.fold_left ~init:empty ~f:(fun acc (k, v) -> 
+  let of_alist_exn l = List.fold_left ~init:empty ~f:(fun acc (k, v) ->
     if mem k acc then
       invalid_arg "Duplicate keys in list"
     else
@@ -263,23 +263,74 @@ module Map = struct
   ) l
 end
 
-(** Read fields and apply to a map *)
-let rec read_fields_map reader map =
-  match Reader.has_more reader with
-  | false -> return ()
-  | true ->
-    (match Reader.read_field reader with
-     | Ok (index, field) -> return (index, field)
-     | Error err -> Error (err :> error))
-    >>= fun (index, field) ->
-      (match Map.find_opt index map with
-       | Some reader -> reader field
-       | None -> return () (* Just ignore *))
-      >>= fun () ->
-        read_fields_map reader map
-      
+(** Read fields - map based for nlogn lookup *)
+let read_fields_map reader_list =
+  let map = Map.of_alist_exn reader_list in
+  let rec read reader =
+    match Reader.has_more reader with
+    | false -> return ()
+    | true -> begin
+        match Reader.read_field reader with
+        | Ok (index, field) -> begin
+            match Map.find_opt index map with
+            | Some f ->
+              f field >>= fun () ->
+              read reader
+            | None ->
+              read reader
+          end
+        | Error err -> Error (err :> error)
+      end
+  in
+  read
 
-let deserialize: type constr t. (constr, t) compound_list -> constr -> Reader.t -> t result = fun spec constr reader ->
+(** Read fields - array based for O(1) lookup *)
+let read_fields_array max_index reader_list =
+  let default _ = Ok () in
+  let readers = Array.init (max_index + 1) ~f:(fun _ -> default) in
+  List.iter ~f:(fun (idx, f) -> readers.(idx) <- f) reader_list;
+
+  let rec read reader =
+    match Reader.has_more reader with
+    | false -> return ()
+    | true -> begin
+        match Reader.read_field reader with
+        | Ok (index, field) when index <= max_index ->
+          readers.(index) field >>= fun () ->
+          read reader
+        | Ok _ -> return ()
+        | Error err -> Error (err :> error)
+      end
+  in
+  read
+
+let deserialize: type constr t. (constr, t) compound_list -> constr -> Reader.t -> t result = fun spec constr ->
+  let max_index =
+    let rec inner: type a b. int -> (a, b) compound_list -> int = fun acc -> function
+      | Cons (Oneof oneofs, rest) ->
+        let rec max_elt: type c. int -> c oneof list -> int = fun acc -> function
+          | Oneof_elem (idx, _, _) :: rest -> max_elt (max idx acc) rest
+          | [] -> acc
+        in
+        let acc = max_elt acc oneofs in
+        inner acc rest
+      | Cons (Basic (idx, _, _), rest) ->
+        inner (max acc idx) rest
+      | Cons (Repeated (idx, _, _), rest) ->
+        inner (max acc idx) rest
+      | Nil -> acc
+    in
+    inner 0 spec
+  in
+  (* For even better optimization, the first pass could assume that
+     all fields are written (if at all) in the same order as the spec.
+     If we reach the end of the reader list, we revert to use read_fields_array
+     or read_fields_map
+  *)
+  let read_fields = match max_index < 1024 with
+    | true -> read_fields_array max_index
+    | false -> read_fields_map
+  in
   let rec apply: type constr t. constr -> (constr, t) sentinal_list -> t result = fun constr -> function
     | SCons (sentinal, rest) ->
       sentinal () >>= fun v -> apply (constr v) rest
@@ -295,25 +346,12 @@ let deserialize: type constr t. (constr, t) compound_list -> constr -> Reader.t 
       SCons (sentinal, sentinals), List.rev_append readers reader_list
     | Nil -> SNil, []
   in
-  let sentinals, reader_list = make_sentinals spec in
-  (* Create a map for nlogn lookup *)
-  let map = Map.of_alist_exn reader_list in
-
-  (* Read the fields one by one, and apply the reader - if found *)
-  read_fields_map reader map >>= fun () -> apply constr sentinals
+  fun reader ->
+    let sentinals, reader_list = make_sentinals spec in
+    (* Read the fields one by one, and apply the reader - if found *)
+    read_fields reader_list reader >>= fun () -> apply constr sentinals
 
 
-(* Idea - We could use a O(n) lookup, where the head is the expected type to read *)
-(* If we receive another id, we place the reader in the tail (an accumulator). *)
-(* So if we receive everythin in order, its a o(1). Worst case its O(N^2). *)
-(* The hard part is to throw away values which has no decoders. *)
-
-(* Another solution is to make an array - If the max id is small enough *)
-
-(* Rather than using sentinals, it would be preferred to update a state.
-   But it would need a map, containing different types of values - which is not possible AFAIK.
-   We could have an array, again different types are not easy.
-*)
 (** Module to construct a spec *)
 module C = struct
   let double = Double
