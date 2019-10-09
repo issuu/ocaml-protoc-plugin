@@ -41,12 +41,22 @@ let write_varint buffer ~offset v =
   in
   inner ~offset v
 
+let set_int64 buffer offset v =
+  let rec inner v = function
+    | 8 -> ()
+    | n ->
+      let ch = Int64.(logand v 0xffL |> to_int) |> Char.chr in
+      Bytes.set buffer (n + offset) ch;
+      inner Int64.(shift_right_logical v 8) (n+1)
+  in
+  inner v 8
+
 let write_fixed32 buffer ~offset v =
-  EndianBytes.LittleEndian.set_int32 buffer offset v;
+  LittleEndian.set_int32 buffer offset v;
   offset + 4
 
 let write_fixed64 buffer ~offset v =
-  EndianBytes.LittleEndian.set_int64 buffer offset v;
+  LittleEndian.set_int64 buffer offset v;
   offset + 8
 
 let write_length_delimited buffer ~offset ~src ~src_pos ~len =

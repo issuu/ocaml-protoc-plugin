@@ -1,7 +1,6 @@
 (library
  (name protobuf)
  (public_name ocaml-protoc-plugin.protobuf)
- (libraries ocplib-endian)
  (inline_tests)
  (synopsis "Serialization and deserialization of protobuf types")
  (preprocess

@@ -76,10 +76,11 @@ let read_length_delimited t =
       t.offset <- t.offset + length;
       v
 
+(* Implement little endian ourselves *)
 let read_fixed32 t =
   let size = 4 in
   validate_capacity t size >>| fun () ->
-    let v = EndianString.LittleEndian.get_int32 t.data t.offset in
+    let v = LittleEndian.get_int32 t.data t.offset in
     t.offset <- t.offset + size;
     (Fixed_32_bit v)
 
@@ -87,7 +88,7 @@ let read_fixed32 t =
 let read_fixed64 t =
   let size = 8 in
   validate_capacity t size >>| (fun () ->
-  let v = EndianString.LittleEndian.get_int64 t.data t.offset in
+  let v = LittleEndian.get_int64 t.data t.offset in
   t.offset <- t.offset + size;
   (Fixed_64_bit v)
   )
