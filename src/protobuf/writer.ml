@@ -106,7 +106,7 @@ let concat_as_length_delimited t ~src index =
 
 let dump t =
   let string_contents = contents t in
-  List.init (String.length string_contents) (fun i -> 
+  List.init ~len:(String.length string_contents) ~f:(fun i -> 
     sprintf "%02x" (Char.code (String.get string_contents i))
   )
   |> String.concat ~sep:"-"
