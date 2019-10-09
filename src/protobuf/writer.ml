@@ -4,7 +4,7 @@ open StdLabels
 open Spec
 
 let sprintf = Printf.sprintf
-let printf = Caml.Printf.printf
+let printf = Printf.printf
 
 type t = {mutable fields : Spec.field list}
 
