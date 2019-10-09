@@ -9,7 +9,7 @@ let%expect_test "Packed as string" =
   |> T'.from_proto
   |> (function
       | Ok t -> print_endline (T'.show t)
-      | Error e -> Printf.printf "Failed to decode: %s\n" (Protobuf.Deserialize.show_error e)
+      | Error e -> Printf.printf "Failed to decode: %s\n" (Protobuf.Spec.show_error e)
     );
   [%expect {|
     i: 5
@@ -30,7 +30,7 @@ let%expect_test "Packed as int" =
   |> T'.from_proto
   |> (function
       | Ok t -> print_endline (T'.show t)
-      | Error e -> Printf.printf "Failed to decode: %s\n" (Protobuf.Deserialize.show_error e)
+      | Error e -> Printf.printf "Failed to decode: %s\n" (Protobuf.Spec.show_error e)
     );
   [%expect {|
     i: 5

@@ -1,7 +1,7 @@
 (** Some buffer to hold data, and to read and write data *)
 
 open StdLabels
-open Spec
+open Field
 open Infix.Result
 
 type t = {
@@ -93,7 +93,7 @@ let read_fixed64 t =
   (Fixed_64_bit v)
   )
 
-let read_field : t -> (int * field, error) Result.t =
+let read_field : t -> (int * Field.t, error) Result.t =
  fun t ->
   read_field_header t >>= (fun (field_type, field_number) ->
     (match field_type with

@@ -1,12 +1,12 @@
 (** Some buffer to hold data, and to read and write data *)
 
 open StdLabels
-open Spec
+open Field
 
 let sprintf = Printf.sprintf
 let printf = Printf.printf
 
-type t = {mutable fields : Spec.field list}
+type t = {mutable fields : Field.t list}
 
 type error =
   [ `Premature_end_of_input
@@ -92,7 +92,7 @@ let write_field_header : t -> int -> int -> unit =
   let header = (index lsl 3) + field_type in
   add_field t (Varint (Int64.of_int header))
 
-let write_field : t -> int -> field -> unit =
+let write_field : t -> int -> Field.t -> unit =
  fun t index field ->
   let field_type =
     match field with

@@ -87,7 +87,7 @@ let emit_enum_type
   Code.append signature t;
   Code.append implementation t;
   Code.emit signature `None "val to_int: t -> int";
-  Code.emit signature `None "val from_int: int -> t Protobuf'.Deserialize.result";
+  Code.emit signature `None "val from_int: int -> t Protobuf'.Spec.result";
   Code.emit implementation `Begin "let to_int = function";
   List.iter ~f:(fun v ->
       Code.emit implementation `None "| %s -> %d" (constructor_name v) (Option.value_exn v.number)
@@ -304,7 +304,7 @@ let emit_deserialization_function ~syntax ~is_map_entry scope all_fields (oneof_
   let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
   let signature = Code.init () in
   let implementation = Code.init () in
-  Code.emit signature `None "val from_proto: Protobuf'.Reader.t -> (t, Protobuf'.Deserialize.error) result";
+  Code.emit signature `None "val from_proto: Protobuf'.Reader.t -> (t, Protobuf'.Spec.error) result";
   let _field_names = List.map ~f:(fun field -> field_name field.name) fields in
 
   (* Create a constructor *)
