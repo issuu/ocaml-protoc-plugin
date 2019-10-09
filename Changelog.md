@@ -3,7 +3,8 @@
 
 ## 0.9.1: Unreleased
 - [x] Dont depend on Base in runtime
-- [x] Slim runtime dependencies: Remove need for base and
+- [x] Slim runtime dependencies: Remove need for base, ocplib-endian
+      and ppx_let
 - [x] Honour [packed=...] flag.
 - [x] Make fixed scalar types default to int32 and int64
 - [x] Always serialize proto2 type fields
