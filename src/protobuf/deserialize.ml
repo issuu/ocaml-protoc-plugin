@@ -1,7 +1,8 @@
 (** Module for deserializing values *)
 
-open Base
+open StdLabels
 open Result
+open Infix.Result
 
 type error =
   [ Reader.error
@@ -78,7 +79,7 @@ let error_wrong_field str field : _ result =
 let error_illegal_value str field : _ result = `Illegal_value (str, field) |> Result.fail
 
 let read_varint ~signed ~type_name =
-  let open Int64 in
+  let open Infix.Int64 in
   function
   | Spec.Varint v -> begin
       let v = match signed with
@@ -161,7 +162,7 @@ let rec type_of_spec: type a. a spec -> 'b * a decoder =
       | Spec.Length_delimited {offset; length; data} -> from_proto (Reader.create ~offset ~length data)
       | field ->  error_wrong_field "message" field)
   | Message_opt from_proto -> (`Length_delimited, function
-      | Spec.Length_delimited {offset; length; data} -> from_proto (Reader.create ~offset ~length data) |> Result.map ~f:Option.some
+      | Spec.Length_delimited {offset; length; data} -> from_proto (Reader.create ~offset ~length data) >>| Option.some
       | field ->  error_wrong_field "message" field)
 
 

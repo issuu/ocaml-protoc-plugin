@@ -1,8 +1,8 @@
 (** Some buffer to hold data, and to read and write data *)
 
-open Base
+open StdLabels
 open Spec
-open Result
+open Infix.Result
 
 type t = {
   mutable offset : int;
@@ -44,6 +44,7 @@ let read_byte t =
     (Char.code v)
 
 let read_raw_varint t =
+  let open Infix.Int64 in
   let open Int64 in
   let rec inner acc =
     read_byte t
@@ -54,7 +55,7 @@ let read_raw_varint t =
       | true ->
         (* Still More data *)
         inner acc
-      | false -> return acc
+      | false -> Result.return acc
   in
   inner [] >>|
   List.fold_left ~init:0L ~f:(fun acc c -> (acc lsl 7) + c)
@@ -63,11 +64,11 @@ let read_varint t = read_raw_varint t >>| fun v -> Varint v
 
 let read_field_header : t -> (int * int, error) Result.t =
   fun t ->
-  let open Int64 in
+  let open Infix.Int64 in
   read_raw_varint t 
   >>| fun v ->
-    let tpe = v land 0x7L |> to_int in
-    let field_number = v / 8L |> to_int in
+    let tpe = v land 0x7L |> Int64.to_int in
+    let field_number = v / 8L |> Int64.to_int in
     (tpe, field_number)
   
 

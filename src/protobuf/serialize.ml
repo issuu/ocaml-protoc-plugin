@@ -1,4 +1,4 @@
-open Base
+open StdLabels
 open Spec
 
 type 'a default = Proto3 | Proto2 of 'a option | Required
@@ -61,10 +61,10 @@ let serialize_message : (int * field) list -> string =
 let unsigned_varint v = Varint v
 
 let signed_varint v =
-  let open Int64 in
+  let open Infix.Int64 in
   let v =
     match v with
-    | v when is_negative v -> v lsl 1 lxor (-1L)
+    | v when Int64Compare.is_negative v -> v lsl 1 lxor (-1L)
     | v -> v lsl 1
   in
   Varint v
