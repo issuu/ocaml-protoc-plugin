@@ -1,0 +1,22 @@
+{
+  "name": "ocaml-protoc-plugin-runtime-bs",
+  "version": "0.0.1",
+  "description": "BuckleScript runtime for ocaml-protoc-plugin",
+  "peerDependencies": {
+    "bs-platform": ">=5.0.0"
+  },
+  "devDependencies": {
+    "bs-platform": "6.0.1"
+  },
+  "scripts": {
+    "build": "bsb -make-world",
+    "clean": "bsb -clean-world"
+  },
+  "keywords": [
+    "reasonml",
+    "bucklescript",
+    "protobuf",
+    "protoc"
+  ],
+  "license": "MIT"
+}
