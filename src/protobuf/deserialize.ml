@@ -257,7 +257,7 @@ module Map = struct
   include Map.Make (struct type t = int let compare = compare end)
   let of_alist_exn l = List.fold_left ~init:empty ~f:(fun acc (k, v) -> 
     if mem k acc then
-      invalid_arg "Cannot dupa kupa"
+      invalid_arg "Duplicate keys in list"
     else
       add k v acc
   ) l
