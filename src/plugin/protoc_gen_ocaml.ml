@@ -1,21 +1,21 @@
-open Base
+open StdLabels
 
 let read_all in_channel =
   let rec inner buffer =
     let b = Bytes.create 1024 in
-    match Caml.input in_channel b 0 1024 with
+    match input in_channel b 0 1024 with
     | 1024 ->
       Buffer.add_bytes buffer b;
       inner buffer
     | read ->
-      Buffer.add_subbytes buffer b ~pos:0 ~len:read;
-      Buffer.contents_bytes buffer
+      Buffer.add_subbytes buffer b 0 read;
+      Buffer.to_bytes buffer
   in
   inner (Buffer.create 1024)
 
 (* Read from stdin *)
 let read () =
-  read_all Caml.stdin
+  read_all stdin
   |> Pbrt.Decoder.of_bytes
   |> Spec.Plugin.Pb.decode_code_generator_request
 
@@ -24,7 +24,7 @@ let write response =
   let encoder = Pbrt.Encoder.create () in
   Spec.Plugin.Pb.encode_code_generator_response response encoder;
   let response = Pbrt.Encoder.to_bytes encoder in
-  Caml.(output_bytes stdout) response
+  output_bytes stdout response
 
 let () =
   let request = read () in

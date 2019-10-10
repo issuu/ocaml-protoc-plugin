@@ -1,4 +1,4 @@
-open Base
+open StdLabels
 
 type t = {
   mutable indent : string;
@@ -6,10 +6,8 @@ type t = {
 }
 
 let init () = {indent = ""; code = []}
-
 let incr t = t.indent <- "  " ^ t.indent
-
-let decr t = t.indent <- String.chop_prefix_exn ~prefix:"  " t.indent
+let decr t = t.indent <- String.sub ~pos:0 ~len:(String.length t.indent - 2) t.indent
 
 let emit t indent fmt =
   let emit s =
@@ -21,7 +19,10 @@ let emit t indent fmt =
     | `End ->
       decr t;
       t.code <- (t.indent ^ s) :: t.code
-    | `EndBegin -> t.code <- (String.chop_prefix_exn ~prefix:"  " t.indent ^ s) :: t.code
+    | `EndBegin ->
+      decr t;
+      t.code <- (t.indent ^ s) :: t.code;
+      incr t
   in
   Printf.ksprintf emit fmt
 

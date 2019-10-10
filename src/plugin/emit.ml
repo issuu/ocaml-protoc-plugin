@@ -1,4 +1,4 @@
-open Base
+open StdLabels
 
 let sprintf = Printf.sprintf
 let annot = ref ""
@@ -11,16 +11,16 @@ let fixed_as_int = ref false
 type syntax = Proto2 | Proto3
 
 let parse_parameters parameters =
-  String.split ~on:';' parameters
+  String.split_on_char ~sep:';' parameters
   |> List.iter ~f:(fun param ->
-      match String.split ~on:'=' param with
+      match String.split_on_char ~sep:'=' param with
       | "annot" :: values -> annot := String.concat ~sep:"=" values
       | "open" :: values -> opens := String.concat ~sep:"=" values :: !opens
       | ["use_int32"] -> int32_as_int := false;
       | ["use_int64"] -> int64_as_int := false;
-      | ["fixed_as_int"; ("true"|"false") as v] -> fixed_as_int := (Bool.of_string v);
-      | ["int64_as_int"; ("true"|"false") as v] -> int64_as_int := (Bool.of_string v);
-      | ["int32_as_int"; ("true"|"false") as v] -> int32_as_int := (Bool.of_string v);
+      | ["fixed_as_int"; ("true"|"false") as v] -> fixed_as_int := (bool_of_string v);
+      | ["int64_as_int"; ("true"|"false") as v] -> int64_as_int := (bool_of_string v);
+      | ["int32_as_int"; ("true"|"false") as v] -> int32_as_int := (bool_of_string v);
       | ["debug"] -> debug := true
       | _ -> failwith ("Unknown parameter: " ^ param)
     );
@@ -45,18 +45,18 @@ let module_name name =
     | '_' -> "P" ^ name ^ "'" (* Change to a name that protobuf cannot create *)
     | _ -> name
   in
-  String.capitalize name
+  String.capitalize_ascii name
 
 (* Remember to mangle reserved keywords *)
 let field_name (field_name : string option) =
-  match String.uncapitalize (Option.value_exn field_name) with
+  match String.uncapitalize_ascii (Option.value_exn field_name) with
   | name when is_reserved name -> name ^ "'"
   | name -> name
 
 let variant_name name = module_name name
 
 let constructor_name Spec.Descriptor.{name; number = _; options = _} =
-  String.capitalize (Option.value_exn name)
+  String.capitalize_ascii (Option.value_exn name)
 
 let to_string_opt = function
   | Some s -> s
@@ -72,8 +72,8 @@ type message = {
 
 let log fmt =
   match !debug with
-  | true -> Caml.(Printf.eprintf (fmt ^^ "\n%!"))
-  | false -> Caml.Printf.ifprintf Caml.stderr fmt
+  | true -> Printf.eprintf (fmt ^^ "\n%!")
+  | false -> Printf.ifprintf stderr fmt
 
 let emit_enum_type
     Spec.Descriptor.{name; value; options = _; reserved_range = _; reserved_name = _}
@@ -95,7 +95,7 @@ let emit_enum_type
   Code.emit implementation `End "";
   Code.emit implementation `Begin "let from_int = function";
   List.iter ~f:(fun v ->
-      Code.emit implementation `None "| %d -> Ok %s" (Option.value_exn v.number) (constructor_name v)
+      Code.emit implementation `None "| %d -> Ok %s" (Option.value_exn v.Spec.Descriptor.number) (constructor_name v)
     ) value;
   Code.emit implementation `None "| n -> Error (`Unknown_enum_value n)";
   Code.emit implementation `End "";
@@ -197,9 +197,9 @@ let compound_of_field ~syntax ~prefix scope field_descriptor =
     sprintf "repeated (%d, %s, %s)" index spec (get_packed ~syntax options);
   | {number = Some index; label = Some Label_required; _} ->
     sprintf "basic (%d, %s, required)" index spec
-  | {number = Some index; default_value = Some default; type_ = Some type_; type_name; _} when Poly.equal syntax Proto2 ->
+  | {number = Some index; default_value = Some default; type_ = Some type_; type_name; _} when syntax = Proto2 ->
     sprintf "basic (%d, %s, %s)" index spec (make_default_value ~type_name scope default type_)
-  | {number = Some index; _} when Poly.equal syntax Proto2 ->
+  | {number = Some index; _} when syntax = Proto2 ->
     sprintf "basic (%d, %s, proto2 none)" index spec
   | {number = Some index; _} ->
      sprintf "basic (%d, %s, proto3)" index spec
@@ -265,14 +265,42 @@ let emit_oneof_fields t scope
 
 (** Return a list of plain fields + a list of fields per oneof_decl *)
 let split_oneof_decl fields oneof_decls =
-  List.foldi ~init:(fields, []) ~f:(fun i (fields, oneof_decls) oneof_decl ->
-      let oneof_fields, rest = List.partition_tf ~f:(function
-          | {Spec.Descriptor.oneof_index = Some i'; _} -> i = i'
-          | {Spec.Descriptor.oneof_index = None; _} -> false
-        ) fields
-      in
-      rest, (oneof_decl, oneof_fields) :: oneof_decls
-    ) oneof_decls
+  let open Spec.Descriptor in
+  let rec inner oneofs oneof_decls = function
+    | { oneof_index = Some i; _ } as o1 :: fs -> begin
+        match oneofs with
+        | [] -> inner [o1] oneof_decls fs
+        | { oneof_index = Some j; _ } :: _ when i = j ->
+          inner (o1 :: oneofs) oneof_decls fs
+        | oneofs ->
+          `Oneof (List.hd oneof_decls, List.rev oneofs) :: inner [o1] (List.tl oneof_decls) fs
+      end
+    | f :: fs -> begin
+        match oneofs with
+        | [] -> `Field f :: inner [] oneof_decls fs
+        | oneofs ->
+          `Oneof (List.hd oneof_decls, List.rev oneofs) :: `Field f :: inner [] (List.tl oneof_decls) fs
+      end
+    | [] -> begin
+        match oneofs with
+        | [] ->
+          assert (List.length oneof_decls = 0);
+          []
+        | oneofs ->
+          assert (List.length oneof_decls = 1);
+          [ `Oneof (List.hd oneof_decls, List.rev oneofs) ]
+      end
+  in
+  let res = inner [] oneof_decls fields in
+
+  (* Map to expected result. *)
+  let rec inner fields oneofs = function
+    | `Field x :: xs -> inner (x :: fields) oneofs xs
+    | `Oneof x :: xs -> inner fields (x :: oneofs) xs
+    | [] -> (List.rev fields, List.rev oneofs)
+  in
+  inner [] [] res
+
 
 let inject (signature', implementation') signature implementation =
   Code.append signature signature';
@@ -305,7 +333,6 @@ let emit_deserialization_function ~syntax ~is_map_entry scope all_fields (oneof_
   let signature = Code.init () in
   let implementation = Code.init () in
   Code.emit signature `None "val from_proto: Protobuf'.Reader.t -> t Protobuf'.Result.t";
-  let _field_names = List.map ~f:(fun field -> field_name field.name) fields in
 
   (* Create a constructor *)
   let (args, constructor) = match all_fields with
@@ -313,8 +340,8 @@ let emit_deserialization_function ~syntax ~is_map_entry scope all_fields (oneof_
     | [_; _] when is_map_entry -> "a b",  "(a, b)"
     | _  ->
       (* Construct the record *)
-      let fields = List.map ~f:(fun field -> field_name field.name) fields in
-      let oneof_fields = List.map ~f:(fun (decl, _) -> (field_name decl.name)) oneof_decls in
+      let fields = List.map ~f:(fun (field : Spec.Descriptor.field_descriptor_proto) -> field_name field.name) fields in
+      let oneof_fields = List.map ~f:(fun ((decl : Spec.Descriptor.oneof_descriptor_proto), _) -> (field_name decl.name)) oneof_decls in
       let args = String.concat ~sep:" " (fields @ oneof_fields) in
       let constructor = sprintf "{ %s }" (String.concat ~sep:"; " (fields @ oneof_fields)) in
       (args, constructor)
@@ -325,7 +352,7 @@ let emit_deserialization_function ~syntax ~is_map_entry scope all_fields (oneof_
     let specs = List.map ~f:(compound_of_field ~syntax ~prefix:"from" scope) fields in
     let oneofs =
       List.map ~f:(fun (_, specs) ->
-          List.map ~f:(fun field ->
+          List.map ~f:(fun (field: Spec.Descriptor.field_descriptor_proto)->
               let index = Option.value_exn field.number in
               let spec = spec_of_field ~prefix:"from" scope field in
               let constr = sprintf "fun v -> `%s v" (variant_name field.name) in
@@ -377,8 +404,8 @@ let emit_serialization_function ~syntax ~is_map_entry scope all_fields (oneof_de
     | [_; _] when is_map_entry ->
       sprintf "( a, b )", "a b"
     | _ ->
-      let field_names = List.map ~f:(fun field -> field_name field.name) fields in
-      let oneof_names = List.map ~f:(fun (decl, _) -> field_name decl.name) oneof_decls in
+      let field_names = List.map ~f:(fun (field: Spec.Descriptor.field_descriptor_proto) -> field_name field.name) fields in
+      let oneof_names = List.map ~f:(fun ((decl: Spec.Descriptor.oneof_descriptor_proto), _) -> field_name decl.name) oneof_decls in
       let args = String.concat ~sep:" " (field_names @ oneof_names) in
       let destruct = String.concat ~sep:"; " (field_names @ oneof_names) |> sprintf "{ %s }" in
       (destruct, args)
@@ -537,17 +564,14 @@ let parse_proto_file
   Code.emit implementation `None "module Protobuf' = Protobuf";
   List.iter ~f:(Code.emit implementation `None "open %s") !opens;
 
-  wrap_packages ~syntax scope message_type services (Option.value_map ~default:[] ~f:(String.split ~on:'.') package)
+  wrap_packages ~syntax scope message_type services (Option.value_map ~default:[] ~f:(String.split_on_char ~sep:'.') package)
   |> Code.append implementation;
 
 
   let out_name =
     Option.map ~f:(fun proto_file_name ->
-        let name = match String.chop_suffix ~suffix:".proto" proto_file_name with
-          | None -> proto_file_name
-          | Some stem -> stem
-        in
-        Printf.sprintf "%s.ml" name
+        Filename.remove_extension proto_file_name
+        |> Printf.sprintf "%s.ml"
       ) name
   in
   out_name, implementation
@@ -557,12 +581,12 @@ let parse_request Spec.Plugin.{file_to_generate = files_to_generate; parameter =
   log "*** Request to parse proto_files: %s. Parameter: %s" (String.concat ~sep:"; " files_to_generate) (Option.value ~default:"<None>" parameters);
   (* Find the correct file to process *)
   let target_proto_files = List.filter ~f:(fun Spec.Descriptor.{name; _} ->
-      List.mem ~equal:String.equal files_to_generate (Option.value_exn name)
+      List.mem ~set:files_to_generate (Option.value_exn name)
     ) proto_files
   in
   let scope = Scope.init proto_files in
   let result =
-    List.map ~f:(fun proto_file ->
+    List.map ~f:(fun (proto_file : Spec.Descriptor.file_descriptor_proto) ->
       let scope = Scope.push scope (Option.value_exn proto_file.name |> Scope.module_name_of_proto) in
       parse_proto_file scope proto_file
     ) target_proto_files
