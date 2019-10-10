@@ -2,7 +2,7 @@
 
 open StdLabels
 open Field
-open Infix.Result
+open Result
 
 type t = {
   mutable offset : int;
@@ -29,7 +29,7 @@ let size {offset; end_offset; _} = end_offset - offset
 (** Return an error if there is not enough data in input *)
 let validate_capacity t count =
   match t.offset + count <= t.end_offset with
-  | true -> Result.ok_unit
+  | true -> return ()
   | false ->
     Result.fail `Premature_end_of_input
 
@@ -59,7 +59,7 @@ let read_raw_varint t =
 
 let read_varint t = read_raw_varint t >>| fun v -> Varint v
 
-let read_field_header : t -> (int * int, error) Result.t =
+let read_field_header : t -> (int * int) Result.t =
   fun t ->
   let open Infix.Int64 in
   read_raw_varint t >>| fun v ->
@@ -80,20 +80,18 @@ let read_length_delimited t =
 let read_fixed32 t =
   let size = 4 in
   validate_capacity t size >>| fun () ->
-    let v = LittleEndian.get_int32 t.data t.offset in
-    t.offset <- t.offset + size;
-    (Fixed_32_bit v)
-
+  let v = LittleEndian.get_int32 t.data t.offset in
+  t.offset <- t.offset + size;
+  (Fixed_32_bit v)
 
 let read_fixed64 t =
   let size = 8 in
-  validate_capacity t size >>| (fun () ->
+  validate_capacity t size >>| fun () ->
   let v = LittleEndian.get_int64 t.data t.offset in
   t.offset <- t.offset + size;
   (Fixed_64_bit v)
-  )
 
-let read_field : t -> (int * Field.t, error) Result.t =
+let read_field : t -> (int * Field.t) Result.t =
  fun t ->
   read_field_header t >>= (fun (field_type, field_number) ->
     (match field_type with

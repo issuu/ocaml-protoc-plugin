@@ -9,11 +9,4 @@ module Int64 = struct
   let (/) = div
   let ( * ) = mul
   let (-) = sub
-  let (%) x y =
-    let rval = rem x y in
-    if rval < zero then rval + y else rval
-end
-module Result = struct
-  let ( >>| ) res f = Result.map f res
-  let ( >>= ) res f = Result.bind f res
 end

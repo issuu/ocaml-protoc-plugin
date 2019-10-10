@@ -17,8 +17,8 @@ depends: [
   "ocaml" {>= "4.06.0"}
   "ocaml-protoc" {build}
   "ppx_deriving"
-  "ppx_expect"
-  "ppx_inline_test"
+  "ppx_expect" {build}
+  "ppx_inline_test" {build}
 ]
 
 synopsis: "Plugin for protoc protobuf compiler to generate ocaml definitions from a .proto file"

@@ -1,7 +1,5 @@
 (library
  (name protobuf)
  (public_name ocaml-protoc-plugin.protobuf)
- (inline_tests)
  (synopsis "Serialization and deserialization of protobuf types")
- (preprocess
-  (pps ppx_deriving.show ppx_expect ppx_inline_test)))
+)

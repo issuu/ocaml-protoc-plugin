@@ -134,10 +134,12 @@ let serialize spec =
 
 
 module Test = struct
-  let%test "signed_varint 0L"  = signed_varint 0L = Varint 0L
-  let%test "signed_varint -1L" = signed_varint (-1L) = Varint 1L
-  let%test "signed_varint 1L" = signed_varint 1L = Varint 2L
-  let%test "signed_varint -2L" = signed_varint (-2L) = Varint 3L
-  let%test "signed_varint 2147483647L"  = signed_varint 2147483647L = Varint 4294967294L
-  let%test "signed_varint -2147483648L"  = signed_varint (-2147483648L) = Varint 4294967295L
+  let test () =
+    let (_:bool) = signed_varint 0L = Varint 0L || failwith "signed_varint 0L" in
+    let (_:bool) = signed_varint (-1L) = Varint 1L || failwith "signed_varint -1L" in
+    let (_:bool) = signed_varint 1L = Varint 2L || failwith "signed_varint 1L" in
+    let (_:bool) = signed_varint (-2L) = Varint 3L || failwith "signed_varint -2L" in
+    let (_:bool) = signed_varint 2147483647L = Varint 4294967294L || failwith "signed_varint 2147483647L" in
+    let (_:bool) = signed_varint (-2147483648L) = Varint 4294967295L || failwith "signed_varint -2147483648L" in
+    ()
 end

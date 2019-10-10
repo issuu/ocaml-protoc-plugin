@@ -2,7 +2,6 @@
 
 open StdLabels
 open Result
-open Infix.Result
 
 module S = Spec.Make(struct
     type ('a, 'b) dir = ('a, 'b) Spec.deserialize
@@ -11,25 +10,25 @@ module C = S.C
 open S
 
 
-type 'a sentinal = unit -> 'a Spec.result
-type 'a decoder = Field.t -> 'a Spec.result
+type 'a sentinal = unit -> 'a Result.t
+type 'a decoder = Field.t -> 'a Result.t
 
 type (_, _) sentinal_list =
   | SNil : ('a, 'a) sentinal_list
   | SCons : ('a sentinal) * ('b, 'c) sentinal_list -> ('a -> 'b, 'c) sentinal_list
 
 
-let error_wrong_field str field : _ result =
+let error_wrong_field str field : _ Result.t =
   `Wrong_field_type (str, field) |> Result.fail
 
-let error_illegal_value str field : _ result = `Illegal_value (str, field) |> Result.fail
+let error_illegal_value str field : _ Result.t = `Illegal_value (str, field) |> Result.fail
 
 let read_varint ~signed ~type_name =
   let open! Infix.Int64 in
   function
   | Field.Varint v -> begin
       let v = match signed with
-        | true when v % 2L = 0L -> v / 2L
+        | true when v land 0x01L = 0L -> v / 2L
         | true -> (v / 2L * -1L) - 1L
         | false -> v
       in
@@ -188,7 +187,7 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
     in
     ([index, read], get)
   | Oneof oneofs ->
-    let make_reader: a Spec.result ref -> a oneof -> (int * unit decoder) = fun v (Oneof_elem (index, spec, constr)) ->
+    let make_reader: a Result.t ref -> a oneof -> (int * unit decoder) = fun v (Oneof_elem (index, spec, constr)) ->
       let _, read = type_of_spec spec in
       let read field =
         read field >>| fun value -> v := Ok (constr value)
@@ -225,7 +224,7 @@ let read_fields_map reader_list =
             | None ->
               read reader
           end
-        | Error err -> Error (err :> Spec.error)
+        | Error err -> Error err
       end
   in
   read
@@ -245,12 +244,12 @@ let read_fields_array max_index reader_list =
           readers.(index) field >>= fun () ->
           read reader
         | Ok _ -> return ()
-        | Error err -> Error (err :> Spec.error)
+        | Error err -> Error err
       end
   in
   read
 
-let deserialize: type constr t. (constr, t) compound_list -> constr -> Reader.t -> t Spec.result = fun spec constr ->
+let deserialize: type constr t. (constr, t) compound_list -> constr -> Reader.t -> t Result.t = fun spec constr ->
   let max_index =
     let rec inner: type a b. int -> (a, b) compound_list -> int = fun acc -> function
       | Cons (Oneof oneofs, rest) ->
@@ -271,13 +270,22 @@ let deserialize: type constr t. (constr, t) compound_list -> constr -> Reader.t 
   (* For even better optimization, the first pass could assume that
      all fields are written (if at all) in the same order as the spec.
      If we reach the end of the reader list, we revert to use read_fields_array
-     or read_fields_map
+     or read_fields_map.
+
+     Even even better, we could read opportunistically, and apply to the constructor
+     as soon as we find the element.
+     This requires that fields are collected into lists.
+     Also Oneof must be in the correct order,
+     and requires special handling (But I dont see that as a problem).
+     This solution avoids the need of sentinals, and has O(n),
+     where n is the number of fields.
+     If passing fails, we start over and apply standard readfields.
   *)
   let read_fields = match max_index < 1024 with
     | true -> read_fields_array max_index
     | false -> read_fields_map
   in
-  let rec apply: type constr t. constr -> (constr, t) sentinal_list -> t Spec.result = fun constr -> function
+  let rec apply: type constr t. constr -> (constr, t) sentinal_list -> t Result.t = fun constr -> function
     | SCons (sentinal, rest) ->
       sentinal () >>= fun v -> apply (constr v) rest
     | SNil -> return constr
@@ -285,9 +293,7 @@ let deserialize: type constr t. (constr, t) compound_list -> constr -> Reader.t 
   (* We first make a list of sentinal_getters, which we can map to the constr *)
   let rec make_sentinals: type a b. (a, b) compound_list -> (a, b) sentinal_list * (int * unit decoder) list = function
     | Cons (spec, rest) ->
-      (* Ouch. Oneofs would return multiple reads and indexes, but only one sentinal *)
       let (readers, sentinal) = sentinal spec in
-      (* Fuck. This is getting all backwards. *)
       let (sentinals, reader_list) = make_sentinals rest in
       SCons (sentinal, sentinals), List.rev_append readers reader_list
     | Nil -> SNil, []

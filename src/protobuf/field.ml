@@ -7,7 +7,11 @@ type t =
       data : string;
     } (* string, bytes, embedded messages, packed repeated fields *)
   | Fixed_32_bit of Int32.t (* fixed32, sfixed32, float *)
-[@@deriving show]
+let show = function
+  | Varint i -> Printf.sprintf "Varint %Ld" i
+  | Fixed_64_bit i -> Printf.sprintf "Fixed_64_bit %Ld" i
+  | Length_delimited { offset; length; data = _} ->  Printf.sprintf "Length_delimited: %d" (length - offset)
+  | Fixed_32_bit i -> Printf.sprintf "Fixed_32_bit %ld" i
 
 let varint v = Varint v
 let fixed_32_bit v = Fixed_32_bit v

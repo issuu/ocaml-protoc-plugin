@@ -1,15 +1,3 @@
-type error =
-  [ `Premature_end_of_input
-  | `Unknown_field_type of int
-  | `Wrong_field_type of string * Field.t
-  | `Illegal_value of string * Field.t
-  | `Not_implemented
-  | `Unknown_enum_value of int
-  | `Oneof_missing
-  | `Required_field_missing ]
-[@@deriving show]
-type nonrec 'a result = ('a, error) result
-
 module type T = sig
   type ('a, 'b) dir
 end
@@ -52,9 +40,9 @@ module Make(T : T) = struct
     | Bool : bool spec
     | String : string spec
     | Bytes : bytes spec
-    | Enum :  (int -> 'a result, 'a -> int) T.dir -> 'a spec
-    | Message : (Reader.t -> 'a result, 'a -> Writer.t) T.dir -> 'a spec
-    | Message_opt : (Reader.t -> 'a result, 'a -> Writer.t) T.dir -> 'a option spec
+    | Enum :  (int -> 'a Result.t, 'a -> int) T.dir -> 'a spec
+    | Message : (Reader.t -> 'a Result.t, 'a -> Writer.t) T.dir -> 'a spec
+    | Message_opt : (Reader.t -> 'a Result.t, 'a -> Writer.t) T.dir -> 'a option spec
 
   type _ oneof =
     | Oneof_elem : int * 'b spec * (('b -> 'a), 'b) T.dir -> 'a oneof

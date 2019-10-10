@@ -1,6 +1,6 @@
 module type Message = sig
   type t
-  val from_proto: Reader.t -> t Spec.result
+  val from_proto: Reader.t -> t Result.t
   val to_proto: t -> Writer.t
 end
 

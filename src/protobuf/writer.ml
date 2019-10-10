@@ -20,7 +20,7 @@ let rec size_of_field = function
     let bits = int_of_float (log (Int64.to_float v) /. log 2.0) + 1 in
     ((bits - 1) / 7) + 1
   | Varint v when Int64Compare.is_negative v -> 10
-  | Varint _ -> 1 (* Zero *)
+  | Varint _ -> 1
   | Fixed_32_bit _ -> 4
   | Fixed_64_bit _ -> 8
   | Length_delimited {length; _} -> size_of_field (Varint (Int64.of_int length)) + length
@@ -119,8 +119,13 @@ let dump t =
   |> String.concat ~sep:"-"
   |> printf "Buffer: %s\n"
 
-let%test _ =
-  let buffer = init () in
-  write_field buffer 1 (Varint 1L);
-  let c = contents buffer in
-  String.length c = 2 && String.equal c "\x08\x01"
+module Test = struct
+  let test () =
+    let (_:bool) =
+      let buffer = init () in
+      write_field buffer 1 (Varint 1L);
+      let c = contents buffer in
+      String.length c = 2 && String.equal c "\x08\x01" || failwith "Writefield failed"
+    in
+    ()
+end

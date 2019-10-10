@@ -3,7 +3,7 @@ open StdLabels
 module type T = sig
   type t [@@deriving show, eq]
   val to_proto : t -> Protobuf.Writer.t
-  val from_proto : Protobuf.Reader.t -> (t, Protobuf.Spec.error) result
+  val from_proto : Protobuf.Reader.t -> t Protobuf.Result.t
   val name : unit -> string
 end
 
@@ -60,4 +60,4 @@ let test_encode (type t) ?dump ?(protoc=true) (module M : T with type t = t) (ex
   | Ok observed ->
     Printf.printf "\nExpect  :%s\nObserved:%s\n" ([%show: M.t] expect) ([%show: M.t] observed)
   | Error err ->
-    Printf.printf "\nDecode failed: %s \n" (Protobuf.Spec.show_error err)
+    Printf.printf "\nDecode failed: %s \n" (Protobuf.Result.show_error err)
