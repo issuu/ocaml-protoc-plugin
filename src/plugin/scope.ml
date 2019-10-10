@@ -33,7 +33,7 @@ let make_type_db: Spec.Descriptor.file_descriptor_proto list -> string StringMap
       Option.value_map ~default:[] ~f:(String.split_on_char ~sep:'.') package
       |> List.rev
     in
-    let module_name = Option.value_exn name |> module_name_of_proto in
+    let module_name = Option.value_exn name |> Filename.basename |> module_name_of_proto in
     (module_name, map_types ~path ~message_types ~enum_types:enum_types)
   in
   let types = List.map ~f:types_of_file descriptions in
