@@ -157,7 +157,7 @@ let make_default_value ~type_name scope default =
   let open Spec.Descriptor in
   function
   | Type_double | Type_float ->
-    sprintf "proto2 (some %s)" (Float.of_string default |> Float.to_string)
+    sprintf "proto2 (some %s)" (default |> float_of_string |> string_of_float)
   | Type_int64 | Type_uint64 | Type_fixed64 | Type_sint64 | Type_sfixed64 ->
     begin
       match !int64_as_int with
