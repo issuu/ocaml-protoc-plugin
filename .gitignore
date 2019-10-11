@@ -2,3 +2,5 @@
 /_opam/
 /*.install
 .merlin
+node_modules
+lib

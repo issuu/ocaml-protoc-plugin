@@ -1,0 +1,14 @@
+{
+  "name": "ocaml-protoc-plugin-runtime-bs",
+  "namespace": "Protobuf",
+  "refmt": 3,
+  "sources": [
+    {
+      "dir": "src/protobuf"
+    }
+  ],
+  "package-specs": {
+    "module": "commonjs"
+  },
+  "suffix": ".bs.js"
+}
