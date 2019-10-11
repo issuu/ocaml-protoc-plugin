@@ -485,8 +485,8 @@ let rec emit_message ~syntax scope
   let () =
     match name with
     | Some _name ->
-      Code.emit signature `None "val name: unit -> string";
-      Code.emit implementation `None "let name () = \"%s\"" (Scope.get_current_scope scope);
+      Code.emit signature `None "val name': unit -> string";
+      Code.emit implementation `None "let name' () = \"%s\"" (Scope.get_current_scope scope);
       let is_map_entry = is_map_entry options in
       let t = emit_message_type ~syntax ~is_map_entry scope fields oneof_decls in
       Code.append signature t;

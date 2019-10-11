@@ -4,7 +4,7 @@ module type T = sig
   type t [@@deriving show, eq]
   val to_proto : t -> Protobuf.Writer.t
   val from_proto : Protobuf.Reader.t -> t Protobuf.Result.t
-  val name : unit -> string
+  val name' : unit -> string
 end
 
 let hexlify data =
@@ -50,7 +50,7 @@ let test_encode (type t) ?dump ?(protoc=true) (module M : T with type t = t) (ex
     | None -> ()
   in
   let () = match protoc with
-    | true -> dump_protoc (M.name ()) data
+    | true -> dump_protoc (M.name' ()) data
     | false -> ()
   in
   (* Decode the message *)
