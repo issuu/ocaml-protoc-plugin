@@ -17,5 +17,9 @@
     "protobuf",
     "protoc"
   ],
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "files": [
+    "./bsconfig.json",
+    "./src/protobuf"
+  ]
 }
