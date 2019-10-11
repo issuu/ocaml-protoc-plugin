@@ -1,6 +1,8 @@
 - [ ] Support enum entries with same id
 
 ## 0.9.1: Unreleased
+- [x] Avoid name clash with on 'name'
+- [x] Fix code generation when argument contains a path
 - [x] Refactor internal types to make serialization and
       deserialization type spec symmetrical.
 - [x] Optimize deserialization for messages with max_id < 1024

@@ -585,7 +585,7 @@ let parse_request Spec.Plugin.{file_to_generate = files_to_generate; parameter =
   let scope = Scope.init proto_files in
   let result =
     List.map ~f:(fun (proto_file : Spec.Descriptor.file_descriptor_proto) ->
-      let scope = Scope.push scope (Option.value_exn proto_file.name |> Scope.module_name_of_proto) in
+      let scope = Scope.push scope (Option.value_exn proto_file.name |> Filename.basename |> Scope.module_name_of_proto) in
       parse_proto_file scope proto_file
     ) target_proto_files
     |> List.map ~f:(fun (v, code) ->
