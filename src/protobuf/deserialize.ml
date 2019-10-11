@@ -17,11 +17,11 @@ type (_, _) sentinal_list =
   | SNil : ('a, 'a) sentinal_list
   | SCons : ('a sentinal) * ('b, 'c) sentinal_list -> ('a -> 'b, 'c) sentinal_list
 
-
 let error_wrong_field str field : _ Result.t =
   `Wrong_field_type (str, field) |> Result.fail
 
 let error_illegal_value str field : _ Result.t = `Illegal_value (str, field) |> Result.fail
+let error_required_field_missing: _ Result.t = `Required_field_missing |> Result.fail
 
 let read_varint ~signed ~type_name =
   let open! Infix.Int64 in
@@ -106,10 +106,6 @@ let rec type_of_spec: type a. a spec -> 'b * a decoder =
   | Message from_proto -> (`Length_delimited, function
       | Field.Length_delimited {offset; length; data} -> from_proto (Reader.create ~offset ~length data)
       | field ->  error_wrong_field "message" field)
-  | Message_opt from_proto -> (`Length_delimited, function
-      | Field.Length_delimited {offset; length; data} -> from_proto (Reader.create ~offset ~length data) >>| Option.some
-      | field ->  error_wrong_field "message" field)
-
 
 let default_of_field_type = function
   | `Fixed_32_bit -> Field.fixed_32_bit Int32.zero
@@ -118,10 +114,13 @@ let default_of_field_type = function
   | `Varint -> Field.varint 0L
 
 let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = function
-  | Basic (_index, (Message_opt _deser), Required) -> failwith "Required messages should be option types"
-  | Basic (index, (Message_opt deser), _) ->
+  (* This is the same as required, so we should just use that! *)
+  | Basic (index, (Message deser), _) ->
     let v = ref None in
-    let get () = return !v in
+    let get () = match !v with
+      | None -> error_required_field_missing
+      | Some v -> return v
+    in
     let read = function
       | Field.Length_delimited {offset; length; data} ->
         let reader = Reader.create ~length ~offset data in
@@ -129,13 +128,12 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
       | field -> error_wrong_field "message" field
     in
     ([index, read], get)
-
   | Basic (index, spec, Required) ->
     let _, read = type_of_spec spec in
     let v = ref None in
     let get () = match !v with
       | Some v -> return v
-      | None -> Error `Required_field_missing
+      | None -> error_required_field_missing
     in
     let read field =
       read field >>| fun value -> v := Some value
@@ -152,13 +150,21 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
           |> read
           |> function
           | Ok v -> v
-          | Error _ -> failwith "Default value not decodeable"
+          | Error _ -> failwith "Cannot decode default field value"
         end
     in
     let v = ref default in
     let get () = return !v in
     let read field =
       read field >>| fun value -> v := value
+    in
+    ([index, read], get)
+  | Basic_opt (index, spec) ->
+    let _, read = type_of_spec spec in
+    let v = ref None in
+    let get () = return !v in
+    let read field =
+      read field >>| fun value -> v := Some value
     in
     ([index, read], get)
   | Repeated (index, spec, _) ->
@@ -260,6 +266,8 @@ let deserialize: type constr t. (constr, t) compound_list -> constr -> Reader.t 
         let acc = max_elt acc oneofs in
         inner acc rest
       | Cons (Basic (idx, _, _), rest) ->
+        inner (max acc idx) rest
+      | Cons (Basic_opt (idx, _), rest) ->
         inner (max acc idx) rest
       | Cons (Repeated (idx, _, _), rest) ->
         inner (max acc idx) rest

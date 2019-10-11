@@ -1,6 +1,6 @@
 let%expect_test _ =
   let module T = Proto2.Message in
-  let t = T.{enum = T.E.B; i = 0; j = 5; required = Required.{ a = 7 } } in
+  let t = T.{enum = Some T.E.B; i = 0; j = 5; required = Required.{ a = Some 7 }; k = Some 5 } in
   Test_lib.test_encode (module T) t;
   [%expect {|
     enum: B
@@ -8,7 +8,8 @@ let%expect_test _ =
     j: 5
     required {
       a: 7
-    } |}]
+    }
+    k: 5 |}]
 
 let%expect_test "Default read default values" =
   let module T = Proto2.A in
@@ -35,5 +36,5 @@ let%expect_test "Only tramitting the required field" =
     | Error e  -> Printf.printf "Decode failure: %s\n" (Protobuf.Result.show_error e)
   in ();
   [%expect {|
-    { opt = 0; req = 0; s = "default string"; u = 27; b = "default bytes";
+    { opt = None; req = 0; s = "default string"; u = 27; b = "default bytes";
       c = 27; f = 27.; e = B } |}]

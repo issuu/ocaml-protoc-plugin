@@ -16,6 +16,7 @@ message Message {
   optional E enum = 1;
   optional uint64 i = 2 [default = 4];
   required uint64 j = 3 [default = 4]; //Setting default on a required field really does not make sense
+  optional uint64 k = 5;
   required Required required = 4;
 }
 

@@ -9,11 +9,8 @@ serialization and de-serialization.
 The main features include:
 * Messages are mapped to idiomatic OCaml types, using modules
 * Support service descriptions
-* Full proto3 compliant
-* Partial proto2 compliant(*)
-
-(*) See section about proto2 compliance.
-
+* proto3 compliant
+* proto2 compliant
 
 ## Comparisson with other OCaml protobuf handlers.
 
@@ -67,25 +64,17 @@ The specification for proto2 states that when deserializing a message,
 fields which are not transmitted should be set the the default value
 (either 0, or the value of the default option).
 
-The specification is vague when it comes to serializing
-fields (i.e. should fields with default values be serialized?).
-This implementation chooses to always serialize all values, default or otherwise.
-(proto3 explicitly states that fields with default values does not
-need to be transmitted)
+However, It seems to be the defacto standard that in proto2 it should
+be possible to determine if a field was transmitted or not.  Thefore
+all non-repeated fields in proto2 are default - unless it has a
+default value, or is a required field.
 
-Most proto2 implementations keep track of which fields have been
-received and which have not. `ocaml-protoc-plugin` chooses not to hold
-on to this information, which means that for field of `uint64` with the
-value of 0 (or the default value if specified), the user cannot know
-if the fields was present in the deserialized message or not. This
-also means that serialization and deserialization is not
-symmetrical.
-
-There are examples where this can cause ambiguities when interpreting
-a proto2 message. My advice would be to set an 'illegal' default
-value on fields where its important to know if the field was
-transmitted or not.
-
+The specification is vague when it comes to serializing fields for
+proto2 syntax. (i.e. should fields with default values be
+serialized?).  This implementation chooses to always serialize values,
+default or otherwise, for all fields which are set (i.e. `Some x`).
+This differs from proto3, which explicitly states that fields with
+default values does not need to be transmitted).
 
 ## Invocation
 If the plugin is available in the path as `protoc-gen-ocaml`, then you

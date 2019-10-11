@@ -9,9 +9,7 @@
       and ppx_let
 - [x] Honour [packed=...] flag.
 - [x] Make fixed scalar types default to int32 and int64
-- [x] Always serialize proto2 type fields
-- [x] Support default values (proto2)
-- [x] Support required (proto2) fields
+- [x] Support proto2 specification
 - [x] Add options to switch between int64|int32 and int
 - [x] Fix name clash problem with special enum names
 - [x] Refactor serializaton and deserialization to simplify emitted code

@@ -62,28 +62,20 @@ let rec field_of_spec: type a. a spec -> a -> Field.t = function
     fun v ->
       let writer = to_proto v in
       Field.length_delimited (Writer.contents writer)
-  | Message_opt _ -> failwith "Cannot comply"
 
 
 let is_scalar: type a. a spec -> bool = function
   | String -> false
   | Bytes -> false
   | Message _ -> false
-  | Message_opt _ -> false
   | _ -> true
 
 let rec write: type a. a compound -> Writer.t -> a -> unit = function
-  | Basic (index, Message_opt (to_proto), _) -> begin
-      fun writer -> function
-      | Some v ->
-        let v = to_proto v in
-        Writer.concat_as_length_delimited writer ~src:v index
-      | None -> ()
-    end
-  | Basic (index, Message (to_proto), _) ->
-    fun writer v ->
+  | Basic (index, Message (to_proto), _) -> begin
+      fun writer v ->
       let v = to_proto v in
       Writer.concat_as_length_delimited writer ~src:v index
+    end
   | Repeated (index, Message to_proto, _) ->
     let write = write (Basic (index, Message to_proto, Required)) in
     fun writer vs -> List.iter ~f:(fun v -> write writer v) vs
@@ -113,6 +105,12 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
       | Proto2 _
       | Required -> fun writer v -> Writer.write_field writer index (f v)
     end
+  | Basic_opt (index, spec) -> begin
+    let f = field_of_spec spec in
+    fun writer -> function
+      | Some v -> Writer.write_field writer index (f v)
+      | None -> ()
+  end
   | Oneof f ->
     fun writer v ->
       let Oneof_elem (index, spec, v) = f v in

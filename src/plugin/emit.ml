@@ -105,9 +105,9 @@ let is_message_type = function
   | Spec.Descriptor.{type_ = Some Type_message; _ } -> true
   | _ -> false
 
-let spec_of_field ~prefix scope field_descriptor =
+let spec_of_field ~prefix scope =
   let open Spec.Descriptor in
-  match field_descriptor with
+  function
   | { type_ = Some Type_double; _ } -> "double"
   | { type_ = Some Type_float; _ } -> "float"
 
@@ -143,33 +143,28 @@ let spec_of_field ~prefix scope field_descriptor =
       Scope.get_scoped_name ~postfix:(prefix ^ "_int") scope type_name
     in
     sprintf "enum %s" to_int_func
-  | { type_ = Some Type_message; type_name; label = Some Label_required; _ }
-  | { type_ = Some Type_message; type_name; label = Some Label_repeated; _ }
-  | { type_ = Some Type_message; type_name; oneof_index = Some _; _ } ->
-    let proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
-    sprintf "message %s" proto_func
   | { type_ = Some Type_message; type_name; _ } ->
     let proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
-    sprintf "message_opt %s" proto_func
+    sprintf "message %s" proto_func
   | _ -> failwith "Unknown type"
 
 let make_default_value ~type_name scope default =
   let open Spec.Descriptor in
   function
   | Type_double | Type_float ->
-    sprintf "proto2 (some %s)" (default |> float_of_string |> string_of_float)
+    sprintf "proto2 (some (%s))" (default |> float_of_string |> string_of_float)
   | Type_int64 | Type_uint64 | Type_fixed64 | Type_sint64 | Type_sfixed64 ->
     begin
       match !int64_as_int with
-      | true -> sprintf "proto2 (some %s)" default
-      | false -> sprintf "proto2 (some %sL)" default
+      | true -> sprintf "proto2 (some (%s))" default
+      | false -> sprintf "proto2 (some (%sL))" default
     end
 
   | Type_int32 | Type_fixed32 | Type_sfixed32 | Type_sint32 | Type_uint32 ->
     begin
       match !int32_as_int with
-      | true -> sprintf "proto2 (some %s)" default
-      | false -> sprintf "proto2 (some %sl)" default
+      | true -> sprintf "proto2 (some (%s))" default
+      | false -> sprintf "proto2 (some (%sl))" default
     end
   | Type_bool -> sprintf "proto2 (some %s)" default
   | Type_string -> sprintf "proto2 (some {|%s|})" default
@@ -199,15 +194,17 @@ let compound_of_field ~syntax ~prefix scope field_descriptor =
     sprintf "basic (%d, %s, required)" index spec
   | {number = Some index; default_value = Some default; type_ = Some type_; type_name; _} when syntax = Proto2 ->
     sprintf "basic (%d, %s, %s)" index spec (make_default_value ~type_name scope default type_)
-  | {number = Some index; _} when syntax = Proto2 ->
-    sprintf "basic (%d, %s, proto2 none)" index spec
+  | {number = Some index; default_value = None; _} when syntax = Proto2 ->
+    sprintf "basic_opt (%d, %s)" index spec
+  | {number = Some index; type_ = Some Type_message; _} when syntax = Proto3 ->
+    sprintf "basic_opt (%d, %s)" index spec
   | {number = Some index; _} ->
-     sprintf "basic (%d, %s, proto3)" index spec
+    sprintf "basic (%d, %s, proto3)" index spec
 
 (** Get the stringified name of a type.
     Consider moving this to Protocol somewhere. So types are next to each other.
 *)
-let type_of_field scope field_descriptor =
+let type_of_field ~syntax scope field_descriptor =
   let open Spec.Descriptor in
   let base_type =
     match field_descriptor with
@@ -242,23 +239,24 @@ let type_of_field scope field_descriptor =
       Scope.get_scoped_name ~postfix:"t" scope type_name
     | {type_ = None; _} -> failwith "Abstract types cannot be"
   in
-  match field_descriptor with
-  | {label = Some Label_repeated; _} -> base_type ^ " list"
-  | {type_ = Some Type_message; label = Some Label_required; _} -> base_type
-  | {oneof_index = None; type_ = Some Type_message; _} -> base_type ^ " option"
-  | _ -> base_type
+  match syntax, field_descriptor with
+  | Proto2, {label = Some Label_optional; default_value = None; _} -> base_type ^ " option"
+  | _, {label = Some Label_repeated; _} -> base_type ^ " list"
+  | _, {type_ = Some Type_message; label = Some Label_required; _} -> base_type
+  | _, {oneof_index = None; type_ = Some Type_message; _} -> base_type ^ " option"
+  | _, _ -> base_type
 
-let emit_field t scope (field : Spec.Descriptor.field_descriptor_proto) =
-  Code.emit t `None "%s: %s;" (field_name field.name) (type_of_field scope field)
+let emit_field ~syntax t scope (field : Spec.Descriptor.field_descriptor_proto) =
+  Code.emit t `None "%s: %s;" (field_name field.name) (type_of_field ~syntax scope field)
 
-let emit_oneof_fields t scope
+let emit_oneof_fields ~syntax t scope
     ((oneof_decl : Spec.Descriptor.oneof_descriptor_proto), fields)
   =
   (* Emit a polymorphic variant type. *)
   let variants = List.map ~f:(fun field ->
-      let type_ = type_of_field scope field in
+      let type_str = type_of_field ~syntax scope field in
       let name = variant_name field.name in
-      sprintf "`%s of %s" name type_
+      sprintf "`%s of %s" name type_str
     ) fields
   in
   Code.emit t `None "%s: [ %s ];" (field_name oneof_decl.name) (String.concat ~sep:" | " variants)
@@ -421,7 +419,7 @@ let emit_serialization_function ~syntax ~is_map_entry scope all_fields (oneof_de
   Code.emit implementation `None "fun %s -> serialize%s () %s" destruct as_function args;
   signature, implementation
 
-let emit_message_type ~is_map_entry scope all_fields oneof_decls =
+let emit_message_type ~syntax ~is_map_entry scope all_fields oneof_decls =
   let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
   let t = Code.init () in
   let () =
@@ -430,11 +428,11 @@ let emit_message_type ~is_map_entry scope all_fields oneof_decls =
     | [key; value] when is_map_entry ->
       (* Generate tuple instead of record *)
       Code.emit t `None "type t = ( %s * %s ) %s"
-        (type_of_field scope key) (type_of_field scope value) !annot
+        (type_of_field ~syntax scope key) (type_of_field ~syntax scope value) !annot
     | _ ->
       Code.emit t `Begin "type t = {";
-      List.iter ~f:(emit_field t scope) fields;
-      List.iter ~f:(emit_oneof_fields t scope) oneof_decls;
+      List.iter ~f:(emit_field ~syntax t scope) fields;
+      List.iter ~f:(emit_oneof_fields ~syntax t scope) oneof_decls;
       Code.emit t `End "} %s" !annot
   in
   t
@@ -490,7 +488,7 @@ let rec emit_message ~syntax scope
       Code.emit signature `None "val name: unit -> string";
       Code.emit implementation `None "let name () = \"%s\"" (Scope.get_current_scope scope);
       let is_map_entry = is_map_entry options in
-      let t = emit_message_type ~is_map_entry scope fields oneof_decls in
+      let t = emit_message_type ~syntax ~is_map_entry scope fields oneof_decls in
       Code.append signature t;
       Code.append implementation t;
       inject

@@ -6,7 +6,7 @@ type ('a, 'b) serialize = 'b
 
 module Make(T : T) = struct
 
-  type 'a default = Proto3 | Proto2 of 'a option | Required
+  type 'a proto_type = Proto3 | Proto2 of 'a option | Required
   type packed = Packed | Not_packed
 
   type _ spec =
@@ -42,7 +42,6 @@ module Make(T : T) = struct
     | Bytes : bytes spec
     | Enum :  (int -> 'a Result.t, 'a -> int) T.dir -> 'a spec
     | Message : (Reader.t -> 'a Result.t, 'a -> Writer.t) T.dir -> 'a spec
-    | Message_opt : (Reader.t -> 'a Result.t, 'a -> Writer.t) T.dir -> 'a option spec
 
   type _ oneof =
     | Oneof_elem : int * 'b spec * (('b -> 'a), 'b) T.dir -> 'a oneof
@@ -50,7 +49,8 @@ module Make(T : T) = struct
   type ('a, 'b) oneof_value = 'a -> 'b
 
   type _ compound =
-    | Basic : int * 'a spec * 'a default -> 'a compound
+    | Basic : int * 'a spec * 'a proto_type -> 'a compound
+    | Basic_opt : int * 'a spec -> 'a option compound
     | Repeated : int * 'a spec * packed -> 'a list compound
     | Oneof : ('a oneof list, 'a -> unit oneof) T.dir  -> 'a compound
 
@@ -88,7 +88,6 @@ module Make(T : T) = struct
     let bytes = Bytes
     let enum f = Enum f
     let message f = Message f
-    let message_opt f = Message_opt f
 
     let some v = Some v
     let none = None
@@ -99,6 +98,7 @@ module Make(T : T) = struct
 
     let repeated (i, s, p) = Repeated (i, s, p)
     let basic (i, s, d) = Basic (i, s, d)
+    let basic_opt (i, s) = Basic_opt (i, s)
     let oneof s = Oneof s
     let oneof_elem (a, b, c) = Oneof_elem (a, b, c)
 
