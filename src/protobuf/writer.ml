@@ -16,10 +16,10 @@ type error =
 let init () = {fields = []}
 
 let rec size_of_field = function
-  | Varint v when Int64Compare.is_positive v ->
+  | Varint v when v > 0L ->
     let bits = int_of_float (log (Int64.to_float v) /. log 2.0) + 1 in
     ((bits - 1) / 7) + 1
-  | Varint v when Int64Compare.is_negative v -> 10
+  | Varint v when v < 0L -> 10
   | Varint _ -> 1
   | Fixed_32_bit _ -> 4
   | Fixed_64_bit _ -> 8

@@ -20,7 +20,7 @@ let signed_varint v =
   let open! Infix.Int64 in
   let v =
     match v with
-    | v when Int64Compare.is_negative v -> v lsl 1 lxor (-1L)
+    | v when v < 0L -> v lsl 1 lxor (-1L)
     | v -> v lsl 1
   in
   Field.Varint v
