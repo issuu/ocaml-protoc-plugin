@@ -589,9 +589,10 @@ let parse_request Spec.Plugin.{file_to_generate = files_to_generate; parameter =
       parse_proto_file scope proto_file
     ) target_proto_files
     |> List.map ~f:(fun (v, code) ->
-      log "Processed %s" (Option.value v ~default:"<None>");
-      (v, code)
-    )
+        let v = Option.map ~f:(Filename.basename) v in
+        log "Processed %s" (Option.value v ~default:"<None>");
+        (v, code)
+      )
   in
   (match !debug with
    | true -> List.iter ~f:(fun (_, code) -> log "%s" (Code.contents code)) result
