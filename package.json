@@ -9,8 +9,7 @@
     "bs-platform": "6.0.1"
   },
   "scripts": {
-    "build": "bsb -make-world",
-    "clean": "bsb -clean-world"
+    "build": "bsb -clean-world -make-world"
   },
   "keywords": [
     "reasonml",
