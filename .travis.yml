@@ -12,7 +12,7 @@ jobs:
   include:
     - stage: bucklescript
       language: node_js
-      script: npm && npm run build
+      script: npm install && npm run build
 
 # The default 'test' job
 language: c
