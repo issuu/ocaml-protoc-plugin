@@ -28,7 +28,7 @@ The types generated aims to create ocaml idiomatic types;
 - oneof constructs are mapped to polymorphic variants
 - enums are mapped to adt's
 - map types are mapped to assoc lists
-- all integer types are mapped to int
+- all integer types are mapped to int by default (exact mapping is also possible)
 - all floating point types are mapped to float.
 - packages are mapped to nested modules
 """
