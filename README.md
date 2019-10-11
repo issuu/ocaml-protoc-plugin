@@ -1,6 +1,6 @@
 # Ocaml protoc plugin
 
-[![BuildStatus](https://travis-ci.org/issuu/ocaml-protoc-plugin?branch=master)](https://travis-ci.org/issuu/ocaml-protoc-plugin)
+[![BuildStatus](https://travis-ci.org/issuu/ocaml-protoc-plugin.svg?branch=master)](https://travis-ci.org/issuu/ocaml-protoc-plugin)
 
 The goal of Ocaml protoc plugin is to create an up to date plugin for
 the google protobuf compiler (protoc) to generate ocaml types and
@@ -11,34 +11,41 @@ The main features include:
 * Support service descriptions
 * proto3 compliant
 * proto2 compliant
+* Support includes
 
 ## Comparisson with other OCaml protobuf handlers.
 
-| Feature           | ocaml-protoc     | ocaml-pb-plugin | ocaml-protoc-plugin |
-| -------           | ------------     | --------------- | ------------------- |
-| Ocaml types       | Supported        | Defined runtime | Supported           |
-| Service endpoints | Not supported    | N/A             | Supported           |
-| proto3            | Partly supported | supported       | Supported           |
+| Feature           | ocaml-protoc           | ocaml-pb            | ocaml-protoc-plugin |
+| -------           | ------------           | ---------------     | ------------------- |
+| Ocaml types       | Supported              | Defined runtime(\*) | Supported           |
+| Service endpoints | Not supported          | N/A                 | Supported           |
+| proto3            | Partly supported(\*\*) | Supported           | Supported           |
+| proto2            | Supported              | Supported           | Supported           |
 
-(`ocaml-protoc` release 1.2.0 does not yet fully support proto3, the
-master branch does, however)
+(\*) ocaml-bp has a sister project `ocaml-bp-plugin` which emit
+ocaml-pb definitions from a `.proto`. The plugin parses files are proto2
+ocaml type definitions (all fields are option types), and repeated
+fields are not packed by default.
+
+(\*\*) `ocaml-protoc` release 1.2.0 does not yet fully support proto3, the
+master branch does, however.
 
 ## Types
 Basic types are mapped trivially to ocaml types:
 
 Primitive types:
 
-| Protobuf Type | Ocaml type      |
-| ------------- | ----------      |
-| int32, int64, uint32, uint64, sint32, sint64, fixed64, sfixed64, fixed32, sfixed32   | int*    |
-| bool          | bool|
-| float, double | float           |
-| string        | string          |
-| bytes         | bytes           |
+| Protobuf Type                                | Ocaml type       |
+| -------------                                | ----------       |
+| int32, int64, uint32, uint64, sint32, sint64 | int(\*)          |
+| fixed64, sfixed64, fixed32, sfixed32         | int32, int64(\*) |
+| bool                                         | bool             |
+| float, double                                | float            |
+| string                                       | string           |
+| bytes                                        | bytes            |
 
-(*) The plugin supports changing the type for scalar types to
-int64/int32. See options section below
-
+(\*) The plugin supports changing the type for scalar types to
+int/int64/int32. See options section below.
 
 A message <name> declaration is compiled to a module <Name> with a record type
 `t`. However, messages without any fields are mapped to unit.
