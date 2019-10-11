@@ -1,5 +1,6 @@
 type t
-val init : Spec.Descriptor.file_descriptor_proto list -> t
+module Descriptor = Spec.Descriptor.Google.Protobuf
+val init : Descriptor.FileDescriptorProto.t list -> t
 val push : t -> string -> t
 val pop : t -> string -> t
 val get_scoped_name : ?postfix:string -> t -> string option -> string

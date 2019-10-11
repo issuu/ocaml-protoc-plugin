@@ -2,7 +2,7 @@ open StdLabels
 open MoreLabels
 
 module StringMap = Map.Make(String)
-
+module Descriptor = Spec.Descriptor.Google.Protobuf
 type t = { path: string list;
            type_db: string StringMap.t }
 
@@ -11,11 +11,11 @@ let module_name_of_proto file =
 
 (* Create a list of types *)
 let rec map_types ~path ~message_types ~enum_types =
-  let type_of_enum: Spec.Descriptor.enum_descriptor_proto -> string list = fun {name; _ } ->
+  let type_of_enum: Descriptor.EnumDescriptorProto.t -> string list = fun {name; _ } ->
     let name = Option.value_exn name in
     name :: path
   in
-  let types_of_nested_types: Spec.Descriptor.descriptor_proto -> string list list = fun { name; nested_type = message_types; enum_type = enum_types; _ } ->
+  let types_of_nested_types: Descriptor.DescriptorProto.t -> string list list = fun { name; nested_type = message_types; enum_type = enum_types; _ } ->
     let name = Option.value_exn name in
     let path = (name :: path) in
     path :: map_types ~path ~message_types ~enum_types
@@ -27,8 +27,8 @@ let rec map_types ~path ~message_types ~enum_types =
   in
   enum_types @ message_types
 
-let make_type_db: Spec.Descriptor.file_descriptor_proto list -> string StringMap.t = fun descriptions ->
-  let types_of_file Spec.Descriptor.{ name; message_type = message_types; enum_type = enum_types; package; _ } =
+let make_type_db: Descriptor.FileDescriptorProto.t list -> string StringMap.t = fun descriptions ->
+  let types_of_file Descriptor.FileDescriptorProto.{ name; message_type = message_types; enum_type = enum_types; package; _ } =
     let path =
       Option.value_map ~default:[] ~f:(String.split_on_char ~sep:'.') package
       |> List.rev

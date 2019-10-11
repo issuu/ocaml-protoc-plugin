@@ -197,22 +197,25 @@
        "--plugin=protoc-gen-ocaml=%{plugin}"
        "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
+; Determine where the include files are
+(rule
+ (targets protobuf_include_path)
+ (action (with-stdout-to %{targets} (system "[ -d /usr/include/google ] && echo -n /usr/include || echo -n /usr/local/include" ))))
+
 (rule
  (targets plugin.ml)
  (deps
-  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
-  (:proto /usr/include/google/protobuf/compiler/plugin.proto))
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe))
  (action
   (run protoc -I. -I /usr/include/
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=." %{proto})))
+       "--ocaml_out=." %{read:protobuf_include_path}/google/protobuf/compiler/plugin.proto)))
 
 (rule
  (targets descriptor.ml)
  (deps
-  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
-  (:proto /usr/include/google/protobuf/descriptor.proto))
- (action
-  (run protoc -I. -I /usr/include/
-       "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=." %{proto})))
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe))
+  (action
+   (run protoc -I. -I /usr/include/
+        "--plugin=protoc-gen-ocaml=%{plugin}"
+        "--ocaml_out=." %{read:protobuf_include_path}/google/protobuf/descriptor.proto)))

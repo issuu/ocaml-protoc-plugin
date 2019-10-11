@@ -1,4 +1,6 @@
 open StdLabels
+module Descriptor = Spec.Descriptor.Google.Protobuf
+module Plugin = Spec.Plugin.Google.Protobuf.Compiler
 
 let sprintf = Printf.sprintf
 let annot = ref ""
@@ -55,7 +57,7 @@ let field_name (field_name : string option) =
 
 let variant_name name = module_name name
 
-let constructor_name Spec.Descriptor.{name; number = _; options = _} =
+let constructor_name Descriptor.EnumValueDescriptorProto.{name; number = _; options = _} =
   String.capitalize_ascii (Option.value_exn name)
 
 let to_string_opt = function
@@ -76,7 +78,7 @@ let log fmt =
   | false -> Printf.ifprintf stderr fmt
 
 let emit_enum_type
-    Spec.Descriptor.{name; value; options = _; reserved_range = _; reserved_name = _}
+    Descriptor.EnumDescriptorProto.{name; value; options = _; reserved_range = _; reserved_name = _}
     : message
   =
   let module_name = module_name name in
@@ -95,108 +97,110 @@ let emit_enum_type
   Code.emit implementation `End "";
   Code.emit implementation `Begin "let from_int = function";
   List.iter ~f:(fun v ->
-      Code.emit implementation `None "| %d -> Ok %s" (Option.value_exn v.Spec.Descriptor.number) (constructor_name v)
+      Code.emit implementation `None "| %d -> Ok %s" (Option.value_exn v.Descriptor.EnumValueDescriptorProto.number) (constructor_name v)
     ) value;
   Code.emit implementation `None "| n -> Error (`Unknown_enum_value n)";
   Code.emit implementation `End "";
   {module_name; signature; implementation}
 
 let is_message_type = function
-  | Spec.Descriptor.{type_ = Some Type_message; _ } -> true
+  | Descriptor.FieldDescriptorProto.{type' = Some Type.TYPE_MESSAGE; _ } -> true
   | _ -> false
 
 let spec_of_field ~prefix scope =
-  let open Spec.Descriptor in
+  let open Descriptor.FieldDescriptorProto in
   function
-  | { type_ = Some Type_double; _ } -> "double"
-  | { type_ = Some Type_float; _ } -> "float"
+  | { type' = Some Type.TYPE_DOUBLE; _ } -> "double"
+  | { type' = Some Type.TYPE_FLOAT; _ } -> "float"
 
-  | { type_ = Some Type_int64; _ } when !int64_as_int -> "int64_int"
-  | { type_ = Some Type_uint64; _ } when !int64_as_int -> "uint64_int"
-  | { type_ = Some Type_sint64; _ } when !int64_as_int -> "sint64_int"
+  | { type' = Some Type.TYPE_INT64; _ } when !int64_as_int -> "int64_int"
+  | { type' = Some Type.TYPE_UINT64; _ } when !int64_as_int -> "uint64_int"
+  | { type' = Some Type.TYPE_SINT64; _ } when !int64_as_int -> "sint64_int"
 
-  | { type_ = Some Type_fixed64; _ } when !fixed_as_int -> "fixed64_int"
-  | { type_ = Some Type_sfixed64; _ } when !fixed_as_int -> "sfixed64_int"
-  | { type_ = Some Type_fixed32; _ } when !fixed_as_int -> "fixed32_int"
-  | { type_ = Some Type_sfixed32; _ } when !fixed_as_int -> "sfixed32_int"
+  | { type' = Some Type.TYPE_FIXED64; _ } when !fixed_as_int -> "fixed64_int"
+  | { type' = Some Type.TYPE_SFIXED64; _ } when !fixed_as_int -> "sfixed64_int"
+  | { type' = Some Type.TYPE_FIXED32; _ } when !fixed_as_int -> "fixed32_int"
+  | { type' = Some Type.TYPE_SFIXED32; _ } when !fixed_as_int -> "sfixed32_int"
 
-  | { type_ = Some Type_int32; _ } when !int32_as_int -> "int32_int"
-  | { type_ = Some Type_sint32; _ } when !int32_as_int -> "sint32_int"
-  | { type_ = Some Type_uint32; _ } when !int32_as_int -> "uint32_int"
+  | { type' = Some Type.TYPE_INT32; _ } when !int32_as_int -> "int32_int"
+  | { type' = Some Type.TYPE_SINT32; _ } when !int32_as_int -> "sint32_int"
+  | { type' = Some Type.TYPE_UINT32; _ } when !int32_as_int -> "uint32_int"
 
-  | { type_ = Some Type_int64; _ } -> "int64"
-  | { type_ = Some Type_uint64; _ } -> "uint64"
-  | { type_ = Some Type_fixed64; _ } -> "fixed64"
-  | { type_ = Some Type_sint64; _ } -> "sint64"
-  | { type_ = Some Type_int32; _ } -> "int32"
-  | { type_ = Some Type_fixed32; _ } -> "fixed32"
-  | { type_ = Some Type_sfixed32; _ } -> "sfixed32"
-  | { type_ = Some Type_sfixed64; _ } -> "sfixed64"
-  | { type_ = Some Type_sint32; _ } -> "sint32"
-  | { type_ = Some Type_uint32; _ } -> "uint32"
+  | { type' = Some Type.TYPE_INT64; _ } -> "int64"
+  | { type' = Some Type.TYPE_UINT64; _ } -> "uint64"
+  | { type' = Some Type.TYPE_FIXED64; _ } -> "fixed64"
+  | { type' = Some Type.TYPE_SINT64; _ } -> "sint64"
+  | { type' = Some Type.TYPE_INT32; _ } -> "int32"
+  | { type' = Some Type.TYPE_FIXED32; _ } -> "fixed32"
+  | { type' = Some Type.TYPE_SFIXED32; _ } -> "sfixed32"
+  | { type' = Some Type.TYPE_SFIXED64; _ } -> "sfixed64"
+  | { type' = Some Type.TYPE_SINT32; _ } -> "sint32"
+  | { type' = Some Type.TYPE_UINT32; _ } -> "uint32"
 
-  | { type_ = Some Type_bool; _ } -> "bool"
-  | { type_ = Some Type_string; _ } -> "string"
-  | { type_ = Some Type_bytes; _ } -> "bytes"
-  | { type_ = Some Type_enum; type_name; _ } ->
+  | { type' = Some Type.TYPE_BOOL; _ } -> "bool"
+  | { type' = Some Type.TYPE_STRING; _ } -> "string"
+  | { type' = Some Type.TYPE_BYTES; _ } -> "bytes"
+  | { type' = Some Type.TYPE_ENUM; type_name; _ } ->
     let to_int_func =
       Scope.get_scoped_name ~postfix:(prefix ^ "_int") scope type_name
     in
     sprintf "enum %s" to_int_func
-  | { type_ = Some Type_message; type_name; _ } ->
+  | { type' = Some Type.TYPE_MESSAGE; type_name; _ } ->
     let proto_func = Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name in
     sprintf "message %s" proto_func
   | _ -> failwith "Unknown type"
 
 let make_default_value ~type_name scope default =
-  let open Spec.Descriptor in
+  let open Descriptor.FieldDescriptorProto.Type in
   function
-  | Type_double | Type_float ->
+  | TYPE_DOUBLE | TYPE_FLOAT ->
     sprintf "proto2 (some (%s))" (default |> float_of_string |> string_of_float)
-  | Type_int64 | Type_uint64 | Type_fixed64 | Type_sint64 | Type_sfixed64 ->
+  | TYPE_INT64 | TYPE_UINT64 | TYPE_FIXED64 | TYPE_SINT64 | TYPE_SFIXED64 ->
     begin
       match !int64_as_int with
       | true -> sprintf "proto2 (some (%s))" default
       | false -> sprintf "proto2 (some (%sL))" default
     end
 
-  | Type_int32 | Type_fixed32 | Type_sfixed32 | Type_sint32 | Type_uint32 ->
+  | TYPE_INT32 | TYPE_FIXED32 | TYPE_SFIXED32 | TYPE_SINT32 | TYPE_UINT32 ->
     begin
       match !int32_as_int with
       | true -> sprintf "proto2 (some (%s))" default
       | false -> sprintf "proto2 (some (%sl))" default
     end
-  | Type_bool -> sprintf "proto2 (some %s)" default
-  | Type_string -> sprintf "proto2 (some {|%s|})" default
-  | Type_bytes -> sprintf "proto2_bytes {|%s|}" default
-  | Type_enum ->
+  | TYPE_BOOL -> sprintf "proto2 (some %s)" default
+  | TYPE_STRING -> sprintf "proto2 (some {|%s|})" default
+  | TYPE_BYTES -> sprintf "proto2_bytes {|%s|}" default
+  | TYPE_ENUM ->
     Scope.get_scoped_name ~postfix:default scope type_name
     |> sprintf "proto2 (some %s)"
   | _ -> failwith "Unsupported default value"
 
 
 let get_packed ~syntax options =
+  let open Descriptor.FieldOptions in
   match syntax, options with
-  | _, Some (Spec.Descriptor.{ packed = Some true; _ }) -> "packed"
-  | _, Some (Spec.Descriptor.{ packed = Some false; _ }) -> "not_packed"
+  | _, Some ({ packed = Some true; _ }) -> "packed"
+  | _, Some ({ packed = Some false; _ }) -> "not_packed"
   | Proto2, _ -> "not_packed"
   | Proto3, _ -> "packed"
 
 let compound_of_field ~syntax ~prefix scope field_descriptor =
-  let open Spec.Descriptor in
+  let open Descriptor.FieldDescriptorProto in
+  let open Descriptor.FieldDescriptorProto.Type in
   let spec = spec_of_field ~prefix scope field_descriptor in
   match field_descriptor with
   | {oneof_index = Some _; _} -> failwith "oneofs not supported here"
   | {number = None; _} -> failwith "all fields must have a number"
-  | {label = Some Label_repeated; number = Some index; options; _} ->
+  | {label = Some LABEL_REPEATED; number = Some index; options; _} ->
     sprintf "repeated (%d, %s, %s)" index spec (get_packed ~syntax options);
-  | {number = Some index; label = Some Label_required; _} ->
+  | {number = Some index; label = Some LABEL_REQUIRED; _} ->
     sprintf "basic (%d, %s, required)" index spec
-  | {number = Some index; default_value = Some default; type_ = Some type_; type_name; _} when syntax = Proto2 ->
-    sprintf "basic (%d, %s, %s)" index spec (make_default_value ~type_name scope default type_)
+  | {number = Some index; default_value = Some default; type' = Some type'; type_name; _} when syntax = Proto2 ->
+    sprintf "basic (%d, %s, %s)" index spec (make_default_value ~type_name scope default type')
   | {number = Some index; default_value = None; _} when syntax = Proto2 ->
     sprintf "basic_opt (%d, %s)" index spec
-  | {number = Some index; type_ = Some Type_message; _} when syntax = Proto3 ->
+  | {number = Some index; type' = Some TYPE_MESSAGE; _} when syntax = Proto3 ->
     sprintf "basic_opt (%d, %s)" index spec
   | {number = Some index; _} ->
     sprintf "basic (%d, %s, proto3)" index spec
@@ -205,52 +209,53 @@ let compound_of_field ~syntax ~prefix scope field_descriptor =
     Consider moving this to Protocol somewhere. So types are next to each other.
 *)
 let type_of_field ~syntax scope field_descriptor =
-  let open Spec.Descriptor in
+  let open Descriptor.FieldDescriptorProto in
+  let open Descriptor.FieldDescriptorProto.Type in
   let base_type =
     match field_descriptor with
-    | {type_ = Some Type_double; _} | {type_ = Some Type_float; _} -> "float"
+    | {type' = Some TYPE_DOUBLE; _} | {type' = Some TYPE_FLOAT; _} -> "float"
 
-    | {type_ = Some Type_int64; _}
-    | {type_ = Some Type_uint64; _}
-    | {type_ = Some Type_sint64; _} ->
+    | {type' = Some TYPE_INT64; _}
+    | {type' = Some TYPE_UINT64; _}
+    | {type' = Some TYPE_SINT64; _} ->
       (match !int64_as_int with true -> "int" | false -> "int64")
 
-    | {type_ = Some Type_int32; _}
-    | {type_ = Some Type_sint32; _}
-    | {type_ = Some Type_uint32; _} ->
+    | {type' = Some TYPE_INT32; _}
+    | {type' = Some TYPE_SINT32; _}
+    | {type' = Some TYPE_UINT32; _} ->
       (match !int32_as_int with true -> "int" | false -> "int32")
 
-    | {type_ = Some Type_fixed64; _}
-    | {type_ = Some Type_sfixed64; _} ->
+    | {type' = Some TYPE_FIXED64; _}
+    | {type' = Some TYPE_SFIXED64; _} ->
       (match !fixed_as_int with true -> "int" | false -> "int64")
-    | {type_ = Some Type_fixed32; _}
-    | {type_ = Some Type_sfixed32; _} ->
+    | {type' = Some TYPE_FIXED32; _}
+    | {type' = Some TYPE_SFIXED32; _} ->
       (match !fixed_as_int with true -> "int" | false -> "int32")
 
-    | {type_ = Some Type_bool; _} -> "bool"
-    | {type_ = Some Type_string; _} -> "string"
-    | {type_ = Some Type_group; _} -> failwith "Groups are deprecated"
-    | {type_ = Some Type_message; type_name; oneof_index = Some _; _} ->
+    | {type' = Some TYPE_BOOL; _} -> "bool"
+    | {type' = Some TYPE_STRING; _} -> "string"
+    | {type' = Some TYPE_GROUP; _} -> failwith "Groups are deprecated"
+    | {type' = Some TYPE_MESSAGE; type_name; oneof_index = Some _; _} ->
       Scope.get_scoped_name scope ~postfix:"t" type_name
-    | {type_ = Some Type_message; type_name; oneof_index = None; _} ->
+    | {type' = Some TYPE_MESSAGE; type_name; oneof_index = None; _} ->
       Scope.get_scoped_name ~postfix:"t" scope type_name
-    | {type_ = Some Type_bytes; _} -> "bytes"
-    | {type_ = Some Type_enum; type_name; _} ->
+    | {type' = Some TYPE_BYTES; _} -> "bytes"
+    | {type' = Some TYPE_ENUM; type_name; _} ->
       Scope.get_scoped_name ~postfix:"t" scope type_name
-    | {type_ = None; _} -> failwith "Abstract types cannot be"
+    | {type' = None; _} -> failwith "ABSTRACT types cannot be"
   in
   match syntax, field_descriptor with
-  | Proto2, {label = Some Label_optional; default_value = None; _} -> base_type ^ " option"
-  | _, {label = Some Label_repeated; _} -> base_type ^ " list"
-  | _, {type_ = Some Type_message; label = Some Label_required; _} -> base_type
-  | _, {oneof_index = None; type_ = Some Type_message; _} -> base_type ^ " option"
+  | Proto2, {label = Some LABEL_OPTIONAL; default_value = None; _} -> base_type ^ " option"
+  | _, {label = Some LABEL_REPEATED; _} -> base_type ^ " list"
+  | _, {type' = Some TYPE_MESSAGE; label = Some LABEL_REQUIRED; _} -> base_type
+  | _, {oneof_index = None; type' = Some TYPE_MESSAGE; _} -> base_type ^ " option"
   | _, _ -> base_type
 
-let emit_field ~syntax t scope (field : Spec.Descriptor.field_descriptor_proto) =
+let emit_field ~syntax t scope (field : Descriptor.FieldDescriptorProto.t) =
   Code.emit t `None "%s: %s;" (field_name field.name) (type_of_field ~syntax scope field)
 
 let emit_oneof_fields ~syntax t scope
-    ((oneof_decl : Spec.Descriptor.oneof_descriptor_proto), fields)
+    ((oneof_decl : Descriptor.OneofDescriptorProto.t), fields)
   =
   (* Emit a polymorphic variant type. *)
   let variants = List.map ~f:(fun field ->
@@ -263,7 +268,7 @@ let emit_oneof_fields ~syntax t scope
 
 (** Return a list of plain fields + a list of fields per oneof_decl *)
 let split_oneof_decl fields oneof_decls =
-  let open Spec.Descriptor in
+  let open Descriptor.FieldDescriptorProto in
   let rec inner oneofs oneof_decls = function
     | { oneof_index = Some i; _ } as o1 :: fs -> begin
         match oneofs with
@@ -304,8 +309,8 @@ let inject (signature', implementation') signature implementation =
   Code.append signature signature';
   Code.append implementation implementation'
 
-let emit_service_type scope Spec.Descriptor.{ name; method_ = methods; _ } =
-  let emit_method t Spec.Descriptor.{ name; input_type; output_type; _} =
+let emit_service_type scope Descriptor.ServiceDescriptorProto.{ name; method' = methods; _ } =
+  let emit_method t Descriptor.MethodDescriptorProto.{ name; input_type; output_type; _} =
     Code.emit t `Begin "let %s = " (field_name name);
     Code.emit t `None "( (module %s : Protobuf'.Service.Message with type t = %s ), "
       (Scope.get_scoped_name scope input_type)
@@ -321,12 +326,14 @@ let emit_service_type scope Spec.Descriptor.{ name; method_ = methods; _ } =
   t
 
 let is_recursive scope fields =
+  let open Descriptor.FieldDescriptorProto in
+  let open Descriptor.FieldDescriptorProto.Type in
   (* Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name *)
   List.exists ~f:(function
-      | Spec.Descriptor.{ type_ = Some Type_message; type_name = Some name; _ } -> Scope.in_current_scope scope name
+      | { type' = Some TYPE_MESSAGE; type_name = Some name; _ } -> Scope.in_current_scope scope name
       | _ -> false) fields
 
-let emit_deserialization_function ~syntax ~is_map_entry scope all_fields (oneof_decls: Spec.Descriptor.oneof_descriptor_proto list) =
+let emit_deserialization_function ~syntax ~is_map_entry scope all_fields (oneof_decls: Descriptor.OneofDescriptorProto.t list) =
   let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
   let signature = Code.init () in
   let implementation = Code.init () in
@@ -338,8 +345,8 @@ let emit_deserialization_function ~syntax ~is_map_entry scope all_fields (oneof_
     | [_; _] when is_map_entry -> "a b",  "(a, b)"
     | _  ->
       (* Construct the record *)
-      let fields = List.map ~f:(fun (field : Spec.Descriptor.field_descriptor_proto) -> field_name field.name) fields in
-      let oneof_fields = List.map ~f:(fun ((decl : Spec.Descriptor.oneof_descriptor_proto), _) -> (field_name decl.name)) oneof_decls in
+      let fields = List.map ~f:(fun (field : Descriptor.FieldDescriptorProto.t) -> field_name field.name) fields in
+      let oneof_fields = List.map ~f:(fun ((decl : Descriptor.OneofDescriptorProto.t), _) -> (field_name decl.name)) oneof_decls in
       let args = String.concat ~sep:" " (fields @ oneof_fields) in
       let constructor = sprintf "{ %s }" (String.concat ~sep:"; " (fields @ oneof_fields)) in
       (args, constructor)
@@ -350,7 +357,7 @@ let emit_deserialization_function ~syntax ~is_map_entry scope all_fields (oneof_
     let specs = List.map ~f:(compound_of_field ~syntax ~prefix:"from" scope) fields in
     let oneofs =
       List.map ~f:(fun (_, specs) ->
-          List.map ~f:(fun (field: Spec.Descriptor.field_descriptor_proto)->
+          List.map ~f:(fun (field: Descriptor.FieldDescriptorProto.t)->
               let index = Option.value_exn field.number in
               let spec = spec_of_field ~prefix:"from" scope field in
               let constr = sprintf "fun v -> `%s v" (variant_name field.name) in
@@ -374,7 +381,7 @@ let emit_deserialization_function ~syntax ~is_map_entry scope all_fields (oneof_
   signature, implementation
 
 (* Return code for signature and implementation *)
-let emit_serialization_function ~syntax ~is_map_entry scope all_fields (oneof_decls: Spec.Descriptor.oneof_descriptor_proto list) =
+let emit_serialization_function ~syntax ~is_map_entry scope all_fields (oneof_decls: Descriptor.OneofDescriptorProto.t list) =
   let fields, oneof_decls = split_oneof_decl all_fields oneof_decls in
   let signature = Code.init () in
   let implementation = Code.init () in
@@ -383,7 +390,7 @@ let emit_serialization_function ~syntax ~is_map_entry scope all_fields (oneof_de
     oneof_decls
     |> List.map ~f:(fun (_decl, fields) ->
         let cases =
-          List.map ~f:(fun (field : Spec.Descriptor.field_descriptor_proto) ->
+          List.map ~f:(fun (field : Descriptor.FieldDescriptorProto.t) ->
               let variant_name = variant_name field.name in
               let index = Option.value_exn field.number in
               let spec = spec_of_field ~prefix:"to" scope field in
@@ -402,8 +409,8 @@ let emit_serialization_function ~syntax ~is_map_entry scope all_fields (oneof_de
     | [_; _] when is_map_entry ->
       sprintf "( a, b )", "a b"
     | _ ->
-      let field_names = List.map ~f:(fun (field: Spec.Descriptor.field_descriptor_proto) -> field_name field.name) fields in
-      let oneof_names = List.map ~f:(fun ((decl: Spec.Descriptor.oneof_descriptor_proto), _) -> field_name decl.name) oneof_decls in
+      let field_names = List.map ~f:(fun (field: Descriptor.FieldDescriptorProto.t) -> field_name field.name) fields in
+      let oneof_names = List.map ~f:(fun ((decl: Descriptor.OneofDescriptorProto.t), _) -> field_name decl.name) oneof_decls in
       let args = String.concat ~sep:" " (field_names @ oneof_names) in
       let destruct = String.concat ~sep:"; " (field_names @ oneof_names) |> sprintf "{ %s }" in
       (destruct, args)
@@ -437,13 +444,12 @@ let emit_message_type ~syntax ~is_map_entry scope all_fields oneof_decls =
   in
   t
 
-let is_map_entry options =
-  match options with
-  | Some Spec.Descriptor.{ map_entry = Some true; _ } -> true
+let is_map_entry = function
+  | Some Descriptor.MessageOptions.{ map_entry = Some true; _ } -> true
   | _ -> false
 
 let rec emit_message ~syntax scope
-    Spec.Descriptor.{ name; field = fields; extension = _; nested_type = nested_types; enum_type = enum_types;
+    Descriptor.DescriptorProto.{ name; field = fields; extension = _; nested_type = nested_types; enum_type = enum_types;
         extension_range = _; oneof_decl = oneof_decls; options; reserved_range = _; reserved_name = _; } : message =
   let rec emit_nested_types ~syntax ~signature ~implementation ?(is_first = true) nested_types =
     let emit_sub dest ~is_implementation ~is_first {module_name; signature; implementation} =
@@ -522,7 +528,7 @@ let rec wrap_packages ~syntax scope message_type services = function
 
 let parse_proto_file
       scope
-      Spec.Descriptor.{ name; package; dependency = _; public_dependency = _;
+      Descriptor.FileDescriptorProto.{ name; package; dependency = _; public_dependency = _;
                         weak_dependency = _; message_type = message_types;
                         enum_type = enum_types; service = services; extension = _;
                         options = _; source_code_info = _; syntax; }
@@ -539,7 +545,9 @@ let parse_proto_file
     | _ -> failwith "Unsupported syntax"
   in
   let message_type =
-    Spec.Descriptor.default_descriptor_proto ~name:None ~nested_type:message_types ~enum_type:enum_types ()
+    Descriptor.DescriptorProto.{name = None; nested_type=message_types; enum_type = enum_types;
+                                field = []; extension = []; extension_range = []; oneof_decl = [];
+                                options = None; reserved_range = []; reserved_name = []; }
   in
   let implementation = Code.init () in
 
@@ -558,6 +566,7 @@ let parse_proto_file
   Code.emit implementation `None "     opens=[%s]" (String.concat ~sep:"; " !opens);
   Code.emit implementation `None "     int64_as_int=%b" !int64_as_int;
   Code.emit implementation `None "     int32_as_int=%b" !int32_as_int;
+  Code.emit implementation `None "     fixed_as_int=%b" !fixed_as_int;
   Code.emit implementation `None "*)";
   Code.emit implementation `None "module Protobuf' = Protobuf";
   List.iter ~f:(Code.emit implementation `None "open %s") !opens;
@@ -574,17 +583,17 @@ let parse_proto_file
   in
   out_name, implementation
 
-let parse_request Spec.Plugin.{file_to_generate = files_to_generate; parameter = parameters; proto_file = proto_files; compiler_version = _} =
+let parse_request Plugin.CodeGeneratorRequest.{file_to_generate = files_to_generate; parameter = parameters; proto_file = proto_files; compiler_version = _} =
   Option.iter ~f:parse_parameters parameters;
   log "*** Request to parse proto_files: %s. Parameter: %s" (String.concat ~sep:"; " files_to_generate) (Option.value ~default:"<None>" parameters);
   (* Find the correct file to process *)
-  let target_proto_files = List.filter ~f:(fun Spec.Descriptor.{name; _} ->
+  let target_proto_files = List.filter ~f:(fun Descriptor.FileDescriptorProto.{name; _} ->
       List.mem ~set:files_to_generate (Option.value_exn name)
     ) proto_files
   in
   let scope = Scope.init proto_files in
   let result =
-    List.map ~f:(fun (proto_file : Spec.Descriptor.file_descriptor_proto) ->
+    List.map ~f:(fun (proto_file : Descriptor.FileDescriptorProto.t) ->
       let scope = Scope.push scope (Option.value_exn proto_file.name |> Filename.basename |> Scope.module_name_of_proto) in
       parse_proto_file scope proto_file
     ) target_proto_files
