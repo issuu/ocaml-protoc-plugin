@@ -12,6 +12,8 @@ jobs:
   include:
     - stage: bucklescript
       language: node_js
+      node_js:
+        - 12
       script: npm install && npm run build
 
 # The default 'test' job
