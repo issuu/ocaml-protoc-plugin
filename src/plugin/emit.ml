@@ -10,6 +10,8 @@ let int64_as_int = ref true
 let int32_as_int = ref true
 let fixed_as_int = ref false
 
+module IntSet = Set.Make(struct type t = int let compare = compare end)
+
 type syntax = Proto2 | Proto3
 
 let parse_parameters parameters =
@@ -576,7 +578,9 @@ let parse_proto_file
   Code.emit implementation `None "     int32_as_int=%b" !int32_as_int;
   Code.emit implementation `None "     fixed_as_int=%b" !fixed_as_int;
   Code.emit implementation `None "*)";
+  Code.emit implementation `None "(**/**)";
   Code.emit implementation `None "module Protobuf' = Protobuf";
+  Code.emit implementation `None "(**/**)";
   List.iter ~f:(Code.emit implementation `None "open %s") !opens;
 
   wrap_packages ~syntax scope message_type services (Option.value_map ~default:[] ~f:(String.split_on_char ~sep:'.') package)
