@@ -1,6 +1,5 @@
-- [ ] Support enum entries with same id
-
-## 0.9.1: Unreleased
+## 1.0.0: 2019-10-12
+- [x] Support enum aliasing
 - [x] Avoid name clash with on 'name'
 - [x] Fix code generation when argument contains a path
 - [x] Refactor internal types to make serialization and

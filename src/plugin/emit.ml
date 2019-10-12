@@ -96,9 +96,17 @@ let emit_enum_type
     ) value;
   Code.emit implementation `End "";
   Code.emit implementation `Begin "let from_int = function";
-  List.iter ~f:(fun v ->
-      Code.emit implementation `None "| %d -> Ok %s" (Option.value_exn v.Descriptor.EnumValueDescriptorProto.number) (constructor_name v)
-    ) value;
+
+  let _ =
+    List.fold_left ~init:IntSet.empty ~f:(fun seen v ->
+        let idx = (Option.value_exn v.Descriptor.EnumValueDescriptorProto.number) in
+        match IntSet.mem idx seen with
+        | true -> seen
+        | false ->
+          Code.emit implementation `None "| %d -> Ok %s" idx (constructor_name v);
+          IntSet.add idx seen
+      ) value
+  in
   Code.emit implementation `None "| n -> Error (`Unknown_enum_value n)";
   Code.emit implementation `End "";
   {module_name; signature; implementation}

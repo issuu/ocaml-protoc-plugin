@@ -20,3 +20,25 @@ enum E1 {
 message Outside {
   E1 enum = 1;
 }
+
+message Aliasing {
+  enum Enum {
+    option allow_alias = true;
+    X = 0;
+    Y = 1;
+    Z = 1;
+  }
+  Enum e = 1;
+}
+
+message Negative {
+  enum Enum {
+    A1 = 0;
+    A2 = -1;
+    A3 = -2;
+    A4 = -3;
+    A5 = -4;
+    A100 = -100;
+  }
+  Enum e = 1;
+}
