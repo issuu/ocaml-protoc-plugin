@@ -1,9 +1,7 @@
 open StdLabels
 open Field
 
-module S = Spec.Make(struct
-    type ('a, 'b) dir = ('a, 'b) Spec.serialize
-  end)
+module S = Spec.Serialize
 module C = S.C
 open S
 

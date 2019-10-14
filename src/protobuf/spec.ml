@@ -1,8 +1,6 @@
 module type T = sig
-  type ('a, 'b) dir
+  type ('a, 'deser, 'ser) dir
 end
-type ('a, 'b) deserialize = 'a
-type ('a, 'b) serialize = 'b
 
 module Make(T : T) = struct
 
@@ -40,19 +38,18 @@ module Make(T : T) = struct
     | Bool : bool spec
     | String : string spec
     | Bytes : bytes spec
-    | Enum :  (int -> 'a Result.t, 'a -> int) T.dir -> 'a spec
-    | Message : (Reader.t -> 'a Result.t, 'a -> Writer.t) T.dir -> 'a spec
+
+    | Enum :  ('a, int -> 'a Result.t, 'a -> int) T.dir -> 'a spec
+    | Message : ('a, Reader.t -> 'a Result.t, 'a -> Writer.t) T.dir -> 'a spec
 
   type _ oneof =
-    | Oneof_elem : int * 'b spec * (('b -> 'a), 'b) T.dir -> 'a oneof
-
-  type ('a, 'b) oneof_value = 'a -> 'b
+    | Oneof_elem : int * 'b spec * ('a, ('b -> 'a), 'b) T.dir -> 'a oneof
 
   type _ compound =
     | Basic : int * 'a spec * 'a proto_type -> 'a compound
     | Basic_opt : int * 'a spec -> 'a option compound
     | Repeated : int * 'a spec * packed -> 'a list compound
-    | Oneof : ('a oneof list, 'a -> unit oneof) T.dir  -> 'a compound
+    | Oneof : ('a, 'a oneof list, 'a -> unit oneof) T.dir -> 'a compound
 
   type (_, _) compound_list =
     | Nil : ('a, 'a) compound_list
@@ -109,3 +106,11 @@ module Make(T : T) = struct
     let nil = Nil
   end
 end
+
+module Deserialize = Make(struct
+    type ('a, 'deser, 'ser) dir = 'deser
+  end)
+
+module Serialize = Make(struct
+    type ('a, 'deser, 'ser) dir = 'ser
+  end)

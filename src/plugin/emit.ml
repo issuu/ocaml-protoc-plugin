@@ -10,9 +10,11 @@ let int64_as_int = ref true
 let int32_as_int = ref true
 let fixed_as_int = ref false
 
+module X = Types
+
 module IntSet = Set.Make(struct type t = int let compare = compare end)
 
-type syntax = Proto2 | Proto3
+type syntax = [ `Proto2 | `Proto3]
 
 let parse_parameters parameters =
   String.split_on_char ~sep:';' parameters
@@ -29,38 +31,6 @@ let parse_parameters parameters =
       | _ -> failwith ("Unknown parameter: " ^ param)
     );
   opens := List.rev !opens
-
-(** Taken from: https://caml.inria.fr/pub/docs/manual-ocaml/lex.html *)
-let is_reserved = function
-  | "and" | "as" | "assert" | "asr" | "begin" | "class" | "constraint" | "do" | "done"
-  | "downto" | "else" | "end" | "exception" | "external" | "false" | "for" | "fun"
-  | "function" | "functor" | "if" | "in" | "include" | "inherit" | "initializer"
-  | "land" | "lazy" | "let" | "lor" | "lsl" | "lsr" | "lxor" | "match" | "method"
-  | "mod" | "module" | "mutable" | "new" | "nonrec" | "object" | "of" | "open" | "or"
-  | "private" | "rec" | "sig" | "struct" | "then" | "to" | "true" | "try" | "type"
-  | "val" | "virtual" | "when" | "while" | "with" ->
-    true
-  | _ -> false
-
-(* Remember to mangle reserved keywords *)
-let module_name name =
-  let name = Option.value_exn name in
-  let name = match String.get name 0 with
-    | '_' -> "P" ^ name ^ "'" (* Change to a name that protobuf cannot create *)
-    | _ -> name
-  in
-  String.capitalize_ascii name
-
-(* Remember to mangle reserved keywords *)
-let field_name (field_name : string option) =
-  match String.uncapitalize_ascii (Option.value_exn field_name) with
-  | name when is_reserved name -> name ^ "'"
-  | name -> name
-
-let variant_name name = module_name name
-
-let constructor_name Descriptor.EnumValueDescriptorProto.{name; number = _; options = _} =
-  String.capitalize_ascii (Option.value_exn name)
 
 let to_string_opt = function
   | Some s -> s
@@ -83,18 +53,21 @@ let emit_enum_type
     Descriptor.EnumDescriptorProto.{name; value; options = _; reserved_range = _; reserved_name = _}
     : message
   =
-  let module_name = module_name name in
+  let module_name = Names.module_name name in
   let signature = Code.init () in
   let implementation = Code.init () in
   let t = Code.init () in
-  Code.emit t `None "type t = %s %s" (List.map ~f:constructor_name value |> String.concat ~sep:" | ") !annot;
+  Code.emit t `None "type t = %s %s"
+    (List.map ~f:(fun f -> Names.constructor_name f.Descriptor.EnumValueDescriptorProto.name) value
+     |> String.concat ~sep:" | ") !annot;
   Code.append signature t;
   Code.append implementation t;
   Code.emit signature `None "val to_int: t -> int";
   Code.emit signature `None "val from_int: int -> t Protobuf'.Result.t";
   Code.emit implementation `Begin "let to_int = function";
   List.iter ~f:(fun v ->
-      Code.emit implementation `None "| %s -> %d" (constructor_name v) (Option.value_exn v.number)
+      let open  Descriptor.EnumValueDescriptorProto in
+      Code.emit implementation `None "| %s -> %d" (Names.constructor_name v.name) (Option.value_exn v.number)
     ) value;
   Code.emit implementation `End "";
   Code.emit implementation `Begin "let from_int = function";
@@ -105,7 +78,8 @@ let emit_enum_type
         match IntSet.mem idx seen with
         | true -> seen
         | false ->
-          Code.emit implementation `None "| %d -> Ok %s" idx (constructor_name v);
+          let open Descriptor.EnumValueDescriptorProto in
+          Code.emit implementation `None "| %d -> Ok %s" idx (Names.constructor_name v.name);
           IntSet.add idx seen
       ) value
   in
@@ -192,8 +166,8 @@ let get_packed ~syntax options =
   match syntax, options with
   | _, Some ({ packed = Some true; _ }) -> "packed"
   | _, Some ({ packed = Some false; _ }) -> "not_packed"
-  | Proto2, _ -> "not_packed"
-  | Proto3, _ -> "packed"
+  | `Proto2, _ -> "not_packed"
+  | `Proto3, _ -> "packed"
 
 let compound_of_field ~syntax ~prefix scope field_descriptor =
   let open Descriptor.FieldDescriptorProto in
@@ -206,11 +180,11 @@ let compound_of_field ~syntax ~prefix scope field_descriptor =
     sprintf "repeated (%d, %s, %s)" index spec (get_packed ~syntax options);
   | {number = Some index; label = Some LABEL_REQUIRED; _} ->
     sprintf "basic (%d, %s, required)" index spec
-  | {number = Some index; default_value = Some default; type' = Some type'; type_name; _} when syntax = Proto2 ->
+  | {number = Some index; default_value = Some default; type' = Some type'; type_name; _} when syntax = `Proto2 ->
     sprintf "basic (%d, %s, %s)" index spec (make_default_value ~type_name scope default type')
-  | {number = Some index; default_value = None; _} when syntax = Proto2 ->
+  | {number = Some index; default_value = None; _} when syntax = `Proto2 ->
     sprintf "basic_opt (%d, %s)" index spec
-  | {number = Some index; type' = Some TYPE_MESSAGE; _} when syntax = Proto3 ->
+  | {number = Some index; type' = Some TYPE_MESSAGE; _} when syntax = `Proto3 ->
     sprintf "basic_opt (%d, %s)" index spec
   | {number = Some index; _} ->
     sprintf "basic (%d, %s, proto3)" index spec
@@ -255,14 +229,14 @@ let type_of_field ~syntax scope field_descriptor =
     | {type' = None; _} -> failwith "ABSTRACT types cannot be"
   in
   match syntax, field_descriptor with
-  | Proto2, {label = Some LABEL_OPTIONAL; default_value = None; _} -> base_type ^ " option"
+  | `Proto2, {label = Some LABEL_OPTIONAL; default_value = None; _} -> base_type ^ " option"
   | _, {label = Some LABEL_REPEATED; _} -> base_type ^ " list"
   | _, {type' = Some TYPE_MESSAGE; label = Some LABEL_REQUIRED; _} -> base_type
   | _, {oneof_index = None; type' = Some TYPE_MESSAGE; _} -> base_type ^ " option"
   | _, _ -> base_type
 
 let emit_field ~syntax t scope (field : Descriptor.FieldDescriptorProto.t) =
-  Code.emit t `None "%s: %s;" (field_name field.name) (type_of_field ~syntax scope field)
+  Code.emit t `None "%s: %s;" (Names.field_name field.name) (type_of_field ~syntax scope field)
 
 let emit_oneof_fields ~syntax t scope
     ((oneof_decl : Descriptor.OneofDescriptorProto.t), fields)
@@ -270,11 +244,11 @@ let emit_oneof_fields ~syntax t scope
   (* Emit a polymorphic variant type. *)
   let variants = List.map ~f:(fun field ->
       let type_str = type_of_field ~syntax scope field in
-      let name = variant_name field.name in
+      let name = Names.variant_name field.name in
       sprintf "`%s of %s" name type_str
     ) fields
   in
-  Code.emit t `None "%s: [ %s ];" (field_name oneof_decl.name) (String.concat ~sep:" | " variants)
+  Code.emit t `None "%s: [ %s ];" (Names.field_name oneof_decl.name) (String.concat ~sep:" | " variants)
 
 (** Return a list of plain fields + a list of fields per oneof_decl *)
 let split_oneof_decl fields oneof_decls =
@@ -321,7 +295,7 @@ let inject (signature', implementation') signature implementation =
 
 let emit_service_type scope Descriptor.ServiceDescriptorProto.{ name; method' = methods; _ } =
   let emit_method t Descriptor.MethodDescriptorProto.{ name; input_type; output_type; _} =
-    Code.emit t `Begin "let %s = " (field_name name);
+    Code.emit t `Begin "let %s = " (Names.field_name name);
     Code.emit t `None "( (module %s : Protobuf'.Service.Message with type t = %s ), "
       (Scope.get_scoped_name scope input_type)
       (Scope.get_scoped_name ~postfix:"t" scope input_type);
@@ -330,7 +304,7 @@ let emit_service_type scope Descriptor.ServiceDescriptorProto.{ name; method' = 
       (Scope.get_scoped_name ~postfix:"t" scope output_type)
   in
   let t = Code.init () in
-  Code.emit t `Begin "module %s = struct" (module_name name);
+  Code.emit t `Begin "module %s = struct" (Names.module_name name);
   List.iter ~f:(emit_method t) methods;
   Code.emit t `End "end";
   t
@@ -355,8 +329,8 @@ let emit_deserialization_function ~syntax ~is_map_entry scope all_fields (oneof_
     | [_; _] when is_map_entry -> "a b",  "(a, b)"
     | _  ->
       (* Construct the record *)
-      let fields = List.map ~f:(fun (field : Descriptor.FieldDescriptorProto.t) -> field_name field.name) fields in
-      let oneof_fields = List.map ~f:(fun ((decl : Descriptor.OneofDescriptorProto.t), _) -> (field_name decl.name)) oneof_decls in
+      let fields = List.map ~f:(fun (field : Descriptor.FieldDescriptorProto.t) -> Names.field_name field.name) fields in
+      let oneof_fields = List.map ~f:(fun ((decl : Descriptor.OneofDescriptorProto.t), _) -> (Names.field_name decl.name)) oneof_decls in
       let args = String.concat ~sep:" " (fields @ oneof_fields) in
       let constructor = sprintf "{ %s }" (String.concat ~sep:"; " (fields @ oneof_fields)) in
       (args, constructor)
@@ -370,7 +344,7 @@ let emit_deserialization_function ~syntax ~is_map_entry scope all_fields (oneof_
           List.map ~f:(fun (field: Descriptor.FieldDescriptorProto.t)->
               let index = Option.value_exn field.number in
               let spec = spec_of_field ~prefix:"from" scope field in
-              let constr = sprintf "fun v -> `%s v" (variant_name field.name) in
+              let constr = sprintf "fun v -> `%s v" (Names.variant_name field.name) in
               sprintf "oneof_elem (%d, %s, %s)" index spec constr
             ) specs
           |> String.concat ~sep:"; "
@@ -401,7 +375,7 @@ let emit_serialization_function ~syntax ~is_map_entry scope all_fields (oneof_de
     |> List.map ~f:(fun (_decl, fields) ->
         let cases =
           List.map ~f:(fun (field : Descriptor.FieldDescriptorProto.t) ->
-              let variant_name = variant_name field.name in
+              let variant_name = Names.variant_name field.name in
               let index = Option.value_exn field.number in
               let spec = spec_of_field ~prefix:"to" scope field in
               sprintf "`%s v -> oneof_elem (%d, %s, v)" variant_name index spec
@@ -419,8 +393,8 @@ let emit_serialization_function ~syntax ~is_map_entry scope all_fields (oneof_de
     | [_; _] when is_map_entry ->
       sprintf "( a, b )", "a b"
     | _ ->
-      let field_names = List.map ~f:(fun (field: Descriptor.FieldDescriptorProto.t) -> field_name field.name) fields in
-      let oneof_names = List.map ~f:(fun ((decl: Descriptor.OneofDescriptorProto.t), _) -> field_name decl.name) oneof_decls in
+      let field_names = List.map ~f:(fun (field: Descriptor.FieldDescriptorProto.t) -> Names.field_name field.name) fields in
+      let oneof_names = List.map ~f:(fun ((decl: Descriptor.OneofDescriptorProto.t), _) -> Names.field_name decl.name) oneof_decls in
       let args = String.concat ~sep:" " (field_names @ oneof_names) in
       let destruct = String.concat ~sep:"; " (field_names @ oneof_names) |> sprintf "{ %s }" in
       (destruct, args)
@@ -493,7 +467,7 @@ let rec emit_message ~syntax scope
     match name with
     | None -> "", scope
     | Some _ ->
-      let module_name = module_name name in
+      let module_name = Names.module_name name in
       module_name, Scope.push scope module_name
   in
   List.map ~f:emit_enum_type enum_types @ List.map ~f:(emit_message ~syntax scope) nested_types
@@ -517,6 +491,17 @@ let rec emit_message ~syntax scope
         implementation
     | None -> ()
   in
+  let Types.{ type'; constructor; apply; deserialize_spec; serialize_spec } =
+    Types.make ~syntax ~scope fields oneof_decls
+  in
+  Code.emit implementation `Begin "(* New spec ";
+  Code.emit implementation `None "type t = %s" type';
+  Code.emit implementation `None "%s" constructor;
+  Code.emit implementation `None "%s" apply;
+  Code.emit implementation `None "let deser_spec = %s" deserialize_spec;
+  Code.emit implementation `None "let ser_spec = %s" serialize_spec;
+  Code.emit implementation `End "*)";
+
   {module_name; signature; implementation}
 
 let rec wrap_packages ~syntax scope message_type services = function
@@ -529,7 +514,7 @@ let rec wrap_packages ~syntax scope message_type services = function
 
   | package :: packages ->
     let implementation = Code.init () in
-    let package_name = module_name (Some package) in
+    let package_name = Names.module_name (Some package) in
     let scope = Scope.push scope package in
     Code.emit implementation `Begin "module %s = struct" package_name;
     Code.append implementation (wrap_packages ~syntax scope message_type services packages);
@@ -550,8 +535,8 @@ let parse_proto_file
     (List.length enum_types);
 
   let syntax = match syntax with
-    | None | Some "proto2" -> Proto2
-    | Some "proto3" -> Proto3
+    | None | Some "proto2" -> `Proto2
+    | Some "proto3" -> `Proto3
     | _ -> failwith "Unsupported syntax"
   in
   let message_type =
@@ -569,7 +554,7 @@ let parse_proto_file
   Code.emit implementation `None "(************************************************)";
   Code.emit implementation `None "(*";
   Code.emit implementation `None "   Source: %s" (to_string_opt name);
-  Code.emit implementation `None "   Syntax: %s " (match syntax with Proto2 -> "proto2" | Proto3 -> "proto3");
+  Code.emit implementation `None "   Syntax: %s " (match syntax with `Proto2 -> "proto2" | `Proto3 -> "proto3");
   Code.emit implementation `None "   Parameters:";
   Code.emit implementation `None "     annot='%s'" !annot;
   Code.emit implementation `None "     debug=%b" !debug;

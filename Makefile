@@ -28,6 +28,15 @@ RUN_OCAML_PROTOC = @dune exec -- ocaml-protoc \
 %: %.proto
 	protoc -I $(dir $<) $< -o/dev/stdout | protoc --decode google.protobuf.FileDescriptorSet /usr/include/google/protobuf/descriptor.proto
 
+.PHONY: google
+# We actually dont want this. If we do, then if the user want derivers, its not possible.
+# We could make an alternative package, which depends on common derivers, and adds these.
+# That would actually be much better.
+google: PROTO_FILES = $(wildcard /usr/include/google/protobuf/*proto) $(wildcard /usr/include/google/protobuf/compiler/*proto)
+google: build
+	protoc -I /usr/include/ --plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:src/google/." $(PROTO_FILES)
+
+
 .PHONY: doc
 doc: ## Build documentation
 	dune build @doc

@@ -3,12 +3,9 @@
 open StdLabels
 open Result
 
-module S = Spec.Make(struct
-    type ('a, 'b) dir = ('a, 'b) Spec.deserialize
-  end)
+module S = Spec.Deserialize
 module C = S.C
 open S
-
 
 type 'a sentinal = unit -> 'a Result.t
 type 'a decoder = Field.t -> 'a Result.t
