@@ -209,7 +209,7 @@ in
 
 let read_person binary_message =
   let reader = Protobuf.Reader.create binary_message in
-  match Person.from_proto from_proto reader in
+  match Person.from_proto reader in
   | Ok Person.{ id; name; address = Some Address { street; number; planet } } ->
     Printf.printf "P: %d %s - %s %s %d\n" id name (string_of_planet planet) street number
   | Ok Person.{ id; name; address = None } ->
