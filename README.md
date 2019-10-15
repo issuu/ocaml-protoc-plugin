@@ -196,6 +196,10 @@ module Person : sig
 end = struct
 ```
 
+Note that if `test.proto` had a package declaration such as `package testing`,
+the modules `Address` and `Person` listed above would be defined as submodules
+of a top-level module `Testing`.
+
 `Protobuf.Reader` and `Protobuf.Writer` are used then reading or
 writing protobuf binary format. Below is an example on how to decode a message
 and how to read a message.
