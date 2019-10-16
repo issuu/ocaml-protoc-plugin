@@ -30,9 +30,35 @@ let write response =
   |> Protobuf.Writer.contents
   |> output_string stdout
 
+
+let parse_request Plugin.CodeGeneratorRequest.{file_to_generate = files_to_generate; parameter = parameters; proto_file = proto_files; compiler_version = _} =
+  let params = Parameters.parse (Option.value ~default:"" parameters) in
+  (* Find the correct file to process *)
+  let target_proto_files = List.filter ~f:(fun Descriptor.FileDescriptorProto.{name; _} ->
+      List.mem ~set:files_to_generate (Option.value_exn name)
+    ) proto_files
+  in
+  let scope = Scope.init proto_files in
+  let result =
+    List.map ~f:(fun (proto_file : Descriptor.FileDescriptorProto.t) ->
+      let scope = Scope.push scope (Option.value_exn proto_file.name |> Filename.basename |> Scope.module_name_of_proto) in
+      Emit.parse_proto_file ~params scope proto_file
+    ) target_proto_files
+    |> List.map ~f:(fun (v, code) ->
+        let v = Option.map ~f:(Filename.basename) v in
+        (v, code)
+      )
+  in
+  (match params.debug with
+   | true -> List.iter ~f:(fun (_, code) -> Printf.eprintf "%s\n%!" (Code.contents code)) result
+   | false -> ());
+  result
+
+
+
 let () =
   let request = read () in
-  let outputs = Emit.parse_request request in
+  let outputs = parse_request request in
   let response_of_output (name, code) =
     let insertion_point = None in
     let content = Some (Code.contents code) in

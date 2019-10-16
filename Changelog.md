@@ -1,3 +1,16 @@
+- [ ] Optimize happy path when deserializing
+- [ ] Add option to not wrap single field type in records
+- [ ] Add option to mangle names to snake_case
+- [ ] Add google well know types
+- [ ] Add complete examples
+- [ ] Test includes of files defining the same package
+- [ ] Move module to ocaml-protoc-plugin
+- [ ] Split runtime to a seperate module
+- [ ] Stow away module aliases not needed by users
+
+## 2.0.0: Unreleased
+- [x] Rewrite type emitter to closely follow spec
+
 ## 1.0.0: 2019-10-12
 - [x] Support enum aliasing
 - [x] Avoid name clash with on 'name'

@@ -8,7 +8,6 @@ open StdLabels
    so that chnges to the spec will require changes here also.
 *)
 
-
 module T = Protobuf.Spec.Make(struct
     type ('a, 'deser, 'ser) dir = (string * string * string * string option)
   end)
@@ -17,7 +16,6 @@ open T
 
 (* Existential types *)
 type espec = Espec: _ spec -> espec
-type ecompound = Ecompound: _ compound -> ecompound
 type c = {
   name : string;
   type' : string;
@@ -101,7 +99,7 @@ let string_of_default: type a. a spec -> a -> string = function
 
   | Bool -> string_of_bool
   | String -> sprintf "{|%s|}"
-  | Bytes -> fun bytes -> sprintf "{|%s|}" (Bytes.to_string bytes)
+  | Bytes -> fun bytes -> sprintf "(Bytes.of_string {|%s|})" (Bytes.to_string bytes)
   | Enum (_, _, _,  s) -> fun _ -> Option.value_exn s
   | Message _ -> failwith "Messages defaults are not relevant"
 
@@ -137,10 +135,10 @@ let string_of_spec: type a. [`Deserialize | `Serialize] -> a spec -> string = fu
   | _, Bool -> "bool"
   | _, String -> "string"
   | _, Bytes -> "bytes"
-  | `Deserialize, Enum (_, deser, _, _) -> sprintf "(Enum (%s)" deser
-  | `Serialize, Enum (_, _, ser, _)  -> sprintf "(Enum (%s)" ser
-  | `Deserialize, Message (_, deser, _, _) -> sprintf "(Message (%s)" deser
-  | `Serialize, Message (_, _, ser, _) -> sprintf "(Message (%s)" ser
+  | `Deserialize, Enum (_, deser, _ , _)  -> sprintf "(enum %s)" deser
+  | `Serialize,   Enum (_, _,    ser, _)  -> sprintf "(enum %s)" ser
+  | `Deserialize, Message (_, deser, _ , _) -> sprintf "(message %s)" deser
+  | `Serialize,   Message (_, _,    ser, _) -> sprintf "(message %s)" ser
 
 let type_of_spec: type a. a spec -> string = function
   | Double -> "float"
@@ -189,24 +187,38 @@ let spec_of_enum ~scope type_name default =
   let default = Option.map ~f:(fun default -> Scope.get_scoped_name ~postfix:default scope type_name) default in
   Enum (type', deserialize_func, serialize_func, default)
 
-let spec_of_type ~scope type_name default =
+open Parameters
+let spec_of_type ~params ~scope type_name default =
   let open FieldDescriptorProto.Type in
   function
   | TYPE_DOUBLE   -> Espec Double
   | TYPE_FLOAT    -> Espec Float
 
-  | TYPE_INT64    -> Espec Int64_int
-  | TYPE_UINT64   -> Espec UInt64_int
-  | TYPE_SINT64   -> Espec SInt64_int
+  | TYPE_INT64  when params.int64_as_int -> Espec Int64_int
+  | TYPE_UINT64 when params.int64_as_int -> Espec UInt64_int
+  | TYPE_SINT64 when params.int64_as_int -> Espec SInt64_int
 
-  | TYPE_UINT32   -> Espec UInt32_int
-  | TYPE_INT32    -> Espec Int32_int
-  | TYPE_SINT32   -> Espec SInt32_int
+  | TYPE_UINT32 when params.int32_as_int -> Espec UInt32_int
+  | TYPE_INT32  when params.int32_as_int -> Espec Int32_int
+  | TYPE_SINT32 when params.int32_as_int -> Espec SInt32_int
 
-  | TYPE_FIXED32  -> Espec Fixed32_int
-  | TYPE_SFIXED32 -> Espec SFixed32_int
-  | TYPE_FIXED64  -> Espec Fixed64_int
-  | TYPE_SFIXED64 -> Espec SFixed64_int
+  | TYPE_FIXED32  when params.fixed_as_int -> Espec Fixed32_int
+  | TYPE_SFIXED32 when params.fixed_as_int -> Espec SFixed32_int
+  | TYPE_FIXED64  when params.fixed_as_int -> Espec Fixed64_int
+  | TYPE_SFIXED64 when params.fixed_as_int -> Espec SFixed64_int
+
+  | TYPE_INT64  -> Espec Int64
+  | TYPE_UINT64 -> Espec UInt64
+  | TYPE_SINT64 -> Espec SInt64
+
+  | TYPE_UINT32 -> Espec UInt32
+  | TYPE_INT32  -> Espec Int32
+  | TYPE_SINT32 -> Espec SInt32
+
+  | TYPE_FIXED32  -> Espec Fixed32
+  | TYPE_SFIXED32 -> Espec SFixed32
+  | TYPE_FIXED64  -> Espec Fixed64
+  | TYPE_SFIXED64 -> Espec SFixed64
 
   | TYPE_BOOL     -> Espec Bool
   | TYPE_STRING   -> Espec String
@@ -231,28 +243,31 @@ let string_of_packed = function
   | Packed -> "packed"
   | Not_packed -> "not_packed"
 
-let c_of_compound: type a. string -> a compound -> c = fun name -> function
+let c_of_compound: type a. string -> a compound -> c = fun name ->
+  let name = Names.field_name (Some name) in
+  function
+
   | Basic (index, spec, proto_type) ->
     let deserialize_spec = sprintf "basic (%d, %s, %s)" index (string_of_spec `Deserialize spec) (string_of_proto_type spec proto_type) in
-    let serialize_spec = sprintf "basic (%d, %s, %s)" index (string_of_spec `Deserialize spec) (string_of_proto_type spec proto_type) in
-    let type' = type_of_spec spec in (* Need to add the type_spec to the basic type *)
+    let serialize_spec = sprintf "basic (%d, %s, %s)" index (string_of_spec `Serialize spec) (string_of_proto_type spec proto_type) in
+    let type' = type_of_spec spec in
     { name; type'; deserialize_spec; serialize_spec }
   | Basic_opt (index, spec) ->
-    let deserialize_spec = sprintf "basic (%d, %s)" index (string_of_spec `Deserialize spec) in
-    let serialize_spec = sprintf "basic (%d, %s)" index (string_of_spec `Deserialize spec) in
+    let deserialize_spec = sprintf "basic_opt (%d, %s)" index (string_of_spec `Deserialize spec) in
+    let serialize_spec = sprintf "basic_opt (%d, %s)" index (string_of_spec `Serialize spec) in
     let type' = sprintf "%s option" (type_of_spec spec) in
     { name; type'; deserialize_spec; serialize_spec }
   | Repeated (index, spec, packed) ->
     let type' = sprintf "%s list" (type_of_spec spec) in
     let deserialize_spec = sprintf "repeated (%d, %s, %s)" index (string_of_spec `Deserialize spec) (string_of_packed packed) in
-    let serialize_spec = sprintf "repeated (%d, %s, %s)" index (string_of_spec `Deserialize spec) (string_of_packed packed) in
+    let serialize_spec = sprintf "repeated (%d, %s, %s)" index (string_of_spec `Serialize spec) (string_of_packed packed) in
     { name; type'; deserialize_spec; serialize_spec }
   | Oneof (type', deserialize_spec, serialize_spec, _) ->
     let deserialize_spec = sprintf "oneof (%s)" deserialize_spec in
     let serialize_spec = sprintf "oneof (%s)" serialize_spec in
     { name; type'; deserialize_spec; serialize_spec }
 
-let c_of_field ~syntax ~scope field =
+let c_of_field ~params ~syntax ~scope field =
   let open FieldDescriptorProto in
   let open FieldDescriptorProto.Type in
   let number = Option.value_exn field.number in
@@ -284,10 +299,12 @@ let c_of_field ~syntax ~scope field =
 
   (* Enum under proto2 with a default value *)
   | `Proto2, { label = Some Label.LABEL_OPTIONAL; type' = Some TYPE_ENUM; type_name; default_value = Some default; _ } ->
+    (*
     let default =
       Scope.get_scoped_name ~postfix:default scope type_name
-      |> Printf.sprintf "proto2 (some %s)"
+      (* |> Printf.sprintf "(*S*) proto2 (some %s) (*E*)" *)
     in
+*)
     let spec = spec_of_enum ~scope type_name (Some default) in
     Basic (number, spec, Proto2 (Some default))
     |> c_of_compound name
@@ -295,7 +312,7 @@ let c_of_field ~syntax ~scope field =
   (* Enum under proto2 with no default value *)
   | `Proto2, { label = Some Label.LABEL_OPTIONAL; type' = Some TYPE_ENUM; type_name; default_value = None; _ } ->
     let spec = spec_of_enum ~scope type_name None in
-    Basic (number, spec, Proto2 None)
+    Basic_opt (number, spec)
     |> c_of_compound name
 
   (* Required Enum under proto2 *)
@@ -306,26 +323,26 @@ let c_of_field ~syntax ~scope field =
 
   (* Required fields under proto2 *)
   | `Proto2, { label = Some Label.LABEL_REQUIRED; type' = Some type'; type_name; _ } ->
-    let Espec spec = spec_of_type ~scope type_name None type' in
+    let Espec spec = spec_of_type ~params ~scope type_name None type' in
     Basic (number, spec, Required)
     |> c_of_compound name
 
   (* Proto2 optional fields with a default *)
   | `Proto2, { label = Some Label.LABEL_OPTIONAL; type' = Some type'; type_name; default_value = Some default; _ } ->
-    let Espec spec = spec_of_type ~scope type_name (Some default) type' in
+    let Espec spec = spec_of_type ~params ~scope type_name (Some default) type' in
     let default = make_default spec default in
     Basic (number, spec, Proto2 (Some default))
     |> c_of_compound name
 
   (* Proto2 optional fields - no default *)
   | `Proto2, { label = Some Label.LABEL_OPTIONAL; type' = Some type'; type_name; default_value = None; _ } ->
-    let Espec spec = spec_of_type ~scope type_name None type' in
+    let Espec spec = spec_of_type ~params ~scope type_name None type' in
     Basic_opt (number, spec)
     |> c_of_compound name
 
   (* Proto3 optional fields *)
   | `Proto3, { label = Some Label.LABEL_OPTIONAL; type' = Some type'; type_name; _ } ->
-    let Espec spec = spec_of_type ~scope type_name None type' in
+    let Espec spec = spec_of_type ~params ~scope type_name None type' in
     Basic (number, spec, Proto3)
     |> c_of_compound name
 
@@ -352,7 +369,7 @@ let c_of_field ~syntax ~scope field =
 
   (* Repeated basic type *)
   | _, { label = Some Label.LABEL_REPEATED; type' = Some type'; type_name; options; _} ->
-    let Espec spec = spec_of_type ~scope type_name None type' in
+    let Espec spec = spec_of_type ~params ~scope type_name None type' in
     let packed = match syntax, options with
       | _, Some FieldOptions.{ packed = Some true; _ } -> Packed
       | _, Some FieldOptions.{ packed = Some false; _ } -> Not_packed
@@ -364,13 +381,13 @@ let c_of_field ~syntax ~scope field =
   | _, { label = None; _ } -> failwith "Label not set on field struct"
   | _, { type' = None; _ } -> failwith "Type must be set"
 
-let c_of_oneof ~syntax:_ ~scope OneofDescriptorProto.{ name; _ } fields =
+let c_of_oneof ~params ~syntax:_ ~scope OneofDescriptorProto.{ name; _ } fields =
   let open FieldDescriptorProto in
   (* Construct the type. *)
   let field_infos =
     List.map ~f:(function
         | { number = Some number; name; type' = Some type'; type_name; _ } ->
-          let Espec spec = spec_of_type ~scope type_name None type' in
+          let Espec spec = spec_of_type ~params ~scope type_name None type' in
           (number, name, type_of_spec spec, (Espec spec))
         | _ -> failwith "No index or type"
       ) fields
@@ -399,10 +416,11 @@ let c_of_oneof ~syntax:_ ~scope OneofDescriptorProto.{ name; _ } fields =
         sprintf "`%s v -> %s" (Names.constructor_name name) (string_of_oneof_elem `Serialize oneof_elem)
       )
     |> String.concat ~sep:" | "
-    |> sprintf "function %s"
+    |> sprintf "(function %s)"
   in
   let oneof = Oneof (type', deser_oneofs, ser_oneof, None) in
-  c_of_compound (Option.value_exn name) oneof
+
+  c_of_compound (Names.field_name name) oneof
 
 
 (** Return a list of plain fields + a list of fields per oneof_decl *)
@@ -434,37 +452,50 @@ let split_oneof_decl fields oneof_decls =
   inner [] oneof_decls fields
 
 (* Let create everything *)
-let make ~syntax ~scope fields oneof_decls =
+let make ~params ~syntax ~is_map_entry ~scope ~fields oneof_decls =
   let ts =
     split_oneof_decl fields oneof_decls
     |> List.map ~f:(function
-        | `Field field -> c_of_field ~syntax ~scope field
-        | `Oneof (decl, fields) -> c_of_oneof ~syntax ~scope decl fields
+        | `Field field -> c_of_field ~params ~syntax ~scope field
+        | `Oneof (decl, fields) -> c_of_oneof ~params ~syntax ~scope decl fields
       )
   in
-  let type' =
-    List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" name type') ts
-    |> String.concat ~sep:"; "
-    |> sprintf "{ %s }"
-  in
-  let constructor, apply =
-    let field_names = List.map ~f:(fun { name; _} -> name) ts in
-    let args = String.concat ~sep:" " field_names in
-    let constr = String.concat ~sep:"; " field_names in
-    let constructor = sprintf "let constructor %s =  { %s }" args constr in
-    let apply = sprintf "let apply ~f' { %s } = f' %s" constr args in
-    constructor, apply
+  let (type', constructor, apply) =
+    match List.length fields with
+    | 0 -> "unit", "()", "fun ~f () -> f"
+    | 2 when is_map_entry ->
+      let type' =
+        List.map ~f:(fun { name = _; type'; _} -> sprintf "%s" type') ts
+        |> String.concat ~sep:" * "
+        |> sprintf "(%s)"
+      in
+      type', "fun a b -> (a, b)", "fun ~f (a, b) -> f a b"
+    | _ ->
+      let type' =
+        List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" name type') ts
+        |> String.concat ~sep:"; "
+        |> sprintf "{ %s }"
+      in
+      let constructor, apply =
+        let field_names = List.map ~f:(fun { name; _} -> name) ts in
+        let args = String.concat ~sep:" " field_names in
+        let constr = String.concat ~sep:"; " field_names in
+        let constructor = sprintf "fun %s -> { %s }" args constr in
+        let apply = sprintf "fun ~f:f' { %s } -> f' %s" constr args in
+        constructor, apply
+      in
+      (type', constructor, apply)
   in
   (* Create the deserialize spec *)
   let deserialize_spec =
     let spec = List.map ~f:(fun (c:c) -> c.deserialize_spec) ts in
     String.concat ~sep:" ^:: " (spec @ ["nil"])
-    |> sprintf "let spec = Protobuf'.Deserialize.C.( %s )"
+    |> sprintf "Protobuf'.Deserialize.C.( %s )"
   in
 
   let serialize_spec =
     let spec = List.map ~f:(fun (c:c) -> c.serialize_spec) ts in
     String.concat ~sep:" ^:: " (spec @ ["nil"])
-    |> sprintf "let spec = Protobuf'.Serialize.C.( %s )"
+    |> sprintf "Protobuf'.Serialize.C.( %s )"
   in
   { type'; constructor; apply; deserialize_spec; serialize_spec }
