@@ -13,7 +13,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets primitive_types.ml)
@@ -23,7 +23,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets int_types.ml)
@@ -33,7 +33,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets int_types_native.ml)
@@ -43,7 +43,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=use_int32;use_int64;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;use_int32;use_int64;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets repeated.ml)
@@ -53,7 +53,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets enum.ml)
@@ -63,7 +63,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets message.ml)
@@ -73,7 +73,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets oneof.ml)
@@ -83,7 +83,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets map.ml)
@@ -93,7 +93,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets package.ml)
@@ -103,7 +103,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets include.ml)
@@ -115,7 +115,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets included.ml)
@@ -125,7 +125,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets included2.ml)
@@ -135,7 +135,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets service.ml)
@@ -145,7 +145,7 @@
  (action
   (run protoc -I.
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets recursive.ml)
@@ -155,7 +155,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets protocol.ml)
@@ -165,7 +165,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets name_clash.ml)
@@ -175,7 +175,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets proto2.ml)
@@ -185,7 +185,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets packed.ml)
@@ -195,7 +195,17 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+
+(rule
+ (targets singleton_record.ml)
+ (deps
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
+  (:proto singleton_record.proto))
+ (action
+  (run protoc -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=singleton_record=false;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 ; ; Determine where the include files are
 ; (rule

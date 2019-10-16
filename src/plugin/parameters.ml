@@ -7,6 +7,7 @@ type t = {
   int32_as_int: bool;
   fixed_as_int: bool;
   debug: bool;
+  singleton_record: bool;
 }
 
 let default = {
@@ -16,6 +17,7 @@ let default = {
   int32_as_int = true;
   fixed_as_int = false;
   debug = false;
+  singleton_record = false;
 }
 
 let parse_option str =
@@ -34,6 +36,7 @@ let parse parameters =
       | `Expr ("fixed_as_int", (("true"|"false") as v)) -> { param with fixed_as_int = (bool_of_string v) };
       | `Expr ("int64_as_int", (("true"|"false") as v)) -> { param with int64_as_int = (bool_of_string v) };
       | `Expr ("int32_as_int", (("true"|"false") as v)) -> { param with int32_as_int = (bool_of_string v) };
+      | `Expr ("singleton_record", (("true"|"false") as v)) -> { param with singleton_record = (bool_of_string v) };
       | `Stmt "debug" -> { param with debug = true}
       | _ -> failwith ("Unknown parameter: " ^ option)
     )

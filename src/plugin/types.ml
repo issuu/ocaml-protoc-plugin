@@ -461,16 +461,18 @@ let make ~params ~syntax ~is_map_entry ~scope ~fields oneof_decls =
       )
   in
   let (type', constructor, apply) =
-    match List.length fields with
-    | 0 -> "unit", "()", "fun ~f () -> f"
-    | 2 when is_map_entry ->
+    match ts with
+    | [] -> "unit", "()", "fun ~f () -> f"
+    | [ { type'; _ } ] when params.singleton_record = false ->
+      type', "fun a -> a", "fun ~f a -> f a"
+    | [_; _] when is_map_entry ->
       let type' =
         List.map ~f:(fun { name = _; type'; _} -> sprintf "%s" type') ts
         |> String.concat ~sep:" * "
         |> sprintf "(%s)"
       in
       type', "fun a b -> (a, b)", "fun ~f (a, b) -> f a b"
-    | _ ->
+    | ts ->
       let type' =
         List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" name type') ts
         |> String.concat ~sep:"; "

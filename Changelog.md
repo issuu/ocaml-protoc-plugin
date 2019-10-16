@@ -1,5 +1,4 @@
 - [ ] Optimize happy path when deserializing
-- [ ] Add option to not wrap single field type in records
 - [ ] Add option to mangle names to snake_case
 - [ ] Add google well know types
 - [ ] Add complete examples
@@ -9,6 +8,7 @@
 - [ ] Stow away module aliases not needed by users
 
 ## 2.0.0: Unreleased
+- [x] *Add option to not wrap single field type in records
 - [x] Rewrite type emitter to closely follow spec
 
 ## 1.0.0: 2019-10-12
@@ -31,3 +31,5 @@
 
 ## 0.9: 2019-09-25
 - [x] Initial Release
+
+(*) indicates breaking change
