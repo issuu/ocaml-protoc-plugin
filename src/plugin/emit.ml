@@ -30,7 +30,7 @@ let emit_enum_type ~params
   Code.append signature t;
   Code.append implementation t;
   Code.emit signature `None "val to_int: t -> int";
-  Code.emit signature `None "val from_int: int -> t Protobuf'.Result.t";
+  Code.emit signature `None "val from_int: int -> t Ocaml_protoc_plugin.Result.t";
   Code.emit implementation `Begin "let to_int = function";
   List.iter ~f:(fun v ->
       let open  EnumValueDescriptorProto in
@@ -57,10 +57,10 @@ let emit_enum_type ~params
 let emit_service_type scope ServiceDescriptorProto.{ name; method' = methods; _ } =
   let emit_method t MethodDescriptorProto.{ name; input_type; output_type; _} =
     Code.emit t `Begin "let %s = " (Names.field_name name);
-    Code.emit t `None "( (module %s : Protobuf'.Service.Message with type t = %s ), "
+    Code.emit t `None "( (module %s : Ocaml_protoc_plugin.Service.Message with type t = %s ), "
       (Scope.get_scoped_name scope input_type)
       (Scope.get_scoped_name ~postfix:"t" scope input_type);
-    Code.emit t `End "  (module %s : Protobuf'.Service.Message with type t = %s ) ) "
+    Code.emit t `End "  (module %s : Ocaml_protoc_plugin.Service.Message with type t = %s ) ) "
       (Scope.get_scoped_name scope output_type)
       (Scope.get_scoped_name ~postfix:"t" scope output_type)
   in
@@ -142,8 +142,8 @@ let rec emit_message ~params ~syntax scope
         Types.make ~params ~syntax ~is_map_entry ~scope ~fields oneof_decls
       in
       Code.emit signature `None "type t = %s %s" type' params.annot;
-      Code.emit signature `None "val to_proto: t -> Protobuf'.Writer.t";
-      Code.emit signature `None "val from_proto: Protobuf'.Reader.t -> t Protobuf'.Result.t";
+      Code.emit signature `None "val to_proto: t -> Ocaml_protoc_plugin.Writer.t";
+      Code.emit signature `None "val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t";
 
       Code.emit implementation `None "type t = %s %s" type' params.annot;
 
@@ -152,14 +152,14 @@ let rec emit_message ~params ~syntax scope
       Code.emit implementation `Begin "let%s to_proto = " rec_str;
       Code.emit implementation `None "let apply = %s in" apply;
       Code.emit implementation `None "let spec%s = %s in" apply_str serialize_spec;
-      Code.emit implementation `None "let serialize%s = Protobuf'.Serialize.serialize (spec%s) in" apply_str apply_str;
+      Code.emit implementation `None "let serialize%s = Ocaml_protoc_plugin.Serialize.serialize (spec%s) in" apply_str apply_str;
       Code.emit implementation `None "fun t -> apply ~f:(serialize%s ()) t" apply_str;
       Code.emit implementation `End "";
 
       Code.emit implementation `Begin "let%s from_proto = " rec_str;
       Code.emit implementation `None "let constructor = %s in" constructor;
       Code.emit implementation `None "let spec%s = %s in" apply_str deserialize_spec;
-      Code.emit implementation `None "let deserialize%s = Protobuf'.Deserialize.deserialize (spec%s) constructor in" apply_str apply_str;
+      Code.emit implementation `None "let deserialize%s = Ocaml_protoc_plugin.Deserialize.deserialize (spec%s) constructor in" apply_str apply_str;
       Code.emit implementation `None "fun writer -> deserialize%s writer" apply_str;
       Code.emit implementation `End "";
     | None -> ()
@@ -219,9 +219,6 @@ let parse_proto_file ~params
   Code.emit implementation `None "     int32_as_int=%b" params.int32_as_int;
   Code.emit implementation `None "     fixed_as_int=%b" params.fixed_as_int;
   Code.emit implementation `None "*)";
-  Code.emit implementation `None "(**/**)";
-  Code.emit implementation `None "module Protobuf' = Protobuf";
-  Code.emit implementation `None "(**/**)";
   List.iter ~f:(Code.emit implementation `None "open %s") params.opens;
 
   wrap_packages ~params ~syntax scope message_type services (Option.value_map ~default:[] ~f:(String.split_on_char ~sep:'.') package)

@@ -1,7 +1,7 @@
 open Service
 let service reader =
   let (s_deser, s_ser) =
-    Protobuf.Service.make_service_functions Service.String_of_int.call
+    Ocaml_protoc_plugin.Service.make_service_functions Service.String_of_int.call
   in
   let req =
     s_deser reader
@@ -16,16 +16,16 @@ let service reader =
 
 let call i =
   let (c_ser, c_deser) =
-    Protobuf.Service.make_client_functions Service.String_of_int.call
+    Ocaml_protoc_plugin.Service.make_client_functions Service.String_of_int.call
   in
   let req = Service.Request.{ i } in
   req
   |> c_ser
-  |> Protobuf.Writer.contents
-  |> Protobuf.Reader.create
+  |> Ocaml_protoc_plugin.Writer.contents
+  |> Ocaml_protoc_plugin.Reader.create
   |> service
-  |> Protobuf.Writer.contents
-  |> Protobuf.Reader.create
+  |> Ocaml_protoc_plugin.Writer.contents
+  |> Ocaml_protoc_plugin.Reader.create
   |> c_deser
   |> (function Ok r -> r.Service.Response.s | Error _ -> failwith "Error")
 

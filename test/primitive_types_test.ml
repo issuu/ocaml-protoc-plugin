@@ -63,7 +63,7 @@ let%expect_test _ =
       }
   in
   let bin = T.to_proto t in
-  Caml.Printf.printf "Size: %d%!" (Protobuf.Writer.contents bin |> String.length);
+  Caml.Printf.printf "Size: %d%!" (Ocaml_protoc_plugin.Writer.contents bin |> String.length);
   [%expect {| Size: 0 |}]
 
 

@@ -1,6 +1,6 @@
 (library
  (name test)
- (libraries protobuf)
+ (libraries ocaml_protoc_plugin)
  (inline_tests)
  (preprocess
   (pps ppx_expect ppx_deriving.show ppx_deriving.eq)))

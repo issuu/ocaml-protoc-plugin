@@ -12,8 +12,9 @@ let is_reserved = function
 
 let module_name name =
   let name = Option.value_exn name in
-  let name = match String.get name 0 with
-    | '_' -> "P" ^ name ^ "'" (* Change to a name that protobuf cannot create *)
+  let name = match name with
+    | "Ocaml_protoc_plugin" -> "Ocaml_protoc_plugin'"
+    | s when s.[0] = '_' -> "P" ^ name ^ "'" (* Change to a name that protobuf cannot create *)
     | _ -> name
   in
   String.capitalize_ascii name

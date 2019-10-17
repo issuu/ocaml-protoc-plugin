@@ -8,7 +8,7 @@ open StdLabels
    so that chnges to the spec will require changes here also.
 *)
 
-module T = Protobuf.Spec.Make(struct
+module T = Ocaml_protoc_plugin.Spec.Make(struct
     type ('a, 'deser, 'ser) dir = (string * string * string * string option)
   end)
 open T
@@ -492,12 +492,12 @@ let make ~params ~syntax ~is_map_entry ~scope ~fields oneof_decls =
   let deserialize_spec =
     let spec = List.map ~f:(fun (c:c) -> c.deserialize_spec) ts in
     String.concat ~sep:" ^:: " (spec @ ["nil"])
-    |> sprintf "Protobuf'.Deserialize.C.( %s )"
+    |> sprintf "Ocaml_protoc_plugin.Deserialize.C.( %s )"
   in
 
   let serialize_spec =
     let spec = List.map ~f:(fun (c:c) -> c.serialize_spec) ts in
     String.concat ~sep:" ^:: " (spec @ ["nil"])
-    |> sprintf "Protobuf'.Serialize.C.( %s )"
+    |> sprintf "Ocaml_protoc_plugin.Serialize.C.( %s )"
   in
   { type'; constructor; apply; deserialize_spec; serialize_spec }

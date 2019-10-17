@@ -5,12 +5,12 @@ let%expect_test "Packed as string" =
   let t = T.{i = [5; 6; 7; 8; 9]} in
   Test_lib.test_encode (module T) t;
   T.to_proto t
-  |> Protobuf.Writer.contents
-  |> Protobuf.Reader.create
+  |> Ocaml_protoc_plugin.Writer.contents
+  |> Ocaml_protoc_plugin.Reader.create
   |> T'.from_proto
   |> (function
       | Ok t -> print_endline (T'.show t)
-      | Error e -> Printf.printf "Failed to decode: %s\n" (Protobuf.Result.show_error e)
+      | Error e -> Printf.printf "Failed to decode: %s\n" (Ocaml_protoc_plugin.Result.show_error e)
     );
   [%expect {|
     i: 5
@@ -26,12 +26,12 @@ let%expect_test "Packed as int" =
   let t = T.{i = [5; 6; 7; 8; 9]} in
   Test_lib.test_encode (module T) t;
   T.to_proto t
-  |> Protobuf.Writer.contents
-  |> Protobuf.Reader.create
+  |> Ocaml_protoc_plugin.Writer.contents
+  |> Ocaml_protoc_plugin.Reader.create
   |> T'.from_proto
   |> (function
       | Ok t -> print_endline (T'.show t)
-      | Error e -> Printf.printf "Failed to decode: %s\n" (Protobuf.Result.show_error e)
+      | Error e -> Printf.printf "Failed to decode: %s\n" (Ocaml_protoc_plugin.Result.show_error e)
     );
   [%expect {|
     i: 5

@@ -1,7 +1,7 @@
 (library
  (name        google_types)
  (public_name ocaml-protoc-plugin.google_types)
- (libraries   protobuf)
+ (libraries   ocaml_protoc_plugin)
  (wrapped false)
  (synopsis "Google well known types")
 )

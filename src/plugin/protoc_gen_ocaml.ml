@@ -18,7 +18,7 @@ let read_all in_channel =
 (* Read from stdin *)
 let read () =
   read_all stdin
-  |> Protobuf.Reader.create
+  |> Ocaml_protoc_plugin.Reader.create
   |> Plugin.CodeGeneratorRequest.from_proto
   |> function
   | Ok v -> v
@@ -27,7 +27,7 @@ let read () =
 (* Write to stdout *)
 let write response =
   Plugin.CodeGeneratorResponse.to_proto response
-  |> Protobuf.Writer.contents
+  |> Ocaml_protoc_plugin.Writer.contents
   |> output_string stdout
 
 

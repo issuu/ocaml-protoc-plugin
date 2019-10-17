@@ -1,4 +1,4 @@
 (library
  (name spec)
- (libraries protobuf)
+ (libraries ocaml_protoc_plugin)
 )

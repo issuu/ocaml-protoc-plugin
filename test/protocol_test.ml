@@ -6,7 +6,7 @@ let%test "Last value kept"  =
 
   let expect = Protocol.New.{ message = Some Protocol.Message.{ i = 7 }; oneof = `Oneof_j 13 } in
   let writer = Protocol.Old.to_proto t in
-  let reader = Protobuf.Writer.contents writer |> Protobuf.Reader.create in
+  let reader = Ocaml_protoc_plugin.Writer.contents writer |> Ocaml_protoc_plugin.Reader.create in
 
   match Protocol.New.from_proto reader with
   | Ok t ->
@@ -20,7 +20,7 @@ let%test "Last value kept - 2"  =
 
   let expect = Protocol.New.{ message = Some Protocol.Message.{ i = 7 }; oneof = `Oneof_j 13 } in
   let writer = Protocol.Old.to_proto t in
-  let reader = Protobuf.Writer.contents writer ^ Protobuf.Writer.contents writer |> Protobuf.Reader.create in
+  let reader = Ocaml_protoc_plugin.Writer.contents writer ^ Ocaml_protoc_plugin.Writer.contents writer |> Ocaml_protoc_plugin.Reader.create in
 
   match Protocol.New.from_proto reader with
   | Ok t ->
@@ -35,7 +35,7 @@ let%test "Repeated fields kept as it should"  =
   let expect = Protocol.List.{ is = is1 @ is2 } in
   let writer1 = Protocol.List.to_proto t1 in
   let writer2 = Protocol.List.to_proto t2 in
-  let reader = Protobuf.Writer.contents writer1 ^ Protobuf.Writer.contents writer2 |> Protobuf.Reader.create in
+  let reader = Ocaml_protoc_plugin.Writer.contents writer1 ^ Ocaml_protoc_plugin.Writer.contents writer2 |> Ocaml_protoc_plugin.Reader.create in
   match Protocol.List.from_proto reader with
   | Ok t ->
     Protocol.List.equal t expect

@@ -1,7 +1,7 @@
 (library
  (name        google_types_deriving)
  (public_name ocaml-protoc-plugin.google_types_deriving)
- (libraries   protobuf)
+ (libraries   ocaml_protoc_plugin)
  (optional)
  (wrapped false)
  (synopsis "Google well known types - with deriving")

@@ -2,8 +2,8 @@ open StdLabels
 
 module type T = sig
   type t [@@deriving show, eq]
-  val to_proto : t -> Protobuf.Writer.t
-  val from_proto : Protobuf.Reader.t -> t Protobuf.Result.t
+  val to_proto : t -> Ocaml_protoc_plugin.Writer.t
+  val from_proto : Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
   val name' : unit -> string
 end
 
@@ -43,7 +43,7 @@ let dump_protoc name data =
 
 (** Create a common function for testing. *)
 let test_encode (type t) ?dump ?(protoc=true) (module M : T with type t = t) (expect : t) =
-  let data = M.to_proto expect |> Protobuf.Writer.contents in
+  let data = M.to_proto expect |> Ocaml_protoc_plugin.Writer.contents in
   let () =
     match dump with
     | Some _ -> hexlify data
@@ -54,10 +54,10 @@ let test_encode (type t) ?dump ?(protoc=true) (module M : T with type t = t) (ex
     | false -> ()
   in
   (* Decode the message *)
-  let in_data = Protobuf.Reader.create data in
+  let in_data = Ocaml_protoc_plugin.Reader.create data in
   match M.from_proto in_data with
   | Ok observed when M.equal expect observed -> ()
   | Ok observed ->
     Printf.printf "\nExpect  :%s\nObserved:%s\n" ([%show: M.t] expect) ([%show: M.t] observed)
   | Error err ->
-    Printf.printf "\nDecode failed: %s \n" (Protobuf.Result.show_error err)
+    Printf.printf "\nDecode failed: %s \n" (Ocaml_protoc_plugin.Result.show_error err)
