@@ -18,7 +18,7 @@ let show_error = function
   | `Illegal_value (s, f) -> Printf.sprintf "`Illegal_value: %s - %s" s (Field.show f)
   | `Not_implemented-> "`Not_implemente"
   | `Unknown_enum_value i -> Printf.sprintf "`Unknown_enum_value: %d" i
-  | `Oneof_missing-> "`Oneof_missin"
+  | `Oneof_missing-> "`Oneof_missing"
   | `Required_field_missing -> "`Required_field_missing"
 
 type 'a t = ('a, error) result
