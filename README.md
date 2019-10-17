@@ -17,7 +17,10 @@ The main features include:
 
 | Feature           | ocaml-protoc           | ocaml-pb            | ocaml-protoc-plugin |
 | -------           | ------------           | ---------------     | ------------------- |
-| Ocaml types       | Supported              | Defined runtime[1] | Supported           |
+| Ocaml types       | Supported              | Defined runtime<a title=" ocaml-bp has a sister project `ocaml-bp-plugin` which emit
+ocaml-pb definitions from a `.proto`. The plugin parses files are proto2
+ocaml type definitions (all fields are option types), and repeated
+fields are not packed by default."><sup>1</sup></a> | Supported           |
 | Service endpoints | Not supported          | N/A                 | Supported           |
 | proto3            | Partly supported[2]  | Supported           | Supported           |
 | proto2            | Supported              | Supported           | Supported           |
