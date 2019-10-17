@@ -18,6 +18,7 @@ depends: [
   "ppx_inline_test" {with-test}
   "ppx_deriving" {with-test}
 ]
+depopts: ["ppx_deriving"]
 
 synopsis: "Plugin for protoc protobuf compiler to generate ocaml definitions from a .proto file"
 

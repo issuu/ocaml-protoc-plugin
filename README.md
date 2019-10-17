@@ -17,18 +17,11 @@ The main features include:
 
 | Feature           | ocaml-protoc           | ocaml-pb            | ocaml-protoc-plugin |
 | -------           | ------------           | ---------------     | ------------------- |
-| Ocaml types       | Supported              | Defined runtime(\*) | Supported           |
+| Ocaml types       | Supported              | Defined runtime[^1] | Supported           |
 | Service endpoints | Not supported          | N/A                 | Supported           |
-| proto3            | Partly supported(\*\*) | Supported           | Supported           |
+| proto3            | Partly supported[^2]  | Supported           | Supported           |
 | proto2            | Supported              | Supported           | Supported           |
 
-(\*) ocaml-bp has a sister project `ocaml-bp-plugin` which emit
-ocaml-pb definitions from a `.proto`. The plugin parses files are proto2
-ocaml type definitions (all fields are option types), and repeated
-fields are not packed by default.
-
-(\*\*) `ocaml-protoc` release 1.2.0 does not yet fully support proto3, the
-master branch does, however.
 
 ## Types
 Basic types are mapped trivially to ocaml types:
@@ -144,6 +137,16 @@ implement message sending -> receiving.
 The service function is a `string -> string` function which takes a
 handler working over the actual message types.
 
+## Google Well know types
+Protobuf distributes with a set of [*Well-Known
+types*](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf).
+These a distributed along with ocaml\_protoc\_plugin, and can be used
+by depending on the module `ocaml-protoc-plugin.google_types` or
+`ocaml-protoc-plugin.google_types_deriving`. The latter is only
+installed if the ppx extension `ppx_deriving` is installed, and is
+compiled using `show`, `eq` and `ord`. The
+``ocaml-protoc-plugin.google_types_deriving` is to be used in
+conjunction with the `annot` flag.
 
 # Example:
 
@@ -222,3 +225,11 @@ let read_person binary_message =
     Printf.printf "P: %d %s - Address unknown\n" id name
   | Error _ -> failwith "Could not decode"
 ```
+
+[^1] ocaml-bp has a sister project `ocaml-bp-plugin` which emit
+ocaml-pb definitions from a `.proto`. The plugin parses files are proto2
+ocaml type definitions (all fields are option types), and repeated
+fields are not packed by default.
+
+[^2]: `ocaml-protoc` release 1.2.0 does not yet fully support proto3, the
+master branch does, however.

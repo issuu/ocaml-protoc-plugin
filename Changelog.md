@@ -4,7 +4,7 @@
 - [ ] Do not add unit argument for oneof constructors referencing empty messages
 
 ## 2.0.0: Unreleased
-- [ ] Add google well know types
+- [x] Add google well know types
 - [ ] Move module to ocaml-protoc-plugin
 - [ ] Split runtime to a seperate module
 - [ ] Hide module aliases not needed by users
