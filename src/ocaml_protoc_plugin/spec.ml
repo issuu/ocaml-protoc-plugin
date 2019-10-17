@@ -4,7 +4,7 @@ end
 
 module Make(T : T) = struct
 
-  type 'a proto_type = Proto3 | Proto2 of 'a option | Required
+  type 'a proto_type = Proto3 | Proto2 of 'a | Required
   type packed = Packed | Not_packed
 
   type _ spec =

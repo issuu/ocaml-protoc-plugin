@@ -235,8 +235,7 @@ let string_of_oneof_elem dir (Oneof_elem (index, spec, (_, deser, ser, _))) =
 
 let string_of_proto_type: type a. a spec -> a proto_type -> string = fun spec -> function
   | Proto3 -> "proto3"
-  | Proto2 None -> "proto2 (none)"
-  | Proto2 (Some default) -> sprintf "proto2 (some (%s))" (string_of_default spec default)
+  | Proto2 default -> sprintf "proto2 (%s)" (string_of_default spec default)
   | Required -> "required"
 
 let string_of_packed = function
@@ -331,7 +330,7 @@ let c_of_field ~params ~syntax ~scope field =
   | `Proto2, { label = Some Label.LABEL_OPTIONAL; type' = Some type'; type_name; default_value = Some default; _ } ->
     let Espec spec = spec_of_type ~params ~scope type_name (Some default) type' in
     let default = make_default spec default in
-    Basic (number, spec, Proto2 (Some default))
+    Basic (number, spec, Proto2 default)
     |> c_of_compound name
 
   (* Proto2 optional fields - no default *)

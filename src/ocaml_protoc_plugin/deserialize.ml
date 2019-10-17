@@ -139,9 +139,8 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
   | Basic (index, spec, default) ->
     let field_type, read = type_of_spec spec in
     let default = match default with
-      | Proto2 (Some default) -> default
+      | Proto2 default -> default
       | Required
-      | Proto2 None
       | Proto3 -> begin
           default_of_field_type field_type
           |> read
