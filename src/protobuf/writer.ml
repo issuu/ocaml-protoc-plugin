@@ -83,10 +83,6 @@ let contents t =
 
 let add_field t field = t.fields <- field :: t.fields
 
-(** Add the contents of src as is *)
-let concat t ~src =
-  t.fields <- src.fields @ (t.fields)
-
 let write_field_header : t -> int -> int -> unit =
   fun t index field_type ->
   let header = (index lsl 3) + field_type in
@@ -104,12 +100,16 @@ let write_field : t -> int -> Field.t -> unit =
   write_field_header t index field_type;
   add_field t field
 
+(** Add the contents of src as is *)
+let concat t ~src =
+  t.fields <- List.rev_append (List.rev src.fields) t.fields
+
 (** Add the contents of src as a length_delimited field *)
 let concat_as_length_delimited t ~src index =
   let size = size src in
   write_field_header t index 2;
   add_field t (Varint (Int64.of_int size));
-  t.fields <- src.fields @ t.fields
+  concat t ~src
 
 let dump t =
   let string_contents = contents t in

@@ -8,6 +8,7 @@
 - [ ] Stow away module aliases not needed by users
 
 ## 2.0.0: Unreleased
+- [x] Fix stack overflow when deserializing big nested structures
 - [x] *Add option to not wrap single field type in records
 - [x] Rewrite type emitter to closely follow spec
 
