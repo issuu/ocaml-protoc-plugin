@@ -198,6 +198,10 @@ module Person : sig
 end = struct
 ```
 
+Note that if `test.proto` had a package declaration such as `package testing`,
+the modules `Address` and `Person` listed above would be defined as submodules
+of a top-level module `Testing`.
+
 `Protobuf.Reader` and `Protobuf.Writer` are used then reading or
 writing protobuf binary format. Below is an example on how to decode a message
 and how to read a message.
@@ -211,7 +215,7 @@ in
 
 let read_person binary_message =
   let reader = Protobuf.Reader.create binary_message in
-  match Person.from_proto from_proto reader in
+  match Person.from_proto reader in
   | Ok Person.{ id; name; address = Some Address { street; number; planet } } ->
     Printf.printf "P: %d %s - %s %s %d\n" id name (string_of_planet planet) street number
   | Ok Person.{ id; name; address = None } ->
