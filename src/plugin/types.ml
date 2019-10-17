@@ -298,12 +298,6 @@ let c_of_field ~params ~syntax ~scope field =
 
   (* Enum under proto2 with a default value *)
   | `Proto2, { label = Some Label.LABEL_OPTIONAL; type' = Some TYPE_ENUM; type_name; default_value = Some default; _ } ->
-    (*
-    let default =
-      Scope.get_scoped_name ~postfix:default scope type_name
-      (* |> Printf.sprintf "(*S*) proto2 (some %s) (*E*)" *)
-    in
-*)
     let spec = spec_of_enum ~scope type_name (Some default) in
     Basic (number, spec, Proto2 (Some default))
     |> c_of_compound name
