@@ -17,9 +17,9 @@ The main features include:
 
 | Feature           | ocaml-protoc           | ocaml-pb            | ocaml-protoc-plugin |
 | -------           | ------------           | ---------------     | ------------------- |
-| Ocaml types       | Supported              | Defined runtime[^1] | Supported           |
+| Ocaml types       | Supported              | Defined runtime[1] | Supported           |
 | Service endpoints | Not supported          | N/A                 | Supported           |
-| proto3            | Partly supported[^2]  | Supported           | Supported           |
+| proto3            | Partly supported[2]  | Supported           | Supported           |
 | proto2            | Supported              | Supported           | Supported           |
 
 
@@ -226,10 +226,10 @@ let read_person binary_message =
   | Error _ -> failwith "Could not decode"
 ```
 
-[^1] ocaml-bp has a sister project `ocaml-bp-plugin` which emit
+[1] ocaml-bp has a sister project `ocaml-bp-plugin` which emit
 ocaml-pb definitions from a `.proto`. The plugin parses files are proto2
 ocaml type definitions (all fields are option types), and repeated
 fields are not packed by default.
 
-[^2]: `ocaml-protoc` release 1.2.0 does not yet fully support proto3, the
+[2]: `ocaml-protoc` release 1.2.0 does not yet fully support proto3, the
 master branch does, however.
