@@ -3,8 +3,8 @@
 [![BuildStatus](https://travis-ci.org/issuu/ocaml-protoc-plugin.svg?branch=master)](https://travis-ci.org/issuu/ocaml-protoc-plugin)
 
 The goal of Ocaml protoc plugin is to create an up to date plugin for
-the google protobuf compiler (protoc) to generate ocaml types and
-serialization and de-serialization.
+the google protobuf compiler (`protoc`) to generate ocaml types and
+serialization and de-serialization function from a `.proto` file.
 
 The main features include:
 * Messages are mapped to idiomatic OCaml types, using modules
@@ -13,7 +13,7 @@ The main features include:
 * proto2 compliant
 * Support includes
 
-## Comparisson with other OCaml protobuf handlers.
+## Comparison with other OCaml protobuf handlers.
 
 | Feature           | ocaml-protoc         | ocaml-pb            | ocaml-protoc-plugin |
 | -------           | ------------         | ---------------     | ------------------- |
@@ -22,16 +22,16 @@ The main features include:
 | proto3            | Partly supported[^2] | Supported           | Supported           |
 | proto2            | Supported            | Supported           | Supported           |
 
-[^1] ocaml-bp has a sister project `ocaml-bp-plugin` which emit
-ocaml-pb definitions from a `.proto`. The plugin parses files are proto2
-ocaml type definitions (all fields are option types), and repeated
+[^1] Ocaml-bp has a sister project `Ocaml-bp-plugin` which emit
+Ocaml-pb definitions from a `.proto`. The plugin parses files are proto2
+Ocaml type definitions (all fields are option types), and repeated
 fields are not packed by default.
 
-[^2]: `ocaml-protoc` release 1.2.0 does not yet fully support proto3, the
+[^2]: `Ocaml-protoc` release 1.2.0 does not yet fully support proto3, the
 master branch does, however.
 
 ## Types
-Basic types are mapped trivially to ocaml types:
+Basic types are mapped trivially to Ocaml types:
 
 Primitive types:
 
@@ -71,8 +71,8 @@ The specification for proto2 states that when deserializing a message,
 fields which are not transmitted should be set the the default value
 (either 0, or the value of the default option).
 
-However, It seems to be the defacto standard that in proto2 it should
-be possible to determine if a field was transmitted or not.  Thefore
+However, It seems to be the norm for proto2, that it should
+be possible to determine if a field was transmitted or not.  Therefore
 all non-repeated fields in proto2 are default - unless it has a
 default value, or is a required field.
 
@@ -85,7 +85,7 @@ default values does not need to be transmitted).
 
 ## Invocation
 If the plugin is available in the path as `protoc-gen-ocaml`, then you
-can generate the ocaml code by running
+can generate the Ocaml code by running
 
 ```
   protoc --ocaml_out=. --ocaml_opt=<options> file.proto
@@ -145,14 +145,15 @@ The service function is a `string -> string` function which takes a
 handler working over the actual message types.
 
 ## Google Well know types
-Protobuf distributes with a set of [*Well-Known
+Protobuf distributes a set of [*Well-Known
 types*](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf).
-These a distributed along with ocaml\_protoc\_plugin, and can be used
-by depending on the module `ocaml-protoc-plugin.google_types` or
-`ocaml-protoc-plugin.google_types_deriving`. The latter is only
-installed if the ppx extension `ppx_deriving` is installed, and is
-compiled using `show`, `eq` and `ord`. The
-``ocaml-protoc-plugin.google_types_deriving` is to be used in
+`ocaml-protoc-plugin` installs compiled versions of these, and can be
+used by linking with the library `ocaml-protoc-plugin.google_types` or
+`ocaml-protoc-plugin.google_types_deriving`.
+
+`ocaml-protoc-plugin.google_types_deriving` is only installed if the
+ppx extension `ppx_deriving` is installed, and is compiled using
+`show`, `eq` and `ord`. The `ocaml-protoc-plugin.google_types_deriving` is to be used in
 conjunction with the `annot` flag.
 
 # Example:
