@@ -15,16 +15,20 @@ The main features include:
 
 ## Comparisson with other OCaml protobuf handlers.
 
-| Feature           | ocaml-protoc           | ocaml-pb            | ocaml-protoc-plugin |
-| -------           | ------------           | ---------------     | ------------------- |
-| Ocaml types       | Supported              | Defined runtime<a title=" ocaml-bp has a sister project `ocaml-bp-plugin` which emit
+| Feature           | ocaml-protoc         | ocaml-pb            | ocaml-protoc-plugin |
+| -------           | ------------         | ---------------     | ------------------- |
+| Ocaml types       | Supported            | Defined runtime[^1] | Supported           |
+| Service endpoints | Not supported        | N/A                 | Supported           |
+| proto3            | Partly supported[^2] | Supported           | Supported           |
+| proto2            | Supported            | Supported           | Supported           |
+
+[^1] ocaml-bp has a sister project `ocaml-bp-plugin` which emit
 ocaml-pb definitions from a `.proto`. The plugin parses files are proto2
 ocaml type definitions (all fields are option types), and repeated
-fields are not packed by default."><sup>1</sup></a> | Supported           |
-| Service endpoints | Not supported          | N/A                 | Supported           |
-| proto3            | Partly supported[2]  | Supported           | Supported           |
-| proto2            | Supported              | Supported           | Supported           |
+fields are not packed by default.
 
+[^2]: `ocaml-protoc` release 1.2.0 does not yet fully support proto3, the
+master branch does, however.
 
 ## Types
 Basic types are mapped trivially to ocaml types:
@@ -33,14 +37,14 @@ Primitive types:
 
 | Protobuf Type                                | Ocaml type       |
 | -------------                                | ----------       |
-| int32, int64, uint32, uint64, sint32, sint64 | int(\*)          |
-| fixed64, sfixed64, fixed32, sfixed32         | int32, int64(\*) |
+| int32, int64, uint32, uint64, sint32, sint64 | int[^3]          |
+| fixed64, sfixed64, fixed32, sfixed32         | int32, int64[^3] |
 | bool                                         | bool             |
 | float, double                                | float            |
 | string                                       | string           |
 | bytes                                        | bytes            |
 
-(\*) The plugin supports changing the type for scalar types to
+[^3] The plugin supports changing the type for scalar types to
 int/int64/int32. See options section below.
 
 A message <name> declaration is compiled to a module <Name> with a record type
@@ -228,11 +232,3 @@ let read_person binary_message =
     Printf.printf "P: %d %s - Address unknown\n" id name
   | Error _ -> failwith "Could not decode"
 ```
-
-[1] ocaml-bp has a sister project `ocaml-bp-plugin` which emit
-ocaml-pb definitions from a `.proto`. The plugin parses files are proto2
-ocaml type definitions (all fields are option types), and repeated
-fields are not packed by default.
-
-[2]: `ocaml-protoc` release 1.2.0 does not yet fully support proto3, the
-master branch does, however.
