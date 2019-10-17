@@ -1,10 +1,10 @@
 {
   "name": "ocaml-protoc-plugin-runtime-bs",
-  "namespace": "Protobuf",
+  "namespace": "Ocaml_protoc_plugin",
   "refmt": 3,
   "sources": [
     {
-      "dir": "src/protobuf"
+      "dir": "src/ocaml_protoc_plugin"
     }
   ],
   "package-specs": {
