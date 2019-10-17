@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package included;
+package include;
 
 message N {
   enum E {

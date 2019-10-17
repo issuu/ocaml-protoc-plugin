@@ -4,6 +4,7 @@ package include;
 
 import public "enum.proto";
 import public "package.proto";
+import public "included.proto";
 
 message I {
   enum_test.Message.E enum = 1;
@@ -16,4 +17,8 @@ message X {
   message Inner {
     uint64 i = 1;
   }
+}
+
+message Z {
+  N n = 1;
 }

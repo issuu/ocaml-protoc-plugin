@@ -20,3 +20,13 @@ let%expect_test _ =
     c {
       i: 7
     } |}]
+
+
+let%expect_test _ =
+  let module T = Include.Z in
+  let t = T.{ n = Some Included.Include.N.{ e = E.B }} in
+  Test_lib.test_encode (module T) t;
+  [%expect {|
+    n {
+      e: B
+    } |}]
