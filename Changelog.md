@@ -8,6 +8,7 @@
 - [x] Move module to ocaml-protoc-plugin
 - [ ] Optimize happy path when deserializing
 - [ ] Optimize deserialization of large nested structures
+- [x] Provide pretty_printers aka deriving_show for Result.error and Field.t
 - [x] Fix stack overflow when deserializing big nested structures
 - [x] *Add option to not wrap single field type in records
 - [x] Rewrite type emitter to closely follow spec

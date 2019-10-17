@@ -11,16 +11,6 @@ type error =
   | `Oneof_missing
   | `Required_field_missing ]
 
-let show_error = function
-  | `Premature_end_of_input -> "`Premature_end_of_input"
-  | `Unknown_field_type i -> Printf.sprintf "`Unknown_field_type: %d" i
-  | `Wrong_field_type (s, f) -> Printf.sprintf "`Wrong_field_type: %s - %s" s (Field.show f)
-  | `Illegal_value (s, f) -> Printf.sprintf "`Illegal_value: %s - %s" s (Field.show f)
-  | `Not_implemented-> "`Not_implemente"
-  | `Unknown_enum_value i -> Printf.sprintf "`Unknown_enum_value: %d" i
-  | `Oneof_missing-> "`Oneof_missing"
-  | `Required_field_missing -> "`Required_field_missing"
-
 type 'a t = ('a, error) result
 
 let ( >>| ) v f = match v with Ok x -> Ok (f x) | Error err -> Error err
@@ -30,3 +20,47 @@ let ( >>= ) v f = match v with Ok x -> f x | Error err -> Error err
 
 let return x = Ok x
 let fail x = Error x
+
+let pp_error : Format.formatter -> error -> unit = fun fmt -> function
+  | `Premature_end_of_input ->
+    Format.pp_print_string fmt
+      "`Premature_end_of_input"
+  | `Unknown_field_type x ->
+    (Format.fprintf fmt
+       "`Unknown_field_type (@[<hov>";
+     (Format.fprintf fmt "%d") x;
+     Format.fprintf fmt "@])")
+  | `Wrong_field_type x ->
+    (Format.fprintf fmt
+       "`Wrong_field_type (@[<hov>";
+     ((fun (a0, a1) ->
+         Format.fprintf fmt "(@[";
+         ((Format.fprintf fmt "%S") a0;
+          Format.fprintf fmt ",@ ";
+          (Field.pp fmt) a1);
+         Format.fprintf fmt "@])")) x;
+     Format.fprintf fmt "@])")
+  | `Illegal_value x ->
+    (Format.fprintf fmt
+       "`Illegal_value (@[<hov>";
+     ((fun (a0, a1) ->
+         Format.fprintf fmt "(@[";
+         ((Format.fprintf fmt "%S") a0;
+          Format.fprintf fmt ",@ ";
+          (Field.pp fmt) a1);
+         Format.fprintf fmt "@])")) x;
+     Format.fprintf fmt "@])")
+  | `Not_implemented ->
+    Format.pp_print_string fmt
+      "`Not_implemented"
+  | `Unknown_enum_value x ->
+    (Format.fprintf fmt
+       "`Unknown_enum_value (@[<hov>";
+     (Format.fprintf fmt "%d") x;
+     Format.fprintf fmt "@])")
+  | `Oneof_missing ->
+    Format.pp_print_string fmt "`Oneof_missing"
+  | `Required_field_missing ->
+    Format.pp_print_string fmt
+      "`Required_field_missing"
+let show_error : error -> string = Format.asprintf "%a" pp_error
