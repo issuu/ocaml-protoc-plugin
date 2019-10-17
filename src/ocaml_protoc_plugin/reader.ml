@@ -10,11 +10,6 @@ type t = {
   data : String.t;
 }
 
-type error =
-  [ `Premature_end_of_input
-  | `Unknown_field_type of int ]
-[@@deriving show]
-
 let create ?(offset = 0) ?length data =
   let end_offset =
     match length with
@@ -23,8 +18,6 @@ let create ?(offset = 0) ?length data =
   in
   assert (String.length data >= end_offset);
   {offset; end_offset; data}
-
-let size {offset; end_offset; _} = end_offset - offset
 
 (** Return an error if there is not enough data in input *)
 let validate_capacity t count =
