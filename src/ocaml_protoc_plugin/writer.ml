@@ -6,14 +6,28 @@ open Field
 let sprintf = Printf.sprintf
 let printf = Printf.printf
 
-type t = {mutable fields : Field.t list}
+type field_list =
+  | Nil
+  | Cons_field of (Field.t * field_list)
+  | Cons_fields of (field_list * field_list)
 
-type error =
-  [ `Premature_end_of_input
-  | `Unknown_field_type of int ]
-[@@deriving show]
+type t = {
+  mutable fields : field_list;
+  mutable size: int;
+}
 
-let init () = {fields = []}
+(** Yes. But it would be nicer to just iter over them *)
+let rev_fields fields =
+  let rec inner acc = function
+    | Nil -> acc
+    | Cons_field (hd, tl) ->
+      inner (hd :: acc) tl
+    | Cons_fields (hd, tl) ->
+      inner (inner acc hd) tl
+  in
+  inner [] fields
+
+let init () = {fields = Nil; size = 0;}
 
 let rec size_of_field = function
   | Varint v when v > 0L ->
@@ -25,8 +39,7 @@ let rec size_of_field = function
   | Fixed_64_bit _ -> 8
   | Length_delimited {length; _} -> size_of_field (Varint (Int64.of_int length)) + length
 
-let size t =
-  List.fold_left ~init:0 ~f:(fun acc field -> acc + size_of_field field) t.fields
+let size t = t.size
 
 let write_varint buffer ~offset v =
   let rec inner ~offset v : int =
@@ -40,16 +53,6 @@ let write_varint buffer ~offset v =
       inner ~offset:Pervasives.(offset + 1) rem
   in
   inner ~offset v
-
-let set_int64 buffer offset v =
-  let rec inner v = function
-    | 8 -> ()
-    | n ->
-      let ch = Int64.(logand v 0xffL |> to_int) |> Char.chr in
-      Bytes.set buffer (n + offset) ch;
-      inner Int64.(shift_right_logical v 8) (n+1)
-  in
-  inner v 8
 
 let write_fixed32 buffer ~offset v =
   LittleEndian.set_int32 buffer offset v;
@@ -73,7 +76,7 @@ let write_field buffer ~offset = function
 
 let contents t =
   let size = size t in
-  let t = List.rev t.fields in
+  let t = rev_fields t.fields in
   let buffer = Bytes.create size in
   let next_offset =
     List.fold_left ~init:0 ~f:(fun offset field -> write_field buffer ~offset field) t
@@ -81,7 +84,16 @@ let contents t =
   assert (next_offset = size);
   Bytes.to_string buffer
 
-let add_field t field = t.fields <- field :: t.fields
+let add_field t field =
+  t.fields <- Cons_field(field, t.fields);
+  t.size <- t.size + size_of_field field;
+  ()
+
+(** Add the contents of src as is *)
+let concat t ~src =
+  t.fields <- Cons_fields(src.fields, t.fields);
+  t.size <- t.size + src.size;
+  ()
 
 let write_field_header : t -> int -> int -> unit =
   fun t index field_type ->
@@ -99,10 +111,6 @@ let write_field : t -> int -> Field.t -> unit =
   in
   write_field_header t index field_type;
   add_field t field
-
-(** Add the contents of src as is *)
-let concat t ~src =
-  t.fields <- List.rev_append (List.rev src.fields) t.fields
 
 (** Add the contents of src as a length_delimited field *)
 let concat_as_length_delimited t ~src index =
