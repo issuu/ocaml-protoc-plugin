@@ -5,9 +5,7 @@
 
 ## 2.0.0: Unreleased
 - [x] Add google well know types
-- [ ] Move module to ocaml-protoc-plugin
-- [ ] Split runtime to a seperate module
-- [ ] Hide module aliases not needed by users
+- [x] Move module to ocaml-protoc-plugin
 - [ ] Optimize happy path when deserializing
 - [ ] Optimize deserialization of large nested structures
 - [x] Fix stack overflow when deserializing big nested structures

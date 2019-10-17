@@ -1,6 +1,6 @@
 (library
- (name        google_types_deriving)
- (public_name ocaml-protoc-plugin.google_types_deriving)
+ (name        google_types)
+ (public_name ocaml-protoc-plugin.google_types)
  (libraries   ocaml_protoc_plugin)
  (optional)
  (wrapped false)
@@ -21,7 +21,7 @@
  (action
   (run protoc -I %{read-lines:google_include}
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq, ord]:."
+       "--ocaml_out=."
        %{read-lines:google_include}/google/protobuf/any.proto
        %{read-lines:google_include}/google/protobuf/api.proto
        %{read-lines:google_include}/google/protobuf/descriptor.proto
