@@ -38,5 +38,6 @@ let parse parameters =
       | `Expr ("int32_as_int", (("true"|"false") as v)) -> { param with int32_as_int = (bool_of_string v) };
       | `Expr ("singleton_record", (("true"|"false") as v)) -> { param with singleton_record = (bool_of_string v) };
       | `Stmt "debug" -> { param with debug = true}
+      | `Stmt "" -> param
       | _ -> failwith ("Unknown parameter: " ^ option)
     )
