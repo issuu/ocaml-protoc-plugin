@@ -1,13 +1,13 @@
 - [ ] Add option to mangle names to snake_case
-- [ ] Add examples
-- [ ] Test includes of files defining the same package
 - [ ] Do not add unit argument for oneof constructors referencing empty messages
 
 ## 2.0.0: Unreleased
-- [x] Add google well know types
-- [x] Move module to ocaml-protoc-plugin
+- [ ] Add examples
 - [ ] Optimize happy path when deserializing
-- [ ] Optimize deserialization of large nested structures
+- [x] Test includes of files defining the same package
+- [x] Add google well know types.
+- [x] Move module to ocaml-protoc-plugin
+- [x] Optimize deserialization of large nested structures
 - [x] Provide pretty_printers aka deriving_show for Result.error and Field.t
 - [x] Fix stack overflow when deserializing big nested structures
 - [x] *Add option to not wrap single field type in records
