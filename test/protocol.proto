@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package protocol;
+
 message Message {
   int64 i = 3;
 }

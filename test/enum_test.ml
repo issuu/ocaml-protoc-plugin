@@ -1,3 +1,4 @@
+module Enum = Enum.Enum_test
 let%expect_test _ =
   let module T = Enum.Message in
   let t = T.{enum = Enum.Message.E.B} in

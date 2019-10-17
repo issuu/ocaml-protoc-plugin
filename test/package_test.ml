@@ -1,3 +1,4 @@
+open Package
 let%expect_test _ =
   let module T = Package.A.B.M in
   let t = T.{i = 7} in

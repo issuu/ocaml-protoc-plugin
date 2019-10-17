@@ -1,3 +1,4 @@
+open Packed
 let%expect_test "Packed as string" =
   let module T = Packed.Packed in
   let module T' = Packed.String in

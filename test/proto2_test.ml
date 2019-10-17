@@ -1,3 +1,4 @@
+open Proto2
 let%expect_test _ =
   let module T = Proto2.Message in
   let t = T.{enum = Some E.B; i = 0; j = 5; required = Required.{ a = Some 7 }; k = Some 5 } in

@@ -1,13 +1,14 @@
 syntax = "proto3";
 
+package include;
 
 import public "enum.proto";
 import public "package.proto";
 
 message I {
-  Message.E enum = 1;
-  a.b.M m = 2;
-  Outside o = 3;
+  enum_test.Message.E enum = 1;
+  package.a.b.M m = 2;
+  enum_test.Outside o = 3;
   X.Inner c = 4;
 }
 

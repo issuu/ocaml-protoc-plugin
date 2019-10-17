@@ -1,3 +1,5 @@
+open Singleton_record
+
 let%expect_test _ =
   let module T = Singleton_record.Test in
   let t = `J "Test" in

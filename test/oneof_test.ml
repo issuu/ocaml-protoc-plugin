@@ -1,3 +1,4 @@
+open Oneof
 let%expect_test _ =
   let module T = Oneof.Test in
   let t = T.{ y = 5; x = `I 7} in

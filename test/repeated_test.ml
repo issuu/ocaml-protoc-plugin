@@ -1,3 +1,4 @@
+open Repeated
 let%expect_test _ =
   let module T = Repeated.UInt64 in
   let t = T.{i = [5; 6; 7; 8; 9]} in

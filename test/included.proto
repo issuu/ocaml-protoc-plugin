@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package included;
+
 message N {
   enum E {
     A = 0;

@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package message;
+
 message Submessage {
   int64 i = 1;
 }

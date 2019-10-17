@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package recursive;
+
 message Tree {
   message Node {
     Tree left = 1;

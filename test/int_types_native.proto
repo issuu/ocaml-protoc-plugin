@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package int_types_native;
+
 message SInt64 {
   sint64 i = 1;
 }

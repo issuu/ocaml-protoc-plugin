@@ -1,5 +1,7 @@
 syntax = "proto2";
 
+package proto2;
+
 message A {
   optional uint64 i = 2 [default = 4];
 }

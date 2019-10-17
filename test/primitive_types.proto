@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package primitive_types;
+
 message Types {
   int64 int64 = 1;
   sint64 sint64 = 2;

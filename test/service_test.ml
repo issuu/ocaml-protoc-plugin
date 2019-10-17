@@ -1,3 +1,4 @@
+open Service
 let service reader =
   let (s_deser, s_ser) =
     Protobuf.Service.make_service_functions Service.String_of_int.call

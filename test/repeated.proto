@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package repeated;
+
 message UInt64 {
   repeated uint64 i = 13;
 }

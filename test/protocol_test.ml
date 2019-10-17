@@ -1,3 +1,4 @@
+open Protocol
 let%test "Last value kept"  =
   let messages = List.init 8 (fun i -> Protocol.Message.{ i }) in
   let oneof_messages = [] in

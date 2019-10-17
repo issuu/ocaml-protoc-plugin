@@ -1,4 +1,5 @@
 open StdLabels
+open Int_types_native
 
 let test_signed64 (type t) ~(create : Int64.t -> t) (module T : Test_lib.T with type t = t) =
   Printf.printf "Test %s\n%!" (T.name' ());
@@ -33,7 +34,7 @@ let%expect_test _ =
   let create i = Int_types_native.SInt64.{i} in
   test_signed64 ~create (module T);
   [%expect {|
-    Test Int_types_native.SInt64
+    Test Int_types_native.int_types_native.SInt64
     i: -1073741823
     i: -2
     i: -1
@@ -46,7 +47,7 @@ let%expect_test _ =
   let create i = Int_types_native.SInt32.{i} in
   test_signed32 ~create (module T);
   [%expect {|
-    Test Int_types_native.SInt32
+    Test Int_types_native.int_types_native.SInt32
     i: -1073741823
     i: -2
     i: -1
@@ -59,7 +60,7 @@ let%expect_test _ =
   let create i = Int_types_native.Int64.{i} in
   test_signed64 ~create (module T);
   [%expect {|
-    Test Int_types_native.Int64
+    Test Int_types_native.int_types_native.Int64
     i: -1073741823
     i: -2
     i: -1
@@ -73,7 +74,7 @@ let%expect_test _ =
   test_signed32 ~create (module T);
   [%expect
     {|
-    Test Int_types_native.Int32
+    Test Int_types_native.int_types_native.Int32
     i: -1073741823
     i: -2
     i: -1
@@ -86,7 +87,7 @@ let%expect_test _ =
   let create i = Int_types_native.UInt64.{i} in
   test_unsigned64 ~create (module T);
   [%expect {|
-    Test Int_types_native.UInt64
+    Test Int_types_native.int_types_native.UInt64
     i: 1
     i: 2
     i: 2147483647 |}]
@@ -96,7 +97,7 @@ let%expect_test _ =
   let create i = Int_types_native.UInt32.{i} in
   test_unsigned32 ~create (module T);
   [%expect {|
-    Test Int_types_native.UInt32
+    Test Int_types_native.int_types_native.UInt32
     i: 1
     i: 2
     i: 2147483647 |}]

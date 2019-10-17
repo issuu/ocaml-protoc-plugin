@@ -1,3 +1,4 @@
+open Recursive
 let%expect_test _ =
   let module T = Recursive.Message in
   let t = T.{ m = Some { m = Some { m = None } }} in

@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package enum_test;
+
 
 message Message {
   enum E {

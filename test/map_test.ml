@@ -1,3 +1,4 @@
+open Map
 let%expect_test _ =
   let module T = Map.Test in
   let t = T.{ m = [ 1, "1"; 2, "2"; 3, "3" ] } in
