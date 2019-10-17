@@ -43,14 +43,15 @@ let size t = t.size
 
 let write_varint buffer ~offset v =
   let rec inner ~offset v : int =
+    let (++) = (+) in
     let open Infix.Int64 in
     match v land 0x7FL, v lsr 7 with
     | v, 0L ->
       Bytes.set buffer offset (v |> Int64.to_int |> Char.chr);
-      Pervasives.(offset + 1)
+      (offset ++ 1)
     | v, rem ->
       Bytes.set buffer offset (v lor 0x80L |> Int64.to_int |> Char.chr);
-      inner ~offset:Pervasives.(offset + 1) rem
+      inner ~offset:(offset ++ 1) rem
   in
   inner ~offset v
 
