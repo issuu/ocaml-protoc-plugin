@@ -1,31 +1,3 @@
-stages:
-  - test # actually, this is the "build" stage
-         # (defined in the job matrix ("env.matrix" and "script" root node)
-         # https://docs.travis-ci.com/user/build-stages/#specifying-stage-order-and-conditions)
-  - bucklescript
-
-# This creates the bucklescript stage, which only runs the bucklescript build. The relevant travis
-# feature is "Build stages" (https://docs.travis-ci.com/user/build-stages/).
-# Unfortunately it doesn't support matrix expansion, so we define the build
-# stage the "old-fashioned" way down below this section.
-jobs:
-  include:
-    - stage: bucklescript
-      language: node_js
-      node_js:
-        - 12
-      script: npm install && npm run build
-
-# The default 'test' job
-language: c
-install: wget https://raw.githubusercontent.com/ocaml/ocaml-ci-scripts/master/.travis-docker.sh
-sudo: required
-services:
-  - docker
-sudo: false
-dist: bionic
-
-script: bash -ex .travis-docker.sh
 env:
   global:
   - DEPOPTS="ppx_deriving"
@@ -33,12 +5,28 @@ env:
   - TESTS=true
   - PACKAGE=ocaml-protoc-plugin
   - PINS="conf-protoc:."
+language: c
+install: wget https://raw.githubusercontent.com/ocaml/ocaml-ci-scripts/master/.travis-docker.sh
+sudo: required
+services:
+- docker
+dist: bionic
+script: bash -ex .travis-docker.sh
 
-  matrix:
-  - OCAML_VERSION=4.06
-  - OCAML_VERSION=4.07
-  - OCAML_VERSION=4.08
-  - OCAML_VERSION=4.09
-
-os:
-  - linux
+jobs:
+  include:
+    - os: linux
+      env: OCAML_VERSION=4.06
+    - os: linux
+      env: OCAML_VERSION=4.07
+    - os: linux
+      env: OCAML_VERSION=4.08
+    - os: linux
+      env: OCAML_VERSION=4.09
+    - os: osx
+      env: OCAML_VERSION=4.09
+    - os: linux
+      language: node_js
+      node_js:
+        - 12
+      script: npm install && npm run build
