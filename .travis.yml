@@ -28,7 +28,7 @@ dist: bionic
 script: bash -ex .travis-docker.sh
 env:
   global:
-  - DEPOPTS="*"
+  - DEPOPTS="ppx_deriving"
   - DISTRO=ubuntu-18.04
   - TESTS=true
   - PACKAGE=ocaml-protoc-plugin
