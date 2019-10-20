@@ -218,6 +218,7 @@ let parse_proto_file ~params
   Code.emit implementation `None "     int64_as_int=%b" params.int64_as_int;
   Code.emit implementation `None "     int32_as_int=%b" params.int32_as_int;
   Code.emit implementation `None "     fixed_as_int=%b" params.fixed_as_int;
+  Code.emit implementation `None "     singleton_record=%b" params.singleton_record;
   Code.emit implementation `None "*)";
   List.iter ~f:(Code.emit implementation `None "open %s") params.opens;
 
