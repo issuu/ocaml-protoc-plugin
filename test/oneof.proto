@@ -41,3 +41,7 @@ message Test3 {
     sint64 z2 = 2000;
   }
 }
+
+message Test4 {
+  oneof a { uint64 i = 1; };
+}

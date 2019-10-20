@@ -1,9 +1,10 @@
 - [ ] Add option to mangle names to snake_case
 - [ ] Do not add unit argument for oneof constructors referencing empty messages
+- [ ] Optimize happy path when deserializing
 
 ## 2.0.0: Unreleased
 - [ ] Add examples
-- [ ] Optimize happy path when deserializing
+- [x] Oneofs with only one element should not be a variant type
 - [x] Test includes of files defining the same package
 - [x] Add google well know types.
 - [x] Move module to ocaml-protoc-plugin

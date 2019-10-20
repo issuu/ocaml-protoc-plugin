@@ -32,3 +32,10 @@ let%expect_test "Default values in oneof" =
     x1: 0
     y2: 0
     z2: 0 |}]
+
+let%expect_test "Single field oneof" =
+  let module T = Oneof.Test4 in
+  let t = T.{ a = 5 } in
+  Test_lib.test_encode (module T) t;
+  [%expect {|
+    i: 5 |}]
