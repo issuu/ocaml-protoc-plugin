@@ -39,11 +39,24 @@ let make_type_db: Descriptor.FileDescriptorProto.t list -> string StringMap.t = 
   let types = List.map ~f:types_of_file descriptions in
   (* Construct a map *)
   List.fold_left ~init:StringMap.empty ~f:(fun acc (module_name, types) ->
-    List.fold_left ~init:acc ~f:(fun acc type_ ->
-      let type_name = "" :: (List.rev type_) |> String.concat ~sep:"." in
-      StringMap.add ~key:type_name ~data:module_name acc
+      List.fold_left ~init:acc ~f:(fun acc type_ ->
+          let type_name = "" :: (List.rev type_) |> String.concat ~sep:"." in
+          StringMap.add ~key:type_name ~data:(module_name ^ type_name) acc
+        ) types
     ) types
-  ) types
+
+(* At this point we can mangle the names, as long as we do not create collisions *)
+(* So this database should hold all names. *)
+(* When trying to create a constructor, we just lookup the name in the current scope. *)
+(* What about ads's?? I.e. one_ofs *)
+(* What about field_names - Should these also be injected into the type database? *)
+(* We might aswell, then create lookup function. *)
+(*   This will render the names module useless, as we will just lookup the names *)
+(*   As long as we are not case insensitive *)
+(*   Then we can eject field names into the current type *)
+(* - Or we can create a function to map all field names in one go *)
+(* Thats prob better *)
+
 
 let init files =
   let type_db = make_type_db files in
@@ -57,27 +70,24 @@ let pop: t -> string -> t = fun t name ->
   | [] -> failwith "Cannot pop empty scope"
   | _ -> failwith "Cannot pop wrong scope"
 
-let get_scoped_name ?postfix t = function
-  | Some name -> begin
-      let module_name = match StringMap.find_opt name t.type_db with
-        | Some x -> x
-        | None -> (* Dump the type DB *)
-            StringMap.iter ~f:(fun ~key ~data -> Printf.eprintf "     %s -> %s\n%!" key data) t.type_db;
-            failwith ("Could not locate type in database: " ^ name)
-      in
-      match String.split_on_char ~sep:'.' name with
-      | "" :: xs ->
-        let rec inner = function
-          | x :: xs, y :: ys when String.equal (String.lowercase_ascii x) (String.lowercase_ascii y) -> inner (xs, ys)
-          | xs, _ ->
-            List.map ~f:String.capitalize_ascii xs
-            |> (fun stem -> Option.value_map ~default:stem ~f:(fun p -> stem @ [p]) postfix)
-            |> String.concat ~sep:"."
-        in
-        inner (module_name :: xs, List.rev t.path)
-      | _ -> failwith "Expected name to start with a '.'"
-    end
-  | None -> failwith "Does not contain a name"
+let get_scoped_name ?postfix t name =
+  let rec inner parts path =
+    match (parts, path) with
+    | x :: xs, y :: ys when String.equal (String.lowercase_ascii x) (String.lowercase_ascii y) -> inner xs ys
+    | xs, _ ->
+      List.map ~f:String.capitalize_ascii xs
+      |> (fun stem -> Option.value_map ~default:stem ~f:(fun p -> stem @ [p]) postfix)
+      |> String.concat ~sep:"."
+  in
+  let name = Option.value_exn ~message:"Does not contain a name" name in
+  (* Now find the actual name *)
+  let name =
+    match StringMap.find_opt name t.type_db with
+    | None -> failwith (Printf.sprintf "Cannot find %s in type_db" name)
+    | Some name -> name
+  in
+  let name_parts = String.split_on_char ~sep:'.' name in
+  inner name_parts (List.rev t.path)
 
 let get_current_scope t = String.concat ~sep:"." (List.rev t.path)
 
