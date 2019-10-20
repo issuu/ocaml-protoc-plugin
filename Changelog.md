@@ -2,7 +2,7 @@
 - [ ] Do not add unit argument for oneof constructors referencing empty messages
 - [ ] Optimize happy path when deserializing
 
-## 2.0.0: Unreleased
+## 2.0.0: 2019-10-20
 - [x] Add examples
 - [x] *Oneofs with only one element should not be a variant type
 - [x] Add test when including proto files which defines the same package
