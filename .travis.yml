@@ -1,6 +1,5 @@
 env:
   global:
-  - DEPOPTS="ppx_deriving"
   - DISTRO=ubuntu-18.04
   - TESTS=true
   - PACKAGE=ocaml-protoc-plugin
@@ -24,6 +23,8 @@ jobs:
     - os: linux
       env: OCAML_VERSION=4.09
     - os: osx
+      install: wget https://raw.githubusercontent.com/ocaml/ocaml-ci-scripts/master/.travis-ocaml.sh
+      script: bash -ex .travis-opam.sh
       env: OCAML_VERSION=4.09
     - os: linux
       language: node_js
