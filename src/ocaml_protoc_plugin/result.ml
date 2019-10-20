@@ -6,7 +6,6 @@ type error =
   | `Unknown_field_type of int
   | `Wrong_field_type of string * Field.t
   | `Illegal_value of string * Field.t
-  | `Not_implemented
   | `Unknown_enum_value of int
   | `Oneof_missing
   | `Required_field_missing ]
@@ -50,9 +49,6 @@ let pp_error : Format.formatter -> error -> unit = fun fmt -> function
           (Field.pp fmt) a1);
          Format.fprintf fmt "@])")) x;
      Format.fprintf fmt "@])")
-  | `Not_implemented ->
-    Format.pp_print_string fmt
-      "`Not_implemented"
   | `Unknown_enum_value x ->
     (Format.fprintf fmt
        "`Unknown_enum_value (@[<hov>";
