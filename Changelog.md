@@ -4,15 +4,15 @@
 
 ## 2.0.0: Unreleased
 - [x] Add examples
-- [x] Oneofs with only one element should not be a variant type
-- [x] Test includes of files defining the same package
-- [x] Add google well know types.
-- [x] Move module to ocaml-protoc-plugin
+- [x] *Oneofs with only one element should not be a variant type
+- [x] Add test when including proto files which defines the same package
+- [x] Add google well know types (library `ocaml-protoc-plugin.google_types`).
+- [x] *Move module to ocaml-protoc-plugin
 - [x] Optimize deserialization of large nested structures
-- [x] Provide pretty_printers aka deriving_show for Result.error and Field.t
+- [x] Provide pretty_printers aka deriving_show for `Result.error` and `Field.t`
 - [x] Fix stack overflow when deserializing big nested structures
 - [x] *Add option to not wrap single field type in records
-- [x] Rewrite type emitter to closely follow spec
+- [x] Refactor type emitter to closely follow spec
 
 ## 1.0.0: 2019-10-12
 - [x] Support enum aliasing
