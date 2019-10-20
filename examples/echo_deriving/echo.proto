@@ -1,0 +1,25 @@
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+
+package echo;
+message Request {
+  enum who {
+     Mum = 0;
+     World = 1;
+  }
+  oneof timestamp {
+    google.protobuf.Timestamp ts = 1;
+  };
+  oneof what {
+    who type = 10;
+    string someone = 11;
+  }
+}
+
+message Reply {
+  string response = 1;
+}
+
+service Echo {
+  rpc Call (Request) returns (Reply);
+}

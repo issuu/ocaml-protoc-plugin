@@ -148,13 +148,16 @@ handler working over the actual message types.
 Protobuf distributes a set of [*Well-Known
 types*](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf).
 `ocaml-protoc-plugin` installs compiled versions of these, and can be
-used by linking with the library `ocaml-protoc-plugin.google_types` or
-`ocaml-protoc-plugin.google_types_deriving`.
+used by linking with the library `ocaml-protoc-plugin.google_types`
 
-`ocaml-protoc-plugin.google_types_deriving` is only installed if the
-ppx extension `ppx_deriving` is installed, and is compiled using
-`show`, `eq` and `ord`. The `ocaml-protoc-plugin.google_types_deriving` is to be used in
-conjunction with the `annot` flag.
+The distributed google types are compiled using default
+parameters.
+
+If you want to change this, or add type annotaions, you can copy the
+[dune](https://github.com/issuu/ocaml-protoc-plugin/tree/master/src/google_types/dune)
+from the distribution to your own project, and make alterations
+there. See the [echo\_deriving](https://github.com/issuu/ocaml-protoc-plugin/tree/master/examples/echo_deriving)
+example on how to do this.
 
 # Example:
 
@@ -188,7 +191,7 @@ module Address : sig
     val to_int: t -> int
     val from_int: int -> t Protobuf.Deserialize.result
   end
-  val name: unit -> string
+  val name': unit -> string
   type t = {
     street: string;
     number: int;
@@ -198,7 +201,7 @@ module Address : sig
   val from_proto: Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result
 end
 module Person : sig
-  val name: unit -> string
+  val name': unit -> string
   type t = {
     id: int;
     name: string;
@@ -233,3 +236,6 @@ let read_person binary_message =
     Printf.printf "P: %d %s - Address unknown\n" id name
   | Error _ -> failwith "Could not decode"
 ```
+
+More examples can be found under
+[examples](https://github.com/issuu/ocaml-protoc-plugin/tree/master/examples)

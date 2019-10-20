@@ -1,0 +1,22 @@
+; This example shows how to use google wellknown type with derivers.
+(executable
+ (name        test)
+ (libraries   ocaml-protoc-plugin unix google_types_deriving)
+ (preprocess
+  (pps ppx_expect ppx_deriving.show ppx_deriving.eq ppx_deriving.ord))
+)
+
+(rule
+ (targets echo.ml)
+ (deps
+  (:proto echo.proto))
+ (action
+  (run protoc -I .
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq, ord]:."
+       %{proto}))
+)
+
+(alias
+ (name runtest)
+ (deps test.exe)
+)

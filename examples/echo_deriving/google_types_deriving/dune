@@ -1,8 +1,6 @@
 (library
  (name        google_types_deriving)
- (public_name ocaml-protoc-plugin.google_types_deriving)
- (libraries   ocaml_protoc_plugin)
- (optional)
+ (libraries   ocaml-protoc-plugin)
  (wrapped false)
  (synopsis "Google well known types - with deriving")
  (preprocess
@@ -11,16 +9,14 @@
 
 (rule
  (targets google_include)
- (action (with-stdout-to %{targets} (system "[ -d /usr/include/google/protobuf ] && echo /usr/include || echo /usr/local/include" ))))
+ (action (with-stdout-to %{targets} (system "[ -d /usr/include/google/protobuf ] && echo /usr/include || echo /usr/local/include" )))
+)
 
 (rule
  (targets any.ml api.ml descriptor.ml duration.ml empty.ml field_mask.ml
           source_context.ml struct.ml timestamp.ml type.ml wrappers.ml)
- (deps
-  (:plugin ../plugin/protoc_gen_ocaml.exe))
  (action
   (run protoc -I %{read-lines:google_include}
-       "--plugin=protoc-gen-ocaml=%{plugin}"
        "--ocaml_out=annot=[@@deriving show { with_path = false }, eq, ord]:."
        %{read-lines:google_include}/google/protobuf/any.proto
        %{read-lines:google_include}/google/protobuf/api.proto

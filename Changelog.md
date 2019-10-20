@@ -3,7 +3,7 @@
 - [ ] Optimize happy path when deserializing
 
 ## 2.0.0: Unreleased
-- [ ] Add examples
+- [x] Add examples
 - [x] Oneofs with only one element should not be a variant type
 - [x] Test includes of files defining the same package
 - [x] Add google well know types.
