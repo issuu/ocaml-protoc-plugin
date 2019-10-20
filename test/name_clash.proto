@@ -6,6 +6,24 @@ package name_clash;
 message Protobuf {
   int64 Protobuf = 1;
 }
+message Ocaml_protoc_plugin {
+  int64 Protobuf = 1;
+}
+message Ocaml_protoc_plugin {
+  int64 Protobuf = 1;
+}
+message Base {
+  int64 Protobuf = 1;
+}
+message Pervasives {
+  int64 Protobuf = 1;
+}
+message Stdlib {
+  int64 Protobuf = 1;
+}
+message StdLabels {
+  int64 Protobuf = 1;
+}
 message Enum {
   int64 enum = 1;
 }
