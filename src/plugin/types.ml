@@ -387,7 +387,7 @@ let c_of_oneof ~params ~syntax:_ ~scope OneofDescriptorProto.{ name; _ } fields 
   in
   let oneof =
     match field_infos with
-    | [ (index, _name, type', Espec spec) ] ->
+    | [ (index, _name, type', Espec spec) ] when not params.singleton_record ->
       let oneof_elem =   Oneof_elem (index, spec, (type', sprintf "fun v -> v", "v", None)) in
       Oneof (type',
              sprintf "[ %s ]" (string_of_oneof_elem `Deserialize oneof_elem),

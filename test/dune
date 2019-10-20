@@ -34,10 +34,10 @@
        "--ocaml_out=singleton_record=true;use_int32;use_int64;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
- (targets singleton_record.ml)
+ (targets singleton_record.ml oneof2.ml)
  (deps
   (:plugin ../src/plugin/protoc_gen_ocaml.exe)
-  (:proto singleton_record.proto))
+  (:proto singleton_record.proto oneof2.proto))
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"

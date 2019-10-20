@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package oneof;
 
-
 message Test {
   int64 y = 1;
   oneof x {
