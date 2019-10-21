@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+message CamelCaseName {
+  uint32 CamelCaseField = 1;
+  enum CamelCaseEnum {
+    IdZero = 0;
+    id_zero = 1;
+    idOne = 2;
+    ID_ONE = 3;
+  };
+  uint32 xid_zero = 11;
+}
+
+
+message camel_case_name {
+  uint32 CamelCaseField = 1;
+  enum CamelCaseEnum {
+    IdZero = 0;
+    id_zero = 1;
+    idOne = 2;
+    ID_ONE = 3;
+  };
+  uint32 xid_zero = 11;
+}
