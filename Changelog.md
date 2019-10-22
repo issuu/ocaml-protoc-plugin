@@ -1,6 +1,7 @@
 - [ ] Add option to mangle names to snake_case
 - [ ] Do not add unit argument for oneof constructors referencing empty messages
 - [ ] Optimize happy path when deserializing
+- [ ] Support extentions
 
 ## 2.0.0: 2019-10-20
 - [x] Add examples

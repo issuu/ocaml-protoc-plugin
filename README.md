@@ -13,6 +13,10 @@ The main features include:
 * proto2 compliant
 * Support includes
 
+Not supporte yet:
+* extensions
+
+
 ## Comparison with other OCaml protobuf handlers.
 
 | Feature           | ocaml-protoc         | ocaml-pb            | ocaml-protoc-plugin |
