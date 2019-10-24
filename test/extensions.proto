@@ -1,0 +1,19 @@
+syntax = "proto2";
+
+package extensions;
+
+message Foo {
+    optional uint32 bar = 1;
+    extensions 100 to 199;
+}
+
+extend Foo {
+    optional uint32 baz = 128;
+    optional uint32 baz2 = 129;
+}
+
+
+extend Foo {
+    optional uint32 r_baz = 130;
+    optional uint32 r_baz2 = 131;
+}

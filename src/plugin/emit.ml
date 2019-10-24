@@ -90,9 +90,11 @@ let emit_extension ~scope ~params field =
   Code.emit signature `None "val get: extendee -> t";
   Code.emit signature `None "val set: extendee -> t -> extendee";
 
-  Code.emit implementation `None "let get extendee = Ocaml_protoc_plugin.Extensions.get (extendee.%s) (%s)" extendee_field t.deserialize_spec;
-  Code.emit implementation `None "let set extendee t = Ocaml_protoc_plugin.Extensions.set (extendee.%s) (%s) t" extendee_field t.serialize_spec;
-
+  Code.emit implementation `None "let get extendee = Ocaml_protoc_plugin.Extensions.get %s (extendee.%s)" t.deserialize_spec extendee_field ;
+  Code.emit implementation `Begin "let set extendee t =";
+  Code.emit implementation `None "let extensions = Ocaml_protoc_plugin.Extensions.set (%s) (extendee.%s) t in" t.serialize_spec extendee_field;
+  Code.emit implementation `None "{ extendee with %s = extensions }" extendee_field;
+  Code.emit implementation `End "";
   { module_name; signature; implementation }
 
 let is_recursive scope fields =
