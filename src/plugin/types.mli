@@ -11,6 +11,7 @@ type t = {
 val make:
   params:Parameters.t ->
   syntax:[< `Proto2 | `Proto3 ] ->
-  is_map_entry:bool ->
+  is_map_entry: bool ->
+  has_extensions: bool ->
   scope:Scope.t ->
   fields:FieldDescriptorProto.t list -> OneofDescriptorProto.t list -> t

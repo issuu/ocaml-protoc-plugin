@@ -455,7 +455,7 @@ let split_oneof_decl fields oneof_decls =
   inner [] oneof_decls fields
 
 (* Let create everything *)
-let make ~params ~syntax ~is_map_entry ~scope ~fields oneof_decls =
+let make ~params ~syntax ~is_map_entry ~has_extensions ~scope ~fields oneof_decls =
   let ts =
     split_oneof_decl fields oneof_decls
     |> List.map ~f:(function
@@ -465,28 +465,52 @@ let make ~params ~syntax ~is_map_entry ~scope ~fields oneof_decls =
   in
   let (type', constructor, apply) =
     match ts with
-    | [] -> "unit", "()", "fun ~f () -> f"
-    | [ { type'; _ } ] when params.singleton_record = false ->
-      type', "fun a -> a", "fun ~f a -> f a"
+    | [] when not has_extensions-> "unit", "fun _extension -> ()", "fun ~f () -> f []"
+    | [ { type'; _ } ] when params.singleton_record = false && not has_extensions ->
+      type', "fun _extensions a -> a", "fun ~f a -> f [] a"
     | [_; _] when is_map_entry ->
       let type' =
         List.map ~f:(fun { name = _; type'; _} -> sprintf "%s" type') ts
         |> String.concat ~sep:" * "
         |> sprintf "(%s)"
       in
-      type', "fun a b -> (a, b)", "fun ~f (a, b) -> f a b"
+      type', "fun _extensions a b -> (a, b)", "fun ~f (a, b) -> f [] a b"
+    | ts when has_extensions ->
+      let type' =
+        List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" name type') ts
+        |> String.concat ~sep:"; "
+        |> sprintf "{ %s; extensions: Ocaml_protoc_plugin.Extensions.t }"
+      in
+      (* When deserializing, we expect extensions as the last argument *)
+      (* When serializing, its the first argument *)
+      let constructor, apply =
+        let field_names =
+          List.map ~f:(fun { name; _} -> name) ts
+        in
+
+        let args = String.concat ~sep:" " field_names in
+        let constr = String.concat ~sep:"; " field_names in
+        let constructor = sprintf "fun extensions %s -> { %s; extensions }" args constr in
+        let apply = sprintf "fun ~f:f' { %s; extensions  } -> f' extensions %s" constr args in
+        constructor, apply
+      in
+      (type', constructor, apply)
     | ts ->
       let type' =
         List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" name type') ts
         |> String.concat ~sep:"; "
         |> sprintf "{ %s }"
       in
+      (* *)
       let constructor, apply =
-        let field_names = List.map ~f:(fun { name; _} -> name) ts in
+        let field_names =
+          List.map ~f:(fun { name; _} -> name) ts
+        in
+
         let args = String.concat ~sep:" " field_names in
         let constr = String.concat ~sep:"; " field_names in
-        let constructor = sprintf "fun %s -> { %s }" args constr in
-        let apply = sprintf "fun ~f:f' { %s } -> f' %s" constr args in
+        let constructor = sprintf "fun _extensions %s -> { %s }" args constr in
+        let apply = sprintf "fun ~f:f' { %s } -> f' [] %s" constr args in
         constructor, apply
       in
       (type', constructor, apply)

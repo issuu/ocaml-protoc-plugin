@@ -10,7 +10,7 @@ let to_string_opt = function
 
 (** Slightly overloaded name here.
     Its also used for all other types which would go into a module *)
-type message = {
+type module' = {
   module_name : string;
   signature : Code.t;
   implementation : Code.t;
@@ -18,7 +18,7 @@ type message = {
 
 let emit_enum_type ~params
     EnumDescriptorProto.{name; value; options = _; reserved_range = _; reserved_name = _}
-    : message
+    : module'
   =
   let module_name = Names.module_name name in
   let signature = Code.init () in
@@ -70,6 +70,31 @@ let emit_service_type scope ServiceDescriptorProto.{ name; method' = methods; _ 
   Code.emit t `End "end";
   t
 
+let emit_extension ~scope ~params field =
+  let FieldDescriptorProto.{ name; extendee; _ } = field
+  in
+  let module_name = Names.module_name name in
+  let extendee_type = Scope.get_scoped_name scope ~postfix:"t" extendee in
+  let extendee_field = Scope.get_scoped_name scope ~postfix:"extensions" extendee in
+  (* Create the type of the type' / type_name *)
+  let t =
+    let params = Parameters.{params with singleton_record = false} in
+    Types.make ~params ~syntax:`Proto2 ~scope ~is_map_entry:false ~has_extensions:false ~fields:[field] []
+  in
+
+  let signature = Code.init () in
+  let implementation = Code.init () in
+  Code.emit signature `None "type t = %s" t.type';
+  Code.emit signature `None "type extendee = %s" extendee_type;
+  Code.append implementation signature;
+  Code.emit signature `None "val get: extendee -> t";
+  Code.emit signature `None "val set: extendee -> t -> extendee";
+
+  Code.emit implementation `None "let get extendee = Ocaml_protoc_plugin.Extensions.get (extendee.%s) (%s)" extendee_field t.deserialize_spec;
+  Code.emit implementation `None "let set extendee t = Ocaml_protoc_plugin.Extensions.set (extendee.%s) (%s) t" extendee_field t.serialize_spec;
+
+  { module_name; signature; implementation }
+
 let is_recursive scope fields =
   let open FieldDescriptorProto in
   let open FieldDescriptorProto.Type in
@@ -115,12 +140,15 @@ let rec emit_nested_types ~syntax ~signature ~implementation ?(is_first = true) 
    Why is this not being called recursively, but rather calling sub functions which never returns
 *)
 let rec emit_message ~params ~syntax scope
-    DescriptorProto.{ name; field = fields; extension = _; nested_type = nested_types; enum_type = enum_types;
-        extension_range = _; oneof_decl = oneof_decls; options; reserved_range = _; reserved_name = _; } : message =
+    DescriptorProto.{ name; field = fields; extension = extensions;
+                      nested_type = nested_types; enum_type = enum_types;
+                      extension_range; oneof_decl = oneof_decls; options;
+                      reserved_range = _; reserved_name = _ } : module' =
 
   let signature = Code.init () in
   let implementation = Code.init () in
 
+  let has_extensions = not (extension_range = []) in
   (* Ignore empty modules *)
   let module_name, scope =
     match name with
@@ -129,17 +157,21 @@ let rec emit_message ~params ~syntax scope
       let module_name = Names.module_name name in
       module_name, Scope.push scope module_name
   in
-  List.map ~f:(emit_enum_type ~params) enum_types @ List.map ~f:(emit_message ~params ~syntax scope) nested_types
+  List.map ~f:(emit_enum_type ~params) enum_types
+  @ List.map ~f:(emit_message ~params ~syntax scope) nested_types
+  @ List.map ~f:(emit_extension ~scope ~params) extensions
   |> emit_nested_types ~syntax ~signature ~implementation;
 
   let () =
     match name with
     | Some _name ->
       let is_map_entry = is_map_entry options in
+
+      let extension_ranges = "[]" in
       Code.emit signature `None "val name': unit -> string";
       Code.emit implementation `None "let name' () = \"%s\"" (Scope.get_current_scope scope);
       let Types.{ type'; constructor; apply; deserialize_spec; serialize_spec } =
-        Types.make ~params ~syntax ~is_map_entry ~scope ~fields oneof_decls
+        Types.make ~params ~syntax ~is_map_entry ~has_extensions ~scope ~fields oneof_decls
       in
       Code.emit signature `None "type t = %s %s" type' params.annot;
       Code.emit signature `None "val to_proto: t -> Ocaml_protoc_plugin.Writer.t";
@@ -152,14 +184,14 @@ let rec emit_message ~params ~syntax scope
       Code.emit implementation `Begin "let%s to_proto = " rec_str;
       Code.emit implementation `None "let apply = %s in" apply;
       Code.emit implementation `None "let spec%s = %s in" apply_str serialize_spec;
-      Code.emit implementation `None "let serialize%s = Ocaml_protoc_plugin.Serialize.serialize (spec%s) in" apply_str apply_str;
-      Code.emit implementation `None "fun t -> apply ~f:(serialize%s ()) t" apply_str;
+      Code.emit implementation `None "let serialize%s = Ocaml_protoc_plugin.Serialize.serialize %s (spec%s) in" apply_str extension_ranges apply_str;
+      Code.emit implementation `None "fun t -> apply ~f:(serialize%s) t" apply_str;
       Code.emit implementation `End "";
 
       Code.emit implementation `Begin "let%s from_proto = " rec_str;
       Code.emit implementation `None "let constructor = %s in" constructor;
       Code.emit implementation `None "let spec%s = %s in" apply_str deserialize_spec;
-      Code.emit implementation `None "let deserialize%s = Ocaml_protoc_plugin.Deserialize.deserialize (spec%s) constructor in" apply_str apply_str;
+      Code.emit implementation `None "let deserialize%s = Ocaml_protoc_plugin.Deserialize.deserialize %s (spec%s) constructor in" apply_str extension_ranges apply_str;
       Code.emit implementation `None "fun writer -> deserialize%s writer" apply_str;
       Code.emit implementation `End "";
     | None -> ()
@@ -187,7 +219,7 @@ let parse_proto_file ~params
       scope
       FileDescriptorProto.{ name; package; dependency = _; public_dependency = _;
                         weak_dependency = _; message_type = message_types;
-                        enum_type = enum_types; service = services; extension = _;
+                        enum_type = enum_types; service = services; extension;
                         options = _; source_code_info = _; syntax; }
   =
   let syntax = match syntax with
@@ -197,7 +229,7 @@ let parse_proto_file ~params
   in
   let message_type =
     DescriptorProto.{name = None; nested_type=message_types; enum_type = enum_types;
-                                field = []; extension = []; extension_range = []; oneof_decl = [];
+                                field = []; extension; extension_range = []; oneof_decl = [];
                                 options = None; reserved_range = []; reserved_name = []; }
   in
   let implementation = Code.init () in

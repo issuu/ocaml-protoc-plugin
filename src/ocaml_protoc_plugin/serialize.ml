@@ -124,9 +124,10 @@ let rec serialize : type a. (a, Writer.t) compound_list -> Writer.t -> a = funct
       write writer v;
       cont writer
 
-let serialize spec =
+let serialize _extension_ranges spec =
   let serialize = serialize spec in
-  fun () -> serialize (Writer.init ())
+  fun _extensions -> serialize (Writer.init ())
+
 
 
 module Test = struct
