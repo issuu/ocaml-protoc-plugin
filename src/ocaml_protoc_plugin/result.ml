@@ -19,6 +19,9 @@ let ( >>= ) v f = match v with Ok x -> f x | Error err -> Error err
 
 let return x = Ok x
 let fail x = Error x
+let get ~msg = function
+  | Ok v -> v
+  | Error _ -> failwith msg
 
 let pp_error : Format.formatter -> error -> unit = fun fmt -> function
   | `Premature_end_of_input ->
@@ -60,3 +63,8 @@ let pp_error : Format.formatter -> error -> unit = fun fmt -> function
     Format.pp_print_string fmt
       "`Required_field_missing"
 let show_error : error -> string = Format.asprintf "%a" pp_error
+
+let pp pp fmt = function
+  | Ok v -> Format.fprintf fmt "Ok %a" pp v
+  | Error e -> Format.fprintf fmt "Error %a" pp_error e
+(* let show : 'a t -> string = Format.asprintf "%a" pp *)

@@ -95,3 +95,11 @@ let read_field : t -> (int * Field.t) Result.t =
     | n -> Result.fail (`Unknown_field_type n))
     >>| fun field -> (field_number, field)
   )
+
+let to_list: t -> (int * Field.t) list Result.t = fun t ->
+  let rec inner acc = match has_more t with
+    | true -> read_field t >>= fun v ->
+      inner (v :: acc)
+    | false -> return (List.rev acc)
+  in
+  inner []

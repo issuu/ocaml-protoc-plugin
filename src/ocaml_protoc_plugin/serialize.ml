@@ -23,7 +23,6 @@ let signed_varint v =
   in
   Field.Varint v
 
-
 let rec field_of_spec: type a. a spec -> a -> Field.t = function
   | Double -> fun v -> Fixed_64_bit (Int64.bits_of_float v)
   | Float -> fun v -> Fixed_32_bit (Int32.bits_of_float v)
@@ -33,7 +32,6 @@ let rec field_of_spec: type a. a spec -> a -> Field.t = function
   | UInt64_int -> fun v -> unsigned_varint (Int64.of_int v)
   | SInt64 -> signed_varint
   | SInt64_int -> fun v -> signed_varint (Int64.of_int v)
-
   | Int32 -> fun v -> unsigned_varint (Int64.of_int32 v)
   | Int32_int -> fun v -> unsigned_varint (Int64.of_int v)
   | UInt32 -> fun v -> unsigned_varint (Int64.of_int32 v)

@@ -3,6 +3,9 @@ type t
 (** Create a new writer *)
 val init : unit -> t
 
+(** Construct a writer from a list of fields *)
+val of_list: (int * Field.t) list -> t
+
 (** Get the protobuf encoded contents of the writer *)
 val contents : t -> string
 

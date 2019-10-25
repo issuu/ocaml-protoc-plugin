@@ -251,7 +251,7 @@ let read_fields_array max_index reader_list =
   in
   read
 
-let deserialize: type constr t. (int * int) list -> (constr, t) compound_list -> (Field.t list -> constr) -> Reader.t -> t Result.t = fun _extension_ranges spec constr ->
+let deserialize: type constr t. (int * int) list -> (constr, t) compound_list -> ((int * Field.t) list -> constr) -> Reader.t -> t Result.t = fun _extension_ranges spec constr ->
   let max_index =
     let rec inner: type a b. int -> (a, b) compound_list -> int = fun acc -> function
       | Cons (Oneof oneofs, rest) ->

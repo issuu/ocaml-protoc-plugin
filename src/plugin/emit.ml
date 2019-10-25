@@ -84,10 +84,10 @@ let emit_extension ~scope ~params field =
 
   let signature = Code.init () in
   let implementation = Code.init () in
-  Code.emit signature `None "type t = %s" t.type';
+  Code.emit signature `None "type t = %s %s" t.type' params.annot;
   Code.emit signature `None "type extendee = %s" extendee_type;
   Code.append implementation signature;
-  Code.emit signature `None "val get: extendee -> t";
+  Code.emit signature `None "val get: extendee -> t Ocaml_protoc_plugin.Result.t";
   Code.emit signature `None "val set: extendee -> t -> extendee";
 
   Code.emit implementation `None "let get extendee = Ocaml_protoc_plugin.Extensions.get %s (extendee.%s)" t.deserialize_spec extendee_field ;

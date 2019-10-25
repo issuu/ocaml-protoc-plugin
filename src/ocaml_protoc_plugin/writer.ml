@@ -29,6 +29,7 @@ let rev_fields fields =
 
 let init () = {fields = Nil; size = 0;}
 
+
 let rec size_of_field = function
   | Varint v when v > 0L ->
     let bits = int_of_float (log (Int64.to_float v) /. log 2.0) + 1 in
@@ -38,6 +39,7 @@ let rec size_of_field = function
   | Fixed_32_bit _ -> 4
   | Fixed_64_bit _ -> 8
   | Length_delimited {length; _} -> size_of_field (Varint (Int64.of_int length)) + length
+
 
 let size t = t.size
 
@@ -127,6 +129,12 @@ let dump t =
   )
   |> String.concat ~sep:"-"
   |> printf "Buffer: %s\n"
+
+let of_list: (int * Field.t) list -> t = fun fields ->
+  let t = init () in
+  List.iter ~f:(fun (index, field) -> write_field t index field) fields;
+  t
+
 
 module Test = struct
   let test () =
