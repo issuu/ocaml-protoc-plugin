@@ -6,7 +6,7 @@
 (************************************************)
 (*
    Source: google/protobuf/descriptor.proto
-   Syntax: proto2
+   Syntax: proto2 
    Parameters:
      annot=''
      debug=false
@@ -14,169 +14,170 @@
      int64_as_int=true
      int32_as_int=true
      fixed_as_int=false
+     singleton_record=false
 *)
 module Google = struct
   module Protobuf = struct
     module rec FileDescriptorSet : sig
       val name': unit -> string
-      type t = FileDescriptorProto.t list
+      type t = FileDescriptorProto.t list 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       let name' () = "Descriptor.google.protobuf.FileDescriptorSet"
-      type t = FileDescriptorProto.t list
-      let to_proto =
+      type t = FileDescriptorProto.t list 
+      let to_proto = 
         let apply = fun ~f a -> f [] a in
         let spec = Ocaml_protoc_plugin.Serialize.C.( repeated (1, (message FileDescriptorProto.to_proto), not_packed) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
         fun t -> apply ~f:(serialize) t
-
-      let from_proto =
-        let constructor = fun _ a -> a in
+      
+      let from_proto = 
+        let constructor = fun _extensions a -> a in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( repeated (1, (message FileDescriptorProto.from_proto), not_packed) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and FileDescriptorProto : sig
       val name': unit -> string
-      type t = { name: string option; package: string option; dependency: string list; public_dependency: int list; weak_dependency: int list; message_type: DescriptorProto.t list; enum_type: EnumDescriptorProto.t list; service: ServiceDescriptorProto.t list; extension: FieldDescriptorProto.t list; options: FileOptions.t option; source_code_info: SourceCodeInfo.t option; syntax: string option }
+      type t = { name: string option; package: string option; dependency: string list; public_dependency: int list; weak_dependency: int list; message_type: DescriptorProto.t list; enum_type: EnumDescriptorProto.t list; service: ServiceDescriptorProto.t list; extension: FieldDescriptorProto.t list; options: FileOptions.t option; source_code_info: SourceCodeInfo.t option; syntax: string option } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       let name' () = "Descriptor.google.protobuf.FileDescriptorProto"
-      type t = { name: string option; package: string option; dependency: string list; public_dependency: int list; weak_dependency: int list; message_type: DescriptorProto.t list; enum_type: EnumDescriptorProto.t list; service: ServiceDescriptorProto.t list; extension: FieldDescriptorProto.t list; options: FileOptions.t option; source_code_info: SourceCodeInfo.t option; syntax: string option }
-      let to_proto =
-        let apply = fun ~f:f' { name; package; dependency; public_dependency; weak_dependency; message_type; enum_type; service; extension; options; source_code_info; syntax } -> f' name package dependency public_dependency weak_dependency message_type enum_type service extension options source_code_info syntax in
+      type t = { name: string option; package: string option; dependency: string list; public_dependency: int list; weak_dependency: int list; message_type: DescriptorProto.t list; enum_type: EnumDescriptorProto.t list; service: ServiceDescriptorProto.t list; extension: FieldDescriptorProto.t list; options: FileOptions.t option; source_code_info: SourceCodeInfo.t option; syntax: string option } 
+      let to_proto = 
+        let apply = fun ~f:f' { name; package; dependency; public_dependency; weak_dependency; message_type; enum_type; service; extension; options; source_code_info; syntax } -> f' [] name package dependency public_dependency weak_dependency message_type enum_type service extension options source_code_info syntax in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: repeated (3, string, not_packed) ^:: repeated (10, int32_int, not_packed) ^:: repeated (11, int32_int, not_packed) ^:: repeated (4, (message DescriptorProto.to_proto), not_packed) ^:: repeated (5, (message EnumDescriptorProto.to_proto), not_packed) ^:: repeated (6, (message ServiceDescriptorProto.to_proto), not_packed) ^:: repeated (7, (message FieldDescriptorProto.to_proto), not_packed) ^:: basic_opt (8, (message FileOptions.to_proto)) ^:: basic_opt (9, (message SourceCodeInfo.to_proto)) ^:: basic_opt (12, string) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ name package dependency public_dependency weak_dependency message_type enum_type service extension options source_code_info syntax -> { name; package; dependency; public_dependency; weak_dependency; message_type; enum_type; service; extension; options; source_code_info; syntax } in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun _extensions name package dependency public_dependency weak_dependency message_type enum_type service extension options source_code_info syntax -> { name; package; dependency; public_dependency; weak_dependency; message_type; enum_type; service; extension; options; source_code_info; syntax } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: repeated (3, string, not_packed) ^:: repeated (10, int32_int, not_packed) ^:: repeated (11, int32_int, not_packed) ^:: repeated (4, (message DescriptorProto.from_proto), not_packed) ^:: repeated (5, (message EnumDescriptorProto.from_proto), not_packed) ^:: repeated (6, (message ServiceDescriptorProto.from_proto), not_packed) ^:: repeated (7, (message FieldDescriptorProto.from_proto), not_packed) ^:: basic_opt (8, (message FileOptions.from_proto)) ^:: basic_opt (9, (message SourceCodeInfo.from_proto)) ^:: basic_opt (12, string) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and DescriptorProto : sig
       module rec ExtensionRange : sig
         val name': unit -> string
-        type t = { start: int option; end': int option; options: ExtensionRangeOptions.t option }
+        type t = { start: int option; end': int option; options: ExtensionRangeOptions.t option } 
         val to_proto: t -> Ocaml_protoc_plugin.Writer.t
         val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
       end
       and ReservedRange : sig
         val name': unit -> string
-        type t = { start: int option; end': int option }
+        type t = { start: int option; end': int option } 
         val to_proto: t -> Ocaml_protoc_plugin.Writer.t
         val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
       end
       val name': unit -> string
-      type t = { name: string option; field: FieldDescriptorProto.t list; extension: FieldDescriptorProto.t list; nested_type: t list; enum_type: EnumDescriptorProto.t list; extension_range: ExtensionRange.t list; oneof_decl: OneofDescriptorProto.t list; options: MessageOptions.t option; reserved_range: ReservedRange.t list; reserved_name: string list }
+      type t = { name: string option; field: FieldDescriptorProto.t list; extension: FieldDescriptorProto.t list; nested_type: t list; enum_type: EnumDescriptorProto.t list; extension_range: ExtensionRange.t list; oneof_decl: OneofDescriptorProto.t list; options: MessageOptions.t option; reserved_range: ReservedRange.t list; reserved_name: string list } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       module rec ExtensionRange : sig
         val name': unit -> string
-        type t = { start: int option; end': int option; options: ExtensionRangeOptions.t option }
+        type t = { start: int option; end': int option; options: ExtensionRangeOptions.t option } 
         val to_proto: t -> Ocaml_protoc_plugin.Writer.t
         val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-      end = struct
+      end = struct 
         let name' () = "Descriptor.google.protobuf.DescriptorProto.ExtensionRange"
-        type t = { start: int option; end': int option; options: ExtensionRangeOptions.t option }
-        let to_proto =
-          let apply = fun ~f:f' { start; end'; options } -> f' start end' options in
+        type t = { start: int option; end': int option; options: ExtensionRangeOptions.t option } 
+        let to_proto = 
+          let apply = fun ~f:f' { start; end'; options } -> f' [] start end' options in
           let spec = Ocaml_protoc_plugin.Serialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: basic_opt (3, (message ExtensionRangeOptions.to_proto)) ^:: nil ) in
           let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-          fun t -> apply ~f:(serialize []) t
-
-        let from_proto =
-          let constructor = fun _ start end' options -> { start; end'; options } in
+          fun t -> apply ~f:(serialize) t
+        
+        let from_proto = 
+          let constructor = fun _extensions start end' options -> { start; end'; options } in
           let spec = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: basic_opt (3, (message ExtensionRangeOptions.from_proto)) ^:: nil ) in
           let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
           fun writer -> deserialize writer
-
+        
       end
       and ReservedRange : sig
         val name': unit -> string
-        type t = { start: int option; end': int option }
+        type t = { start: int option; end': int option } 
         val to_proto: t -> Ocaml_protoc_plugin.Writer.t
         val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-      end = struct
+      end = struct 
         let name' () = "Descriptor.google.protobuf.DescriptorProto.ReservedRange"
-        type t = { start: int option; end': int option }
-        let to_proto =
-          let apply = fun ~f:f' { start; end' } -> f' start end' in
+        type t = { start: int option; end': int option } 
+        let to_proto = 
+          let apply = fun ~f:f' { start; end' } -> f' [] start end' in
           let spec = Ocaml_protoc_plugin.Serialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: nil ) in
           let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-          fun t -> apply ~f:(serialize []) t
-
-        let from_proto =
-          let constructor = fun _ start end' -> { start; end' } in
+          fun t -> apply ~f:(serialize) t
+        
+        let from_proto = 
+          let constructor = fun _extensions start end' -> { start; end' } in
           let spec = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: nil ) in
           let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
           fun writer -> deserialize writer
-
+        
       end
       let name' () = "Descriptor.google.protobuf.DescriptorProto"
-      type t = { name: string option; field: FieldDescriptorProto.t list; extension: FieldDescriptorProto.t list; nested_type: t list; enum_type: EnumDescriptorProto.t list; extension_range: ExtensionRange.t list; oneof_decl: OneofDescriptorProto.t list; options: MessageOptions.t option; reserved_range: ReservedRange.t list; reserved_name: string list }
-      let rec to_proto =
-        let apply = fun ~f:f' { name; field; extension; nested_type; enum_type; extension_range; oneof_decl; options; reserved_range; reserved_name } -> f' name field extension nested_type enum_type extension_range oneof_decl options reserved_range reserved_name in
+      type t = { name: string option; field: FieldDescriptorProto.t list; extension: FieldDescriptorProto.t list; nested_type: t list; enum_type: EnumDescriptorProto.t list; extension_range: ExtensionRange.t list; oneof_decl: OneofDescriptorProto.t list; options: MessageOptions.t option; reserved_range: ReservedRange.t list; reserved_name: string list } 
+      let rec to_proto = 
+        let apply = fun ~f:f' { name; field; extension; nested_type; enum_type; extension_range; oneof_decl; options; reserved_range; reserved_name } -> f' [] name field extension nested_type enum_type extension_range oneof_decl options reserved_range reserved_name in
         let spec () = Ocaml_protoc_plugin.Serialize.C.( basic_opt (1, string) ^:: repeated (2, (message FieldDescriptorProto.to_proto), not_packed) ^:: repeated (6, (message FieldDescriptorProto.to_proto), not_packed) ^:: repeated (3, (message to_proto), not_packed) ^:: repeated (4, (message EnumDescriptorProto.to_proto), not_packed) ^:: repeated (5, (message ExtensionRange.to_proto), not_packed) ^:: repeated (8, (message OneofDescriptorProto.to_proto), not_packed) ^:: basic_opt (7, (message MessageOptions.to_proto)) ^:: repeated (9, (message ReservedRange.to_proto), not_packed) ^:: repeated (10, string, not_packed) ^:: nil ) in
         let serialize () = Ocaml_protoc_plugin.Serialize.serialize [] (spec ()) in
-        fun t -> apply ~f:(serialize () []) t
-
-      let rec from_proto =
-        let constructor = fun _ name field extension nested_type enum_type extension_range oneof_decl options reserved_range reserved_name -> { name; field; extension; nested_type; enum_type; extension_range; oneof_decl; options; reserved_range; reserved_name } in
+        fun t -> apply ~f:(serialize ()) t
+      
+      let rec from_proto = 
+        let constructor = fun _extensions name field extension nested_type enum_type extension_range oneof_decl options reserved_range reserved_name -> { name; field; extension; nested_type; enum_type; extension_range; oneof_decl; options; reserved_range; reserved_name } in
         let spec () = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (1, string) ^:: repeated (2, (message FieldDescriptorProto.from_proto), not_packed) ^:: repeated (6, (message FieldDescriptorProto.from_proto), not_packed) ^:: repeated (3, (message from_proto), not_packed) ^:: repeated (4, (message EnumDescriptorProto.from_proto), not_packed) ^:: repeated (5, (message ExtensionRange.from_proto), not_packed) ^:: repeated (8, (message OneofDescriptorProto.from_proto), not_packed) ^:: basic_opt (7, (message MessageOptions.from_proto)) ^:: repeated (9, (message ReservedRange.from_proto), not_packed) ^:: repeated (10, string, not_packed) ^:: nil ) in
         let deserialize () = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec ()) constructor in
         fun writer -> deserialize () writer
-
+      
     end
     and ExtensionRangeOptions : sig
       val name': unit -> string
-      type t = UninterpretedOption.t list
+      type t = { uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       let name' () = "Descriptor.google.protobuf.ExtensionRangeOptions"
-      type t = UninterpretedOption.t list
-      let to_proto =
-        let apply = fun ~f a -> f a in
+      type t = { uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      let to_proto = 
+        let apply = fun ~f:f' { uninterpreted_option; extensions  } -> f' extensions uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
-        let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ a -> a in
+        let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun extensions uninterpreted_option -> { uninterpreted_option; extensions } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
-        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
+        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and FieldDescriptorProto : sig
       module rec Type : sig
-        type t = TYPE_DOUBLE | TYPE_FLOAT | TYPE_INT64 | TYPE_UINT64 | TYPE_INT32 | TYPE_FIXED64 | TYPE_FIXED32 | TYPE_BOOL | TYPE_STRING | TYPE_GROUP | TYPE_MESSAGE | TYPE_BYTES | TYPE_UINT32 | TYPE_ENUM | TYPE_SFIXED32 | TYPE_SFIXED64 | TYPE_SINT32 | TYPE_SINT64
+        type t = TYPE_DOUBLE | TYPE_FLOAT | TYPE_INT64 | TYPE_UINT64 | TYPE_INT32 | TYPE_FIXED64 | TYPE_FIXED32 | TYPE_BOOL | TYPE_STRING | TYPE_GROUP | TYPE_MESSAGE | TYPE_BYTES | TYPE_UINT32 | TYPE_ENUM | TYPE_SFIXED32 | TYPE_SFIXED64 | TYPE_SINT32 | TYPE_SINT64 
         val to_int: t -> int
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
       end
       and Label : sig
-        type t = LABEL_OPTIONAL | LABEL_REQUIRED | LABEL_REPEATED
+        type t = LABEL_OPTIONAL | LABEL_REQUIRED | LABEL_REPEATED 
         val to_int: t -> int
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
       end
       val name': unit -> string
-      type t = { name: string option; number: int option; label: Label.t option; type': Type.t option; type_name: string option; extendee: string option; default_value: string option; oneof_index: int option; json_name: string option; options: FieldOptions.t option }
+      type t = { name: string option; number: int option; label: Label.t option; type': Type.t option; type_name: string option; extendee: string option; default_value: string option; oneof_index: int option; json_name: string option; options: FieldOptions.t option } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       module rec Type : sig
-        type t = TYPE_DOUBLE | TYPE_FLOAT | TYPE_INT64 | TYPE_UINT64 | TYPE_INT32 | TYPE_FIXED64 | TYPE_FIXED32 | TYPE_BOOL | TYPE_STRING | TYPE_GROUP | TYPE_MESSAGE | TYPE_BYTES | TYPE_UINT32 | TYPE_ENUM | TYPE_SFIXED32 | TYPE_SFIXED64 | TYPE_SINT32 | TYPE_SINT64
+        type t = TYPE_DOUBLE | TYPE_FLOAT | TYPE_INT64 | TYPE_UINT64 | TYPE_INT32 | TYPE_FIXED64 | TYPE_FIXED32 | TYPE_BOOL | TYPE_STRING | TYPE_GROUP | TYPE_MESSAGE | TYPE_BYTES | TYPE_UINT32 | TYPE_ENUM | TYPE_SFIXED32 | TYPE_SFIXED64 | TYPE_SINT32 | TYPE_SINT64 
         val to_int: t -> int
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
-      end = struct
-        type t = TYPE_DOUBLE | TYPE_FLOAT | TYPE_INT64 | TYPE_UINT64 | TYPE_INT32 | TYPE_FIXED64 | TYPE_FIXED32 | TYPE_BOOL | TYPE_STRING | TYPE_GROUP | TYPE_MESSAGE | TYPE_BYTES | TYPE_UINT32 | TYPE_ENUM | TYPE_SFIXED32 | TYPE_SFIXED64 | TYPE_SINT32 | TYPE_SINT64
+      end = struct 
+        type t = TYPE_DOUBLE | TYPE_FLOAT | TYPE_INT64 | TYPE_UINT64 | TYPE_INT32 | TYPE_FIXED64 | TYPE_FIXED32 | TYPE_BOOL | TYPE_STRING | TYPE_GROUP | TYPE_MESSAGE | TYPE_BYTES | TYPE_UINT32 | TYPE_ENUM | TYPE_SFIXED32 | TYPE_SFIXED64 | TYPE_SINT32 | TYPE_SINT64 
         let to_int = function
           | TYPE_DOUBLE -> 1
           | TYPE_FLOAT -> 2
@@ -196,7 +197,7 @@ module Google = struct
           | TYPE_SFIXED64 -> 16
           | TYPE_SINT32 -> 17
           | TYPE_SINT64 -> 18
-
+        
         let from_int = function
           | 1 -> Ok TYPE_DOUBLE
           | 2 -> Ok TYPE_FLOAT
@@ -217,576 +218,576 @@ module Google = struct
           | 17 -> Ok TYPE_SINT32
           | 18 -> Ok TYPE_SINT64
           | n -> Error (`Unknown_enum_value n)
-
+        
       end
       and Label : sig
-        type t = LABEL_OPTIONAL | LABEL_REQUIRED | LABEL_REPEATED
+        type t = LABEL_OPTIONAL | LABEL_REQUIRED | LABEL_REPEATED 
         val to_int: t -> int
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
-      end = struct
-        type t = LABEL_OPTIONAL | LABEL_REQUIRED | LABEL_REPEATED
+      end = struct 
+        type t = LABEL_OPTIONAL | LABEL_REQUIRED | LABEL_REPEATED 
         let to_int = function
           | LABEL_OPTIONAL -> 1
           | LABEL_REQUIRED -> 2
           | LABEL_REPEATED -> 3
-
+        
         let from_int = function
           | 1 -> Ok LABEL_OPTIONAL
           | 2 -> Ok LABEL_REQUIRED
           | 3 -> Ok LABEL_REPEATED
           | n -> Error (`Unknown_enum_value n)
-
+        
       end
       let name' () = "Descriptor.google.protobuf.FieldDescriptorProto"
-      type t = { name: string option; number: int option; label: Label.t option; type': Type.t option; type_name: string option; extendee: string option; default_value: string option; oneof_index: int option; json_name: string option; options: FieldOptions.t option }
-      let to_proto =
-        let apply = fun ~f:f' { name; number; label; type'; type_name; extendee; default_value; oneof_index; json_name; options } -> f' name number label type' type_name extendee default_value oneof_index json_name options in
+      type t = { name: string option; number: int option; label: Label.t option; type': Type.t option; type_name: string option; extendee: string option; default_value: string option; oneof_index: int option; json_name: string option; options: FieldOptions.t option } 
+      let to_proto = 
+        let apply = fun ~f:f' { name; number; label; type'; type_name; extendee; default_value; oneof_index; json_name; options } -> f' [] name number label type' type_name extendee default_value oneof_index json_name options in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic_opt (1, string) ^:: basic_opt (3, int32_int) ^:: basic_opt (4, (enum Label.to_int)) ^:: basic_opt (5, (enum Type.to_int)) ^:: basic_opt (6, string) ^:: basic_opt (2, string) ^:: basic_opt (7, string) ^:: basic_opt (9, int32_int) ^:: basic_opt (10, string) ^:: basic_opt (8, (message FieldOptions.to_proto)) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ name number label type' type_name extendee default_value oneof_index json_name options -> { name; number; label; type'; type_name; extendee; default_value; oneof_index; json_name; options } in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun _extensions name number label type' type_name extendee default_value oneof_index json_name options -> { name; number; label; type'; type_name; extendee; default_value; oneof_index; json_name; options } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (3, int32_int) ^:: basic_opt (4, (enum Label.from_int)) ^:: basic_opt (5, (enum Type.from_int)) ^:: basic_opt (6, string) ^:: basic_opt (2, string) ^:: basic_opt (7, string) ^:: basic_opt (9, int32_int) ^:: basic_opt (10, string) ^:: basic_opt (8, (message FieldOptions.from_proto)) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and OneofDescriptorProto : sig
       val name': unit -> string
-      type t = { name: string option; options: OneofOptions.t option }
+      type t = { name: string option; options: OneofOptions.t option } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       let name' () = "Descriptor.google.protobuf.OneofDescriptorProto"
-      type t = { name: string option; options: OneofOptions.t option }
-      let to_proto =
-        let apply = fun ~f:f' { name; options } -> f' name options in
+      type t = { name: string option; options: OneofOptions.t option } 
+      let to_proto = 
+        let apply = fun ~f:f' { name; options } -> f' [] name options in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, (message OneofOptions.to_proto)) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ name options -> { name; options } in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun _extensions name options -> { name; options } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (2, (message OneofOptions.from_proto)) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and EnumDescriptorProto : sig
       module rec EnumReservedRange : sig
         val name': unit -> string
-        type t = { start: int option; end': int option }
+        type t = { start: int option; end': int option } 
         val to_proto: t -> Ocaml_protoc_plugin.Writer.t
         val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
       end
       val name': unit -> string
-      type t = { name: string option; value: EnumValueDescriptorProto.t list; options: EnumOptions.t option; reserved_range: EnumReservedRange.t list; reserved_name: string list }
+      type t = { name: string option; value: EnumValueDescriptorProto.t list; options: EnumOptions.t option; reserved_range: EnumReservedRange.t list; reserved_name: string list } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       module rec EnumReservedRange : sig
         val name': unit -> string
-        type t = { start: int option; end': int option }
+        type t = { start: int option; end': int option } 
         val to_proto: t -> Ocaml_protoc_plugin.Writer.t
         val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-      end = struct
+      end = struct 
         let name' () = "Descriptor.google.protobuf.EnumDescriptorProto.EnumReservedRange"
-        type t = { start: int option; end': int option }
-        let to_proto =
-          let apply = fun ~f:f' { start; end' } -> f' start end' in
+        type t = { start: int option; end': int option } 
+        let to_proto = 
+          let apply = fun ~f:f' { start; end' } -> f' [] start end' in
           let spec = Ocaml_protoc_plugin.Serialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: nil ) in
           let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-          fun t -> apply ~f:(serialize []) t
-
-        let from_proto =
-          let constructor = fun _ start end' -> { start; end' } in
+          fun t -> apply ~f:(serialize) t
+        
+        let from_proto = 
+          let constructor = fun _extensions start end' -> { start; end' } in
           let spec = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: nil ) in
           let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
           fun writer -> deserialize writer
-
+        
       end
       let name' () = "Descriptor.google.protobuf.EnumDescriptorProto"
-      type t = { name: string option; value: EnumValueDescriptorProto.t list; options: EnumOptions.t option; reserved_range: EnumReservedRange.t list; reserved_name: string list }
-      let to_proto =
-        let apply = fun ~f:f' { name; value; options; reserved_range; reserved_name } -> f' name value options reserved_range reserved_name in
+      type t = { name: string option; value: EnumValueDescriptorProto.t list; options: EnumOptions.t option; reserved_range: EnumReservedRange.t list; reserved_name: string list } 
+      let to_proto = 
+        let apply = fun ~f:f' { name; value; options; reserved_range; reserved_name } -> f' [] name value options reserved_range reserved_name in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic_opt (1, string) ^:: repeated (2, (message EnumValueDescriptorProto.to_proto), not_packed) ^:: basic_opt (3, (message EnumOptions.to_proto)) ^:: repeated (4, (message EnumReservedRange.to_proto), not_packed) ^:: repeated (5, string, not_packed) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ name value options reserved_range reserved_name -> { name; value; options; reserved_range; reserved_name } in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun _extensions name value options reserved_range reserved_name -> { name; value; options; reserved_range; reserved_name } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (1, string) ^:: repeated (2, (message EnumValueDescriptorProto.from_proto), not_packed) ^:: basic_opt (3, (message EnumOptions.from_proto)) ^:: repeated (4, (message EnumReservedRange.from_proto), not_packed) ^:: repeated (5, string, not_packed) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and EnumValueDescriptorProto : sig
       val name': unit -> string
-      type t = { name: string option; number: int option; options: EnumValueOptions.t option }
+      type t = { name: string option; number: int option; options: EnumValueOptions.t option } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       let name' () = "Descriptor.google.protobuf.EnumValueDescriptorProto"
-      type t = { name: string option; number: int option; options: EnumValueOptions.t option }
-      let to_proto =
-        let apply = fun ~f:f' { name; number; options } -> f' name number options in
+      type t = { name: string option; number: int option; options: EnumValueOptions.t option } 
+      let to_proto = 
+        let apply = fun ~f:f' { name; number; options } -> f' [] name number options in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, int32_int) ^:: basic_opt (3, (message EnumValueOptions.to_proto)) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ name number options -> { name; number; options } in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun _extensions name number options -> { name; number; options } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (2, int32_int) ^:: basic_opt (3, (message EnumValueOptions.from_proto)) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and ServiceDescriptorProto : sig
       val name': unit -> string
-      type t = { name: string option; method': MethodDescriptorProto.t list; options: ServiceOptions.t option }
+      type t = { name: string option; method': MethodDescriptorProto.t list; options: ServiceOptions.t option } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       let name' () = "Descriptor.google.protobuf.ServiceDescriptorProto"
-      type t = { name: string option; method': MethodDescriptorProto.t list; options: ServiceOptions.t option }
-      let to_proto =
-        let apply = fun ~f:f' { name; method'; options } -> f' name method' options in
+      type t = { name: string option; method': MethodDescriptorProto.t list; options: ServiceOptions.t option } 
+      let to_proto = 
+        let apply = fun ~f:f' { name; method'; options } -> f' [] name method' options in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic_opt (1, string) ^:: repeated (2, (message MethodDescriptorProto.to_proto), not_packed) ^:: basic_opt (3, (message ServiceOptions.to_proto)) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ name method' options -> { name; method'; options } in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun _extensions name method' options -> { name; method'; options } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (1, string) ^:: repeated (2, (message MethodDescriptorProto.from_proto), not_packed) ^:: basic_opt (3, (message ServiceOptions.from_proto)) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and MethodDescriptorProto : sig
       val name': unit -> string
-      type t = { name: string option; input_type: string option; output_type: string option; options: MethodOptions.t option; client_streaming: bool; server_streaming: bool }
+      type t = { name: string option; input_type: string option; output_type: string option; options: MethodOptions.t option; client_streaming: bool; server_streaming: bool } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       let name' () = "Descriptor.google.protobuf.MethodDescriptorProto"
-      type t = { name: string option; input_type: string option; output_type: string option; options: MethodOptions.t option; client_streaming: bool; server_streaming: bool }
-      let to_proto =
-        let apply = fun ~f:f' { name; input_type; output_type; options; client_streaming; server_streaming } -> f' name input_type output_type options client_streaming server_streaming in
+      type t = { name: string option; input_type: string option; output_type: string option; options: MethodOptions.t option; client_streaming: bool; server_streaming: bool } 
+      let to_proto = 
+        let apply = fun ~f:f' { name; input_type; output_type; options; client_streaming; server_streaming } -> f' [] name input_type output_type options client_streaming server_streaming in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (3, string) ^:: basic_opt (4, (message MethodOptions.to_proto)) ^:: basic (5, bool, proto2 (false)) ^:: basic (6, bool, proto2 (false)) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ name input_type output_type options client_streaming server_streaming -> { name; input_type; output_type; options; client_streaming; server_streaming } in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun _extensions name input_type output_type options client_streaming server_streaming -> { name; input_type; output_type; options; client_streaming; server_streaming } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (3, string) ^:: basic_opt (4, (message MethodOptions.from_proto)) ^:: basic (5, bool, proto2 (false)) ^:: basic (6, bool, proto2 (false)) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and FileOptions : sig
       module rec OptimizeMode : sig
-        type t = SPEED | CODE_SIZE | LITE_RUNTIME
+        type t = SPEED | CODE_SIZE | LITE_RUNTIME 
         val to_int: t -> int
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
       end
       val name': unit -> string
-      type t = { java_package: string option; java_outer_classname: string option; java_multiple_files: bool; java_generate_equals_and_hash: bool option; java_string_check_utf8: bool; optimize_for: OptimizeMode.t; go_package: string option; cc_generic_services: bool; java_generic_services: bool; py_generic_services: bool; php_generic_services: bool; deprecated: bool; cc_enable_arenas: bool; objc_class_prefix: string option; csharp_namespace: string option; swift_prefix: string option; php_class_prefix: string option; php_namespace: string option; php_metadata_namespace: string option; ruby_package: string option; uninterpreted_option: UninterpretedOption.t list }
+      type t = { java_package: string option; java_outer_classname: string option; java_multiple_files: bool; java_generate_equals_and_hash: bool option; java_string_check_utf8: bool; optimize_for: OptimizeMode.t; go_package: string option; cc_generic_services: bool; java_generic_services: bool; py_generic_services: bool; php_generic_services: bool; deprecated: bool; cc_enable_arenas: bool; objc_class_prefix: string option; csharp_namespace: string option; swift_prefix: string option; php_class_prefix: string option; php_namespace: string option; php_metadata_namespace: string option; ruby_package: string option; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       module rec OptimizeMode : sig
-        type t = SPEED | CODE_SIZE | LITE_RUNTIME
+        type t = SPEED | CODE_SIZE | LITE_RUNTIME 
         val to_int: t -> int
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
-      end = struct
-        type t = SPEED | CODE_SIZE | LITE_RUNTIME
+      end = struct 
+        type t = SPEED | CODE_SIZE | LITE_RUNTIME 
         let to_int = function
           | SPEED -> 1
           | CODE_SIZE -> 2
           | LITE_RUNTIME -> 3
-
+        
         let from_int = function
           | 1 -> Ok SPEED
           | 2 -> Ok CODE_SIZE
           | 3 -> Ok LITE_RUNTIME
           | n -> Error (`Unknown_enum_value n)
-
+        
       end
       let name' () = "Descriptor.google.protobuf.FileOptions"
-      type t = { java_package: string option; java_outer_classname: string option; java_multiple_files: bool; java_generate_equals_and_hash: bool option; java_string_check_utf8: bool; optimize_for: OptimizeMode.t; go_package: string option; cc_generic_services: bool; java_generic_services: bool; py_generic_services: bool; php_generic_services: bool; deprecated: bool; cc_enable_arenas: bool; objc_class_prefix: string option; csharp_namespace: string option; swift_prefix: string option; php_class_prefix: string option; php_namespace: string option; php_metadata_namespace: string option; ruby_package: string option; uninterpreted_option: UninterpretedOption.t list }
-      let to_proto =
-        let apply = fun ~f:f' { java_package; java_outer_classname; java_multiple_files; java_generate_equals_and_hash; java_string_check_utf8; optimize_for; go_package; cc_generic_services; java_generic_services; py_generic_services; php_generic_services; deprecated; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_metadata_namespace; ruby_package; uninterpreted_option } -> f' java_package java_outer_classname java_multiple_files java_generate_equals_and_hash java_string_check_utf8 optimize_for go_package cc_generic_services java_generic_services py_generic_services php_generic_services deprecated cc_enable_arenas objc_class_prefix csharp_namespace swift_prefix php_class_prefix php_namespace php_metadata_namespace ruby_package uninterpreted_option in
+      type t = { java_package: string option; java_outer_classname: string option; java_multiple_files: bool; java_generate_equals_and_hash: bool option; java_string_check_utf8: bool; optimize_for: OptimizeMode.t; go_package: string option; cc_generic_services: bool; java_generic_services: bool; py_generic_services: bool; php_generic_services: bool; deprecated: bool; cc_enable_arenas: bool; objc_class_prefix: string option; csharp_namespace: string option; swift_prefix: string option; php_class_prefix: string option; php_namespace: string option; php_metadata_namespace: string option; ruby_package: string option; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      let to_proto = 
+        let apply = fun ~f:f' { java_package; java_outer_classname; java_multiple_files; java_generate_equals_and_hash; java_string_check_utf8; optimize_for; go_package; cc_generic_services; java_generic_services; py_generic_services; php_generic_services; deprecated; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_metadata_namespace; ruby_package; uninterpreted_option; extensions  } -> f' extensions java_package java_outer_classname java_multiple_files java_generate_equals_and_hash java_string_check_utf8 optimize_for go_package cc_generic_services java_generic_services py_generic_services php_generic_services deprecated cc_enable_arenas objc_class_prefix csharp_namespace swift_prefix php_class_prefix php_namespace php_metadata_namespace ruby_package uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic_opt (1, string) ^:: basic_opt (8, string) ^:: basic (10, bool, proto2 (false)) ^:: basic_opt (20, bool) ^:: basic (27, bool, proto2 (false)) ^:: basic (9, (enum OptimizeMode.to_int), proto2 (OptimizeMode.SPEED)) ^:: basic_opt (11, string) ^:: basic (16, bool, proto2 (false)) ^:: basic (17, bool, proto2 (false)) ^:: basic (18, bool, proto2 (false)) ^:: basic (42, bool, proto2 (false)) ^:: basic (23, bool, proto2 (false)) ^:: basic (31, bool, proto2 (false)) ^:: basic_opt (36, string) ^:: basic_opt (37, string) ^:: basic_opt (39, string) ^:: basic_opt (40, string) ^:: basic_opt (41, string) ^:: basic_opt (44, string) ^:: basic_opt (45, string) ^:: repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
-        let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ java_package java_outer_classname java_multiple_files java_generate_equals_and_hash java_string_check_utf8 optimize_for go_package cc_generic_services java_generic_services py_generic_services php_generic_services deprecated cc_enable_arenas objc_class_prefix csharp_namespace swift_prefix php_class_prefix php_namespace php_metadata_namespace ruby_package uninterpreted_option -> { java_package; java_outer_classname; java_multiple_files; java_generate_equals_and_hash; java_string_check_utf8; optimize_for; go_package; cc_generic_services; java_generic_services; py_generic_services; php_generic_services; deprecated; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_metadata_namespace; ruby_package; uninterpreted_option } in
+        let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun extensions java_package java_outer_classname java_multiple_files java_generate_equals_and_hash java_string_check_utf8 optimize_for go_package cc_generic_services java_generic_services py_generic_services php_generic_services deprecated cc_enable_arenas objc_class_prefix csharp_namespace swift_prefix php_class_prefix php_namespace php_metadata_namespace ruby_package uninterpreted_option -> { java_package; java_outer_classname; java_multiple_files; java_generate_equals_and_hash; java_string_check_utf8; optimize_for; go_package; cc_generic_services; java_generic_services; py_generic_services; php_generic_services; deprecated; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_metadata_namespace; ruby_package; uninterpreted_option; extensions } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (8, string) ^:: basic (10, bool, proto2 (false)) ^:: basic_opt (20, bool) ^:: basic (27, bool, proto2 (false)) ^:: basic (9, (enum OptimizeMode.from_int), proto2 (OptimizeMode.SPEED)) ^:: basic_opt (11, string) ^:: basic (16, bool, proto2 (false)) ^:: basic (17, bool, proto2 (false)) ^:: basic (18, bool, proto2 (false)) ^:: basic (42, bool, proto2 (false)) ^:: basic (23, bool, proto2 (false)) ^:: basic (31, bool, proto2 (false)) ^:: basic_opt (36, string) ^:: basic_opt (37, string) ^:: basic_opt (39, string) ^:: basic_opt (40, string) ^:: basic_opt (41, string) ^:: basic_opt (44, string) ^:: basic_opt (45, string) ^:: repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
-        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
+        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and MessageOptions : sig
       val name': unit -> string
-      type t = { message_set_wire_format: bool; no_standard_descriptor_accessor: bool; deprecated: bool; map_entry: bool option; uninterpreted_option: UninterpretedOption.t list }
+      type t = { message_set_wire_format: bool; no_standard_descriptor_accessor: bool; deprecated: bool; map_entry: bool option; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       let name' () = "Descriptor.google.protobuf.MessageOptions"
-      type t = { message_set_wire_format: bool; no_standard_descriptor_accessor: bool; deprecated: bool; map_entry: bool option; uninterpreted_option: UninterpretedOption.t list }
-      let to_proto =
-        let apply = fun ~f:f' { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option } -> f' message_set_wire_format no_standard_descriptor_accessor deprecated map_entry uninterpreted_option in
+      type t = { message_set_wire_format: bool; no_standard_descriptor_accessor: bool; deprecated: bool; map_entry: bool option; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      let to_proto = 
+        let apply = fun ~f:f' { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions  } -> f' extensions message_set_wire_format no_standard_descriptor_accessor deprecated map_entry uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic (1, bool, proto2 (false)) ^:: basic (2, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic_opt (7, bool) ^:: repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
-        let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ message_set_wire_format no_standard_descriptor_accessor deprecated map_entry uninterpreted_option -> { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option } in
+        let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun extensions message_set_wire_format no_standard_descriptor_accessor deprecated map_entry uninterpreted_option -> { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic (1, bool, proto2 (false)) ^:: basic (2, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic_opt (7, bool) ^:: repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
-        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
+        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and FieldOptions : sig
       module rec CType : sig
-        type t = STRING | CORD | STRING_PIECE
+        type t = STRING | CORD | STRING_PIECE 
         val to_int: t -> int
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
       end
       and JSType : sig
-        type t = JS_NORMAL | JS_STRING | JS_NUMBER
+        type t = JS_NORMAL | JS_STRING | JS_NUMBER 
         val to_int: t -> int
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
       end
       val name': unit -> string
-      type t = { ctype: CType.t; packed: bool option; jstype: JSType.t; lazy': bool; deprecated: bool; weak: bool; uninterpreted_option: UninterpretedOption.t list }
+      type t = { ctype: CType.t; packed: bool option; jstype: JSType.t; lazy': bool; deprecated: bool; weak: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       module rec CType : sig
-        type t = STRING | CORD | STRING_PIECE
+        type t = STRING | CORD | STRING_PIECE 
         val to_int: t -> int
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
-      end = struct
-        type t = STRING | CORD | STRING_PIECE
+      end = struct 
+        type t = STRING | CORD | STRING_PIECE 
         let to_int = function
           | STRING -> 0
           | CORD -> 1
           | STRING_PIECE -> 2
-
+        
         let from_int = function
           | 0 -> Ok STRING
           | 1 -> Ok CORD
           | 2 -> Ok STRING_PIECE
           | n -> Error (`Unknown_enum_value n)
-
+        
       end
       and JSType : sig
-        type t = JS_NORMAL | JS_STRING | JS_NUMBER
+        type t = JS_NORMAL | JS_STRING | JS_NUMBER 
         val to_int: t -> int
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
-      end = struct
-        type t = JS_NORMAL | JS_STRING | JS_NUMBER
+      end = struct 
+        type t = JS_NORMAL | JS_STRING | JS_NUMBER 
         let to_int = function
           | JS_NORMAL -> 0
           | JS_STRING -> 1
           | JS_NUMBER -> 2
-
+        
         let from_int = function
           | 0 -> Ok JS_NORMAL
           | 1 -> Ok JS_STRING
           | 2 -> Ok JS_NUMBER
           | n -> Error (`Unknown_enum_value n)
-
+        
       end
       let name' () = "Descriptor.google.protobuf.FieldOptions"
-      type t = { ctype: CType.t; packed: bool option; jstype: JSType.t; lazy': bool; deprecated: bool; weak: bool; uninterpreted_option: UninterpretedOption.t list }
-      let to_proto =
-        let apply = fun ~f:f' { ctype; packed; jstype; lazy'; deprecated; weak; uninterpreted_option } -> f' ctype packed jstype lazy' deprecated weak uninterpreted_option in
+      type t = { ctype: CType.t; packed: bool option; jstype: JSType.t; lazy': bool; deprecated: bool; weak: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      let to_proto = 
+        let apply = fun ~f:f' { ctype; packed; jstype; lazy'; deprecated; weak; uninterpreted_option; extensions  } -> f' extensions ctype packed jstype lazy' deprecated weak uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic (1, (enum CType.to_int), proto2 (CType.STRING)) ^:: basic_opt (2, bool) ^:: basic (6, (enum JSType.to_int), proto2 (JSType.JS_NORMAL)) ^:: basic (5, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic (10, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
-        let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ ctype packed jstype lazy' deprecated weak uninterpreted_option -> { ctype; packed; jstype; lazy'; deprecated; weak; uninterpreted_option } in
+        let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun extensions ctype packed jstype lazy' deprecated weak uninterpreted_option -> { ctype; packed; jstype; lazy'; deprecated; weak; uninterpreted_option; extensions } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic (1, (enum CType.from_int), proto2 (CType.STRING)) ^:: basic_opt (2, bool) ^:: basic (6, (enum JSType.from_int), proto2 (JSType.JS_NORMAL)) ^:: basic (5, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic (10, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
-        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
+        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and OneofOptions : sig
       val name': unit -> string
-      type t = UninterpretedOption.t list
+      type t = { uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       let name' () = "Descriptor.google.protobuf.OneofOptions"
-      type t = UninterpretedOption.t list
-      let to_proto =
-        let apply = fun ~f a -> f a in
+      type t = { uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      let to_proto = 
+        let apply = fun ~f:f' { uninterpreted_option; extensions  } -> f' extensions uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
-        let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ a -> a in
+        let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun extensions uninterpreted_option -> { uninterpreted_option; extensions } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
-        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
+        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and EnumOptions : sig
       val name': unit -> string
-      type t = { allow_alias: bool option; deprecated: bool; uninterpreted_option: UninterpretedOption.t list }
+      type t = { allow_alias: bool option; deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       let name' () = "Descriptor.google.protobuf.EnumOptions"
-      type t = { allow_alias: bool option; deprecated: bool; uninterpreted_option: UninterpretedOption.t list }
-      let to_proto =
-        let apply = fun ~f:f' { allow_alias; deprecated; uninterpreted_option } -> f' allow_alias deprecated uninterpreted_option in
+      type t = { allow_alias: bool option; deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      let to_proto = 
+        let apply = fun ~f:f' { allow_alias; deprecated; uninterpreted_option; extensions  } -> f' extensions allow_alias deprecated uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic_opt (2, bool) ^:: basic (3, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
-        let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ allow_alias deprecated uninterpreted_option -> { allow_alias; deprecated; uninterpreted_option } in
+        let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun extensions allow_alias deprecated uninterpreted_option -> { allow_alias; deprecated; uninterpreted_option; extensions } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (2, bool) ^:: basic (3, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
-        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
+        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and EnumValueOptions : sig
       val name': unit -> string
-      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list }
+      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       let name' () = "Descriptor.google.protobuf.EnumValueOptions"
-      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list }
-      let to_proto =
-        let apply = fun ~f:f' { deprecated; uninterpreted_option } -> f' deprecated uninterpreted_option in
+      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      let to_proto = 
+        let apply = fun ~f:f' { deprecated; uninterpreted_option; extensions  } -> f' extensions deprecated uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic (1, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
-        let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ deprecated uninterpreted_option -> { deprecated; uninterpreted_option } in
+        let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun extensions deprecated uninterpreted_option -> { deprecated; uninterpreted_option; extensions } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic (1, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
-        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
+        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and ServiceOptions : sig
       val name': unit -> string
-      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list }
+      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       let name' () = "Descriptor.google.protobuf.ServiceOptions"
-      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list }
-      let to_proto =
-        let apply = fun ~f:f' { deprecated; uninterpreted_option } -> f' deprecated uninterpreted_option in
+      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      let to_proto = 
+        let apply = fun ~f:f' { deprecated; uninterpreted_option; extensions  } -> f' extensions deprecated uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic (33, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
-        let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ deprecated uninterpreted_option -> { deprecated; uninterpreted_option } in
+        let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun extensions deprecated uninterpreted_option -> { deprecated; uninterpreted_option; extensions } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic (33, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
-        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
+        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and MethodOptions : sig
       module rec IdempotencyLevel : sig
-        type t = IDEMPOTENCY_UNKNOWN | NO_SIDE_EFFECTS | IDEMPOTENT
+        type t = IDEMPOTENCY_UNKNOWN | NO_SIDE_EFFECTS | IDEMPOTENT 
         val to_int: t -> int
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
       end
       val name': unit -> string
-      type t = { deprecated: bool; idempotency_level: IdempotencyLevel.t; uninterpreted_option: UninterpretedOption.t list }
+      type t = { deprecated: bool; idempotency_level: IdempotencyLevel.t; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       module rec IdempotencyLevel : sig
-        type t = IDEMPOTENCY_UNKNOWN | NO_SIDE_EFFECTS | IDEMPOTENT
+        type t = IDEMPOTENCY_UNKNOWN | NO_SIDE_EFFECTS | IDEMPOTENT 
         val to_int: t -> int
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
-      end = struct
-        type t = IDEMPOTENCY_UNKNOWN | NO_SIDE_EFFECTS | IDEMPOTENT
+      end = struct 
+        type t = IDEMPOTENCY_UNKNOWN | NO_SIDE_EFFECTS | IDEMPOTENT 
         let to_int = function
           | IDEMPOTENCY_UNKNOWN -> 0
           | NO_SIDE_EFFECTS -> 1
           | IDEMPOTENT -> 2
-
+        
         let from_int = function
           | 0 -> Ok IDEMPOTENCY_UNKNOWN
           | 1 -> Ok NO_SIDE_EFFECTS
           | 2 -> Ok IDEMPOTENT
           | n -> Error (`Unknown_enum_value n)
-
+        
       end
       let name' () = "Descriptor.google.protobuf.MethodOptions"
-      type t = { deprecated: bool; idempotency_level: IdempotencyLevel.t; uninterpreted_option: UninterpretedOption.t list }
-      let to_proto =
-        let apply = fun ~f:f' { deprecated; idempotency_level; uninterpreted_option } -> f' deprecated idempotency_level uninterpreted_option in
+      type t = { deprecated: bool; idempotency_level: IdempotencyLevel.t; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      let to_proto = 
+        let apply = fun ~f:f' { deprecated; idempotency_level; uninterpreted_option; extensions  } -> f' extensions deprecated idempotency_level uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic (33, bool, proto2 (false)) ^:: basic (34, (enum IdempotencyLevel.to_int), proto2 (IdempotencyLevel.IDEMPOTENCY_UNKNOWN)) ^:: repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
-        let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ deprecated idempotency_level uninterpreted_option -> { deprecated; idempotency_level; uninterpreted_option } in
+        let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun extensions deprecated idempotency_level uninterpreted_option -> { deprecated; idempotency_level; uninterpreted_option; extensions } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic (33, bool, proto2 (false)) ^:: basic (34, (enum IdempotencyLevel.from_int), proto2 (IdempotencyLevel.IDEMPOTENCY_UNKNOWN)) ^:: repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
-        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
+        let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and UninterpretedOption : sig
       module rec NamePart : sig
         val name': unit -> string
-        type t = { name_part: string; is_extension: bool }
+        type t = { name_part: string; is_extension: bool } 
         val to_proto: t -> Ocaml_protoc_plugin.Writer.t
         val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
       end
       val name': unit -> string
-      type t = { name: NamePart.t list; identifier_value: string option; positive_int_value: int option; negative_int_value: int option; double_value: float option; string_value: bytes option; aggregate_value: string option }
+      type t = { name: NamePart.t list; identifier_value: string option; positive_int_value: int option; negative_int_value: int option; double_value: float option; string_value: bytes option; aggregate_value: string option } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       module rec NamePart : sig
         val name': unit -> string
-        type t = { name_part: string; is_extension: bool }
+        type t = { name_part: string; is_extension: bool } 
         val to_proto: t -> Ocaml_protoc_plugin.Writer.t
         val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-      end = struct
+      end = struct 
         let name' () = "Descriptor.google.protobuf.UninterpretedOption.NamePart"
-        type t = { name_part: string; is_extension: bool }
-        let to_proto =
-          let apply = fun ~f:f' { name_part; is_extension } -> f' name_part is_extension in
+        type t = { name_part: string; is_extension: bool } 
+        let to_proto = 
+          let apply = fun ~f:f' { name_part; is_extension } -> f' [] name_part is_extension in
           let spec = Ocaml_protoc_plugin.Serialize.C.( basic (1, string, required) ^:: basic (2, bool, required) ^:: nil ) in
           let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-          fun t -> apply ~f:(serialize []) t
-
-        let from_proto =
-          let constructor = fun _ name_part is_extension -> { name_part; is_extension } in
+          fun t -> apply ~f:(serialize) t
+        
+        let from_proto = 
+          let constructor = fun _extensions name_part is_extension -> { name_part; is_extension } in
           let spec = Ocaml_protoc_plugin.Deserialize.C.( basic (1, string, required) ^:: basic (2, bool, required) ^:: nil ) in
           let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
           fun writer -> deserialize writer
-
+        
       end
       let name' () = "Descriptor.google.protobuf.UninterpretedOption"
-      type t = { name: NamePart.t list; identifier_value: string option; positive_int_value: int option; negative_int_value: int option; double_value: float option; string_value: bytes option; aggregate_value: string option }
-      let to_proto =
-        let apply = fun ~f:f' { name; identifier_value; positive_int_value; negative_int_value; double_value; string_value; aggregate_value } -> f' name identifier_value positive_int_value negative_int_value double_value string_value aggregate_value in
+      type t = { name: NamePart.t list; identifier_value: string option; positive_int_value: int option; negative_int_value: int option; double_value: float option; string_value: bytes option; aggregate_value: string option } 
+      let to_proto = 
+        let apply = fun ~f:f' { name; identifier_value; positive_int_value; negative_int_value; double_value; string_value; aggregate_value } -> f' [] name identifier_value positive_int_value negative_int_value double_value string_value aggregate_value in
         let spec = Ocaml_protoc_plugin.Serialize.C.( repeated (2, (message NamePart.to_proto), not_packed) ^:: basic_opt (3, string) ^:: basic_opt (4, uint64_int) ^:: basic_opt (5, int64_int) ^:: basic_opt (6, double) ^:: basic_opt (7, bytes) ^:: basic_opt (8, string) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ name identifier_value positive_int_value negative_int_value double_value string_value aggregate_value -> { name; identifier_value; positive_int_value; negative_int_value; double_value; string_value; aggregate_value } in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun _extensions name identifier_value positive_int_value negative_int_value double_value string_value aggregate_value -> { name; identifier_value; positive_int_value; negative_int_value; double_value; string_value; aggregate_value } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( repeated (2, (message NamePart.from_proto), not_packed) ^:: basic_opt (3, string) ^:: basic_opt (4, uint64_int) ^:: basic_opt (5, int64_int) ^:: basic_opt (6, double) ^:: basic_opt (7, bytes) ^:: basic_opt (8, string) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and SourceCodeInfo : sig
       module rec Location : sig
         val name': unit -> string
-        type t = { path: int list; span: int list; leading_comments: string option; trailing_comments: string option; leading_detached_comments: string list }
+        type t = { path: int list; span: int list; leading_comments: string option; trailing_comments: string option; leading_detached_comments: string list } 
         val to_proto: t -> Ocaml_protoc_plugin.Writer.t
         val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
       end
       val name': unit -> string
-      type t = Location.t list
+      type t = Location.t list 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       module rec Location : sig
         val name': unit -> string
-        type t = { path: int list; span: int list; leading_comments: string option; trailing_comments: string option; leading_detached_comments: string list }
+        type t = { path: int list; span: int list; leading_comments: string option; trailing_comments: string option; leading_detached_comments: string list } 
         val to_proto: t -> Ocaml_protoc_plugin.Writer.t
         val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-      end = struct
+      end = struct 
         let name' () = "Descriptor.google.protobuf.SourceCodeInfo.Location"
-        type t = { path: int list; span: int list; leading_comments: string option; trailing_comments: string option; leading_detached_comments: string list }
-        let to_proto =
-          let apply = fun ~f:f' { path; span; leading_comments; trailing_comments; leading_detached_comments } -> f' path span leading_comments trailing_comments leading_detached_comments in
+        type t = { path: int list; span: int list; leading_comments: string option; trailing_comments: string option; leading_detached_comments: string list } 
+        let to_proto = 
+          let apply = fun ~f:f' { path; span; leading_comments; trailing_comments; leading_detached_comments } -> f' [] path span leading_comments trailing_comments leading_detached_comments in
           let spec = Ocaml_protoc_plugin.Serialize.C.( repeated (1, int32_int, packed) ^:: repeated (2, int32_int, packed) ^:: basic_opt (3, string) ^:: basic_opt (4, string) ^:: repeated (6, string, not_packed) ^:: nil ) in
           let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-          fun t -> apply ~f:(serialize []) t
-
-        let from_proto =
-          let constructor = fun _ path span leading_comments trailing_comments leading_detached_comments -> { path; span; leading_comments; trailing_comments; leading_detached_comments } in
+          fun t -> apply ~f:(serialize) t
+        
+        let from_proto = 
+          let constructor = fun _extensions path span leading_comments trailing_comments leading_detached_comments -> { path; span; leading_comments; trailing_comments; leading_detached_comments } in
           let spec = Ocaml_protoc_plugin.Deserialize.C.( repeated (1, int32_int, packed) ^:: repeated (2, int32_int, packed) ^:: basic_opt (3, string) ^:: basic_opt (4, string) ^:: repeated (6, string, not_packed) ^:: nil ) in
           let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
           fun writer -> deserialize writer
-
+        
       end
       let name' () = "Descriptor.google.protobuf.SourceCodeInfo"
-      type t = Location.t list
-      let to_proto =
-        let apply = fun ~f a -> f a in
+      type t = Location.t list 
+      let to_proto = 
+        let apply = fun ~f a -> f [] a in
         let spec = Ocaml_protoc_plugin.Serialize.C.( repeated (1, (message Location.to_proto), not_packed) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ a -> a in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun _extensions a -> a in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( repeated (1, (message Location.from_proto), not_packed) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
     and GeneratedCodeInfo : sig
       module rec Annotation : sig
         val name': unit -> string
-        type t = { path: int list; source_file: string option; begin': int option; end': int option }
+        type t = { path: int list; source_file: string option; begin': int option; end': int option } 
         val to_proto: t -> Ocaml_protoc_plugin.Writer.t
         val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
       end
       val name': unit -> string
-      type t = Annotation.t list
+      type t = Annotation.t list 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-    end = struct
+    end = struct 
       module rec Annotation : sig
         val name': unit -> string
-        type t = { path: int list; source_file: string option; begin': int option; end': int option }
+        type t = { path: int list; source_file: string option; begin': int option; end': int option } 
         val to_proto: t -> Ocaml_protoc_plugin.Writer.t
         val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
-      end = struct
+      end = struct 
         let name' () = "Descriptor.google.protobuf.GeneratedCodeInfo.Annotation"
-        type t = { path: int list; source_file: string option; begin': int option; end': int option }
-        let to_proto =
-          let apply = fun ~f:f' { path; source_file; begin'; end' } -> f' path source_file begin' end' in
+        type t = { path: int list; source_file: string option; begin': int option; end': int option } 
+        let to_proto = 
+          let apply = fun ~f:f' { path; source_file; begin'; end' } -> f' [] path source_file begin' end' in
           let spec = Ocaml_protoc_plugin.Serialize.C.( repeated (1, int32_int, packed) ^:: basic_opt (2, string) ^:: basic_opt (3, int32_int) ^:: basic_opt (4, int32_int) ^:: nil ) in
           let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-          fun t -> apply ~f:(serialize []) t
-
-        let from_proto =
-          let constructor = fun _ path source_file begin' end' -> { path; source_file; begin'; end' } in
+          fun t -> apply ~f:(serialize) t
+        
+        let from_proto = 
+          let constructor = fun _extensions path source_file begin' end' -> { path; source_file; begin'; end' } in
           let spec = Ocaml_protoc_plugin.Deserialize.C.( repeated (1, int32_int, packed) ^:: basic_opt (2, string) ^:: basic_opt (3, int32_int) ^:: basic_opt (4, int32_int) ^:: nil ) in
           let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
           fun writer -> deserialize writer
-
+        
       end
       let name' () = "Descriptor.google.protobuf.GeneratedCodeInfo"
-      type t = Annotation.t list
-      let to_proto =
-        let apply = fun ~f a -> f a in
+      type t = Annotation.t list 
+      let to_proto = 
+        let apply = fun ~f a -> f [] a in
         let spec = Ocaml_protoc_plugin.Serialize.C.( repeated (1, (message Annotation.to_proto), not_packed) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:(serialize []) t
-
-      let from_proto =
-        let constructor = fun _ a -> a in
+        fun t -> apply ~f:(serialize) t
+      
+      let from_proto = 
+        let constructor = fun _extensions a -> a in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( repeated (1, (message Annotation.from_proto), not_packed) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [] (spec) constructor in
         fun writer -> deserialize writer
-
+      
     end
   end
 end
