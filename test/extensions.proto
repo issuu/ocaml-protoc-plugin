@@ -15,6 +15,5 @@ extend Foo {
 
 
 extend Foo {
-    optional uint32 r_baz = 130;
-    optional uint32 r_baz2 = 131;
+    repeated uint32 r_baz = 130;
 }

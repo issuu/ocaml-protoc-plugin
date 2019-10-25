@@ -137,20 +137,20 @@ module Google = struct
     end
     and ExtensionRangeOptions : sig
       val name': unit -> string
-      type t = { uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
     end = struct 
       let name' () = "Descriptor.google.protobuf.ExtensionRangeOptions"
-      type t = { uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       let to_proto = 
-        let apply = fun ~f:f' { uninterpreted_option; extensions  } -> f' extensions uninterpreted_option in
+        let apply = fun ~f:f' { uninterpreted_option; extensions' } -> f' extensions' uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
         fun t -> apply ~f:(serialize) t
       
       let from_proto = 
-        let constructor = fun extensions uninterpreted_option -> { uninterpreted_option; extensions } in
+        let constructor = fun extensions' uninterpreted_option -> { uninterpreted_option; extensions' } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
@@ -392,7 +392,7 @@ module Google = struct
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
       end
       val name': unit -> string
-      type t = { java_package: string option; java_outer_classname: string option; java_multiple_files: bool; java_generate_equals_and_hash: bool option; java_string_check_utf8: bool; optimize_for: OptimizeMode.t; go_package: string option; cc_generic_services: bool; java_generic_services: bool; py_generic_services: bool; php_generic_services: bool; deprecated: bool; cc_enable_arenas: bool; objc_class_prefix: string option; csharp_namespace: string option; swift_prefix: string option; php_class_prefix: string option; php_namespace: string option; php_metadata_namespace: string option; ruby_package: string option; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { java_package: string option; java_outer_classname: string option; java_multiple_files: bool; java_generate_equals_and_hash: bool option; java_string_check_utf8: bool; optimize_for: OptimizeMode.t; go_package: string option; cc_generic_services: bool; java_generic_services: bool; py_generic_services: bool; php_generic_services: bool; deprecated: bool; cc_enable_arenas: bool; objc_class_prefix: string option; csharp_namespace: string option; swift_prefix: string option; php_class_prefix: string option; php_namespace: string option; php_metadata_namespace: string option; ruby_package: string option; uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
     end = struct 
@@ -415,15 +415,15 @@ module Google = struct
         
       end
       let name' () = "Descriptor.google.protobuf.FileOptions"
-      type t = { java_package: string option; java_outer_classname: string option; java_multiple_files: bool; java_generate_equals_and_hash: bool option; java_string_check_utf8: bool; optimize_for: OptimizeMode.t; go_package: string option; cc_generic_services: bool; java_generic_services: bool; py_generic_services: bool; php_generic_services: bool; deprecated: bool; cc_enable_arenas: bool; objc_class_prefix: string option; csharp_namespace: string option; swift_prefix: string option; php_class_prefix: string option; php_namespace: string option; php_metadata_namespace: string option; ruby_package: string option; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { java_package: string option; java_outer_classname: string option; java_multiple_files: bool; java_generate_equals_and_hash: bool option; java_string_check_utf8: bool; optimize_for: OptimizeMode.t; go_package: string option; cc_generic_services: bool; java_generic_services: bool; py_generic_services: bool; php_generic_services: bool; deprecated: bool; cc_enable_arenas: bool; objc_class_prefix: string option; csharp_namespace: string option; swift_prefix: string option; php_class_prefix: string option; php_namespace: string option; php_metadata_namespace: string option; ruby_package: string option; uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       let to_proto = 
-        let apply = fun ~f:f' { java_package; java_outer_classname; java_multiple_files; java_generate_equals_and_hash; java_string_check_utf8; optimize_for; go_package; cc_generic_services; java_generic_services; py_generic_services; php_generic_services; deprecated; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_metadata_namespace; ruby_package; uninterpreted_option; extensions  } -> f' extensions java_package java_outer_classname java_multiple_files java_generate_equals_and_hash java_string_check_utf8 optimize_for go_package cc_generic_services java_generic_services py_generic_services php_generic_services deprecated cc_enable_arenas objc_class_prefix csharp_namespace swift_prefix php_class_prefix php_namespace php_metadata_namespace ruby_package uninterpreted_option in
+        let apply = fun ~f:f' { java_package; java_outer_classname; java_multiple_files; java_generate_equals_and_hash; java_string_check_utf8; optimize_for; go_package; cc_generic_services; java_generic_services; py_generic_services; php_generic_services; deprecated; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_metadata_namespace; ruby_package; uninterpreted_option; extensions' } -> f' extensions' java_package java_outer_classname java_multiple_files java_generate_equals_and_hash java_string_check_utf8 optimize_for go_package cc_generic_services java_generic_services py_generic_services php_generic_services deprecated cc_enable_arenas objc_class_prefix csharp_namespace swift_prefix php_class_prefix php_namespace php_metadata_namespace ruby_package uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic_opt (1, string) ^:: basic_opt (8, string) ^:: basic (10, bool, proto2 (false)) ^:: basic_opt (20, bool) ^:: basic (27, bool, proto2 (false)) ^:: basic (9, (enum OptimizeMode.to_int), proto2 (OptimizeMode.SPEED)) ^:: basic_opt (11, string) ^:: basic (16, bool, proto2 (false)) ^:: basic (17, bool, proto2 (false)) ^:: basic (18, bool, proto2 (false)) ^:: basic (42, bool, proto2 (false)) ^:: basic (23, bool, proto2 (false)) ^:: basic (31, bool, proto2 (false)) ^:: basic_opt (36, string) ^:: basic_opt (37, string) ^:: basic_opt (39, string) ^:: basic_opt (40, string) ^:: basic_opt (41, string) ^:: basic_opt (44, string) ^:: basic_opt (45, string) ^:: repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
         fun t -> apply ~f:(serialize) t
       
       let from_proto = 
-        let constructor = fun extensions java_package java_outer_classname java_multiple_files java_generate_equals_and_hash java_string_check_utf8 optimize_for go_package cc_generic_services java_generic_services py_generic_services php_generic_services deprecated cc_enable_arenas objc_class_prefix csharp_namespace swift_prefix php_class_prefix php_namespace php_metadata_namespace ruby_package uninterpreted_option -> { java_package; java_outer_classname; java_multiple_files; java_generate_equals_and_hash; java_string_check_utf8; optimize_for; go_package; cc_generic_services; java_generic_services; py_generic_services; php_generic_services; deprecated; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_metadata_namespace; ruby_package; uninterpreted_option; extensions } in
+        let constructor = fun extensions' java_package java_outer_classname java_multiple_files java_generate_equals_and_hash java_string_check_utf8 optimize_for go_package cc_generic_services java_generic_services py_generic_services php_generic_services deprecated cc_enable_arenas objc_class_prefix csharp_namespace swift_prefix php_class_prefix php_namespace php_metadata_namespace ruby_package uninterpreted_option -> { java_package; java_outer_classname; java_multiple_files; java_generate_equals_and_hash; java_string_check_utf8; optimize_for; go_package; cc_generic_services; java_generic_services; py_generic_services; php_generic_services; deprecated; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_metadata_namespace; ruby_package; uninterpreted_option; extensions' } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (8, string) ^:: basic (10, bool, proto2 (false)) ^:: basic_opt (20, bool) ^:: basic (27, bool, proto2 (false)) ^:: basic (9, (enum OptimizeMode.from_int), proto2 (OptimizeMode.SPEED)) ^:: basic_opt (11, string) ^:: basic (16, bool, proto2 (false)) ^:: basic (17, bool, proto2 (false)) ^:: basic (18, bool, proto2 (false)) ^:: basic (42, bool, proto2 (false)) ^:: basic (23, bool, proto2 (false)) ^:: basic (31, bool, proto2 (false)) ^:: basic_opt (36, string) ^:: basic_opt (37, string) ^:: basic_opt (39, string) ^:: basic_opt (40, string) ^:: basic_opt (41, string) ^:: basic_opt (44, string) ^:: basic_opt (45, string) ^:: repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
@@ -431,20 +431,20 @@ module Google = struct
     end
     and MessageOptions : sig
       val name': unit -> string
-      type t = { message_set_wire_format: bool; no_standard_descriptor_accessor: bool; deprecated: bool; map_entry: bool option; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { message_set_wire_format: bool; no_standard_descriptor_accessor: bool; deprecated: bool; map_entry: bool option; uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
     end = struct 
       let name' () = "Descriptor.google.protobuf.MessageOptions"
-      type t = { message_set_wire_format: bool; no_standard_descriptor_accessor: bool; deprecated: bool; map_entry: bool option; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { message_set_wire_format: bool; no_standard_descriptor_accessor: bool; deprecated: bool; map_entry: bool option; uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       let to_proto = 
-        let apply = fun ~f:f' { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions  } -> f' extensions message_set_wire_format no_standard_descriptor_accessor deprecated map_entry uninterpreted_option in
+        let apply = fun ~f:f' { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions' } -> f' extensions' message_set_wire_format no_standard_descriptor_accessor deprecated map_entry uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic (1, bool, proto2 (false)) ^:: basic (2, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic_opt (7, bool) ^:: repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
         fun t -> apply ~f:(serialize) t
       
       let from_proto = 
-        let constructor = fun extensions message_set_wire_format no_standard_descriptor_accessor deprecated map_entry uninterpreted_option -> { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions } in
+        let constructor = fun extensions' message_set_wire_format no_standard_descriptor_accessor deprecated map_entry uninterpreted_option -> { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions' } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic (1, bool, proto2 (false)) ^:: basic (2, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic_opt (7, bool) ^:: repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
@@ -462,7 +462,7 @@ module Google = struct
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
       end
       val name': unit -> string
-      type t = { ctype: CType.t; packed: bool option; jstype: JSType.t; lazy': bool; deprecated: bool; weak: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { ctype: CType.t; packed: bool option; jstype: JSType.t; lazy': bool; deprecated: bool; weak: bool; uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
     end = struct 
@@ -503,15 +503,15 @@ module Google = struct
         
       end
       let name' () = "Descriptor.google.protobuf.FieldOptions"
-      type t = { ctype: CType.t; packed: bool option; jstype: JSType.t; lazy': bool; deprecated: bool; weak: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { ctype: CType.t; packed: bool option; jstype: JSType.t; lazy': bool; deprecated: bool; weak: bool; uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       let to_proto = 
-        let apply = fun ~f:f' { ctype; packed; jstype; lazy'; deprecated; weak; uninterpreted_option; extensions  } -> f' extensions ctype packed jstype lazy' deprecated weak uninterpreted_option in
+        let apply = fun ~f:f' { ctype; packed; jstype; lazy'; deprecated; weak; uninterpreted_option; extensions' } -> f' extensions' ctype packed jstype lazy' deprecated weak uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic (1, (enum CType.to_int), proto2 (CType.STRING)) ^:: basic_opt (2, bool) ^:: basic (6, (enum JSType.to_int), proto2 (JSType.JS_NORMAL)) ^:: basic (5, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic (10, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
         fun t -> apply ~f:(serialize) t
       
       let from_proto = 
-        let constructor = fun extensions ctype packed jstype lazy' deprecated weak uninterpreted_option -> { ctype; packed; jstype; lazy'; deprecated; weak; uninterpreted_option; extensions } in
+        let constructor = fun extensions' ctype packed jstype lazy' deprecated weak uninterpreted_option -> { ctype; packed; jstype; lazy'; deprecated; weak; uninterpreted_option; extensions' } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic (1, (enum CType.from_int), proto2 (CType.STRING)) ^:: basic_opt (2, bool) ^:: basic (6, (enum JSType.from_int), proto2 (JSType.JS_NORMAL)) ^:: basic (5, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic (10, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
@@ -519,20 +519,20 @@ module Google = struct
     end
     and OneofOptions : sig
       val name': unit -> string
-      type t = { uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
     end = struct 
       let name' () = "Descriptor.google.protobuf.OneofOptions"
-      type t = { uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       let to_proto = 
-        let apply = fun ~f:f' { uninterpreted_option; extensions  } -> f' extensions uninterpreted_option in
+        let apply = fun ~f:f' { uninterpreted_option; extensions' } -> f' extensions' uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
         fun t -> apply ~f:(serialize) t
       
       let from_proto = 
-        let constructor = fun extensions uninterpreted_option -> { uninterpreted_option; extensions } in
+        let constructor = fun extensions' uninterpreted_option -> { uninterpreted_option; extensions' } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
@@ -540,20 +540,20 @@ module Google = struct
     end
     and EnumOptions : sig
       val name': unit -> string
-      type t = { allow_alias: bool option; deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { allow_alias: bool option; deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
     end = struct 
       let name' () = "Descriptor.google.protobuf.EnumOptions"
-      type t = { allow_alias: bool option; deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { allow_alias: bool option; deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       let to_proto = 
-        let apply = fun ~f:f' { allow_alias; deprecated; uninterpreted_option; extensions  } -> f' extensions allow_alias deprecated uninterpreted_option in
+        let apply = fun ~f:f' { allow_alias; deprecated; uninterpreted_option; extensions' } -> f' extensions' allow_alias deprecated uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic_opt (2, bool) ^:: basic (3, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
         fun t -> apply ~f:(serialize) t
       
       let from_proto = 
-        let constructor = fun extensions allow_alias deprecated uninterpreted_option -> { allow_alias; deprecated; uninterpreted_option; extensions } in
+        let constructor = fun extensions' allow_alias deprecated uninterpreted_option -> { allow_alias; deprecated; uninterpreted_option; extensions' } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic_opt (2, bool) ^:: basic (3, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
@@ -561,20 +561,20 @@ module Google = struct
     end
     and EnumValueOptions : sig
       val name': unit -> string
-      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
     end = struct 
       let name' () = "Descriptor.google.protobuf.EnumValueOptions"
-      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       let to_proto = 
-        let apply = fun ~f:f' { deprecated; uninterpreted_option; extensions  } -> f' extensions deprecated uninterpreted_option in
+        let apply = fun ~f:f' { deprecated; uninterpreted_option; extensions' } -> f' extensions' deprecated uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic (1, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
         fun t -> apply ~f:(serialize) t
       
       let from_proto = 
-        let constructor = fun extensions deprecated uninterpreted_option -> { deprecated; uninterpreted_option; extensions } in
+        let constructor = fun extensions' deprecated uninterpreted_option -> { deprecated; uninterpreted_option; extensions' } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic (1, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
@@ -582,20 +582,20 @@ module Google = struct
     end
     and ServiceOptions : sig
       val name': unit -> string
-      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
     end = struct 
       let name' () = "Descriptor.google.protobuf.ServiceOptions"
-      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       let to_proto = 
-        let apply = fun ~f:f' { deprecated; uninterpreted_option; extensions  } -> f' extensions deprecated uninterpreted_option in
+        let apply = fun ~f:f' { deprecated; uninterpreted_option; extensions' } -> f' extensions' deprecated uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic (33, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
         fun t -> apply ~f:(serialize) t
       
       let from_proto = 
-        let constructor = fun extensions deprecated uninterpreted_option -> { deprecated; uninterpreted_option; extensions } in
+        let constructor = fun extensions' deprecated uninterpreted_option -> { deprecated; uninterpreted_option; extensions' } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic (33, bool, proto2 (false)) ^:: repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer
@@ -608,7 +608,7 @@ module Google = struct
         val from_int: int -> t Ocaml_protoc_plugin.Result.t
       end
       val name': unit -> string
-      type t = { deprecated: bool; idempotency_level: IdempotencyLevel.t; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { deprecated: bool; idempotency_level: IdempotencyLevel.t; uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       val to_proto: t -> Ocaml_protoc_plugin.Writer.t
       val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t
     end = struct 
@@ -631,15 +631,15 @@ module Google = struct
         
       end
       let name' () = "Descriptor.google.protobuf.MethodOptions"
-      type t = { deprecated: bool; idempotency_level: IdempotencyLevel.t; uninterpreted_option: UninterpretedOption.t list; extensions: Ocaml_protoc_plugin.Extensions.t } 
+      type t = { deprecated: bool; idempotency_level: IdempotencyLevel.t; uninterpreted_option: UninterpretedOption.t list; extensions': Ocaml_protoc_plugin.Extensions.t } 
       let to_proto = 
-        let apply = fun ~f:f' { deprecated; idempotency_level; uninterpreted_option; extensions  } -> f' extensions deprecated idempotency_level uninterpreted_option in
+        let apply = fun ~f:f' { deprecated; idempotency_level; uninterpreted_option; extensions' } -> f' extensions' deprecated idempotency_level uninterpreted_option in
         let spec = Ocaml_protoc_plugin.Serialize.C.( basic (33, bool, proto2 (false)) ^:: basic (34, (enum IdempotencyLevel.to_int), proto2 (IdempotencyLevel.IDEMPOTENCY_UNKNOWN)) ^:: repeated (999, (message UninterpretedOption.to_proto), not_packed) ^:: nil ) in
         let serialize = Ocaml_protoc_plugin.Serialize.serialize [(1000, 536870912)] (spec) in
         fun t -> apply ~f:(serialize) t
       
       let from_proto = 
-        let constructor = fun extensions deprecated idempotency_level uninterpreted_option -> { deprecated; idempotency_level; uninterpreted_option; extensions } in
+        let constructor = fun extensions' deprecated idempotency_level uninterpreted_option -> { deprecated; idempotency_level; uninterpreted_option; extensions' } in
         let spec = Ocaml_protoc_plugin.Deserialize.C.( basic (33, bool, proto2 (false)) ^:: basic (34, (enum IdempotencyLevel.from_int), proto2 (IdempotencyLevel.IDEMPOTENCY_UNKNOWN)) ^:: repeated (999, (message UninterpretedOption.from_proto), not_packed) ^:: nil ) in
         let deserialize = Ocaml_protoc_plugin.Deserialize.deserialize [(1000, 536870912)] (spec) constructor in
         fun writer -> deserialize writer

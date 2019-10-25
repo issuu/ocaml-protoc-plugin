@@ -122,10 +122,19 @@ let rec serialize : type a. (a, Writer.t) compound_list -> Writer.t -> a = funct
       write writer v;
       cont writer
 
-let serialize _extension_ranges spec =
-  let serialize = serialize spec in
-  fun _extensions -> serialize (Writer.init ())
+let in_extension_ranges extension_ranges index =
+  List.exists ~f:(fun (start, end') -> index >= start && index <= end') extension_ranges
 
+
+let serialize extension_ranges spec =
+  let serialize = serialize spec in
+  fun extensions ->
+    let writer = Writer.init () in
+    List.iter ~f:(function
+        | (index, field) when in_extension_ranges extension_ranges index -> Writer.write_field writer index field
+        | _ -> ()
+      ) extensions;
+    serialize writer
 
 
 module Test = struct

@@ -210,18 +210,25 @@ module Map = struct
   ) l
 end
 
+let in_extension_ranges extension_ranges index =
+  List.exists ~f:(fun (start, end') -> index >= start && index <= end') extension_ranges
+
 (** Read fields - map based for nlogn lookup *)
-let read_fields_map reader_list =
+let read_fields_map extension_ranges reader_list =
+  let extensions = ref [] in
   let map = Map.of_alist_exn reader_list in
   let rec read reader =
     match Reader.has_more reader with
-    | false -> return ()
+    | false -> return (List.rev !extensions)
     | true -> begin
         match Reader.read_field reader with
         | Ok (index, field) -> begin
             match Map.find_opt index map with
             | Some f ->
               f field >>= fun () ->
+              read reader
+            | None when in_extension_ranges extension_ranges index ->
+              extensions := (index, field) :: !extensions;
               read reader
             | None ->
               read reader
@@ -232,26 +239,35 @@ let read_fields_map reader_list =
   read
 
 (** Read fields - array based for O(1) lookup *)
-let read_fields_array max_index reader_list =
-  let default _ = Ok () in
+let read_fields_array extension_ranges max_index reader_list =
+  let extensions = ref [] in
+  let default index field =
+    match in_extension_ranges extension_ranges index with
+    | true -> extensions := (index, field) :: !extensions;
+      return ()
+    | false ->
+      return ()
+  in
   let readers = Array.init (max_index + 1) ~f:(fun _ -> default) in
-  List.iter ~f:(fun (idx, f) -> readers.(idx) <- f) reader_list;
+  List.iter ~f:(fun (idx, f) -> readers.(idx) <- (fun _ -> f)) reader_list;
 
   let rec read reader =
     match Reader.has_more reader with
-    | false -> return ()
+    | false -> return (List.rev !extensions)
     | true -> begin
         match Reader.read_field reader with
         | Ok (index, field) when index <= max_index ->
-          readers.(index) field >>= fun () ->
+          readers.(index) index field >>= fun () ->
           read reader
-        | Ok _ -> return ()
+        | Ok (index, field) ->
+          default index field >>= fun () ->
+          read reader
         | Error err -> Error err
       end
   in
   read
 
-let deserialize: type constr t. (int * int) list -> (constr, t) compound_list -> ((int * Field.t) list -> constr) -> Reader.t -> t Result.t = fun _extension_ranges spec constr ->
+let deserialize: type constr t. (int * int) list -> (constr, t) compound_list -> ((int * Field.t) list -> constr) -> Reader.t -> t Result.t = fun extension_ranges spec constr ->
   let max_index =
     let rec inner: type a b. int -> (a, b) compound_list -> int = fun acc -> function
       | Cons (Oneof oneofs, rest) ->
@@ -286,8 +302,8 @@ let deserialize: type constr t. (int * int) list -> (constr, t) compound_list ->
      If passing fails, we start over and apply standard readfields.
   *)
   let read_fields = match max_index < 1024 with
-    | true -> read_fields_array max_index
-    | false -> read_fields_map
+    | true -> read_fields_array extension_ranges max_index
+    | false -> read_fields_map extension_ranges
   in
   let rec apply: type constr t. constr -> (constr, t) sentinal_list -> t Result.t = fun constr -> function
     | SCons (sentinal, rest) ->
@@ -304,6 +320,5 @@ let deserialize: type constr t. (int * int) list -> (constr, t) compound_list ->
   in
   fun reader ->
     let sentinals, reader_list = make_sentinals spec in
-    let constr = constr [] in
     (* Read the fields one by one, and apply the reader - if found *)
-    read_fields reader_list reader >>= fun () -> apply constr sentinals
+    read_fields reader_list reader >>= fun extensions -> apply (constr extensions) sentinals

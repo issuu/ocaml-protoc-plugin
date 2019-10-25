@@ -11,10 +11,10 @@ The main features include:
 * Support service descriptions
 * proto3 compliant
 * proto2 compliant
-* Support includes
-
-Not supporte yet:
-* extensions
+* Supports includes
+* Supports proto2 extensions
+* Buildin support for google well known types
+* Configurable annotations for all generated types
 
 
 ## Comparison with other OCaml protobuf handlers.
@@ -147,6 +147,47 @@ implement message sending -> receiving.
 
 The service function is a `string -> string` function which takes a
 handler working over the actual message types.
+
+## Proto2 extensions
+Proto2 extensions allows for messages to be exteded. For each
+extending field, the plugin create a module with a get and set
+function for reading/writing extension fields.
+
+Below is an example on how to set and get extension fields
+
+
+```protobuf
+// File ext.proto
+message Foo {
+  extensions 100 to 200;
+}
+extend Foo {
+  option uint32 bar = 128;
+  option string baz = 128;
+}
+```
+
+```ocaml
+(* test.ml *)
+
+(* Set extensions *)
+let foo = Foo.{ extensions' = Ocaml_protoc_plugin.Extensions.default }
+let foo_with_bar = Bar.set foo (Some 42) in
+let foo_with_baz = Bar.set foo (Some "Test String") in
+let foo_with_bar_baz = Bar.set foo_with_bar (Some "Test String") in
+
+(* Get extensions *)
+let open Ocaml_protoc_plugin.Result in
+Bar.get foo_with_bar >>= fun bar ->
+Bar.get foo_with_baz >>= fun baz ->
+assert (bar = Some 42);
+assert (baz = Some "Test String");
+Bar.get foo_with_bar_baz >>= fun bar' ->
+Bar.get foo_with_bar_baz >>= fun baz' ->
+assert (bar' = Some 42);
+assert (baz' = Some "Test String");
+()
+```
 
 ## Google Well know types
 Protobuf distributes a set of [*Well-Known

@@ -75,7 +75,7 @@ let emit_extension ~scope ~params field =
   in
   let module_name = Names.module_name name in
   let extendee_type = Scope.get_scoped_name scope ~postfix:"t" extendee in
-  let extendee_field = Scope.get_scoped_name scope ~postfix:"extensions" extendee in
+  let extendee_field = Scope.get_scoped_name scope ~postfix:"extensions'" extendee in
   (* Create the type of the type' / type_name *)
   let t =
     let params = Parameters.{params with singleton_record = false} in
@@ -92,8 +92,8 @@ let emit_extension ~scope ~params field =
 
   Code.emit implementation `None "let get extendee = Ocaml_protoc_plugin.Extensions.get %s (extendee.%s)" t.deserialize_spec extendee_field ;
   Code.emit implementation `Begin "let set extendee t =";
-  Code.emit implementation `None "let extensions = Ocaml_protoc_plugin.Extensions.set (%s) (extendee.%s) t in" t.serialize_spec extendee_field;
-  Code.emit implementation `None "{ extendee with %s = extensions }" extendee_field;
+  Code.emit implementation `None "let extensions' = Ocaml_protoc_plugin.Extensions.set (%s) (extendee.%s) t in" t.serialize_spec extendee_field;
+  Code.emit implementation `None "{ extendee with %s = extensions' }" extendee_field;
   Code.emit implementation `End "";
   { module_name; signature; implementation }
 
