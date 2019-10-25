@@ -5,6 +5,7 @@ package extensions;
 message Foo {
     optional uint32 bar = 1;
     extensions 100 to 199;
+    extensions 500 to max;
 }
 
 extend Foo {

@@ -3,7 +3,7 @@ open Parameters
 open Spec.Descriptor.Google.Protobuf
 
 module IntSet = Set.Make(struct type t = int let compare = compare end)
-
+let sprintf = Printf.sprintf
 let to_string_opt = function
   | Some s -> s
   | None -> "<None>"
@@ -144,13 +144,13 @@ let rec emit_nested_types ~syntax ~signature ~implementation ?(is_first = true) 
 let rec emit_message ~params ~syntax scope
     DescriptorProto.{ name; field = fields; extension = extensions;
                       nested_type = nested_types; enum_type = enum_types;
-                      extension_range; oneof_decl = oneof_decls; options;
+                      extension_range = extension_ranges; oneof_decl = oneof_decls; options;
                       reserved_range = _; reserved_name = _ } : module' =
 
   let signature = Code.init () in
   let implementation = Code.init () in
 
-  let has_extensions = not (extension_range = []) in
+  let has_extensions = not (extension_ranges = []) in
   (* Ignore empty modules *)
   let module_name, scope =
     match name with
@@ -169,7 +169,16 @@ let rec emit_message ~params ~syntax scope
     | Some _name ->
       let is_map_entry = is_map_entry options in
 
-      let extension_ranges = "[]" in
+      let extension_ranges =
+        extension_ranges
+        |> List.map ~f:(function
+            | DescriptorProto.ExtensionRange.{ start = Some start; end' = Some end'; _ } -> (start, end')
+            | _ -> failwith "Extension ranges must be defined"
+          )
+        |> List.map ~f:(fun (s, e) -> sprintf "(%d, %d)" s e)
+        |> String.concat ~sep:"; "
+        |> sprintf "[%s]"
+      in
       Code.emit signature `None "val name': unit -> string";
       Code.emit implementation `None "let name' () = \"%s\"" (Scope.get_current_scope scope);
       let Types.{ type'; constructor; apply; deserialize_spec; serialize_spec } =
@@ -263,7 +272,7 @@ let parse_proto_file ~params
   let out_name =
     Option.map ~f:(fun proto_file_name ->
         Filename.remove_extension proto_file_name
-        |> Printf.sprintf "%s.ml"
+        |> sprintf "%s.ml"
       ) name
   in
   out_name, implementation
