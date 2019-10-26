@@ -1,9 +1,10 @@
 - [ ] Add option to mangle names to snake_case
 - [ ] Do not add unit argument for oneof constructors referencing empty messages
 - [ ] Optimize happy path when deserializing
-- [ ] Add custom options in proto files to control ocaml code generation
 
 ## 2.1.0: Not released yet
+- [x] Add custom options, so options to ocaml_protoc_plugin can be
+      embedded in .proto files
 - [x] Support extensions
 - [x] Allow use of message name Ocaml\_protoc\_plugin
 

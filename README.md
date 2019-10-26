@@ -95,7 +95,9 @@ can generate the Ocaml code by running
   protoc --ocaml_out=. --ocaml_opt=<options> file.proto
 ```
 
-*Options* control the code generated.
+## Options
+
+*Options* control the code/types generated.
 
 | Option            | Description                                                     | Example                   | Default |
 | -----------       | ------------------------------                                  | -----------------------   | ------- |
@@ -126,7 +128,36 @@ passed with the `--ocaml_out` flag:
 protoc --plugin=protoc-gen-ocaml=../plugin/ocaml.exe --ocaml_out=annot=debug;[@@deriving show { with_path = false }, eq]:. <file>.proto
 ```
 
-### Using dune
+## Embedding options in .proto files
+All options can be embedded into a .proto file. Below is an example of
+this:
+
+```protobuf
+syntax = "proto3";
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.FileOptions {
+    bool ocaml_debug = 7967;
+    string ocaml_annot = 7968;
+    repeated string ocaml_opens = 7969;
+    bool ocaml_singleton_record = 7970;
+    bool ocaml_int64_as_int = 7971;
+    bool ocaml_int32_as_int = 7972;
+    bool ocaml_fixed_as_int = 7973;
+}
+
+// Set options as needed. If an option is not needed, then comment out the line.
+option (ocaml_annot) = "[@@deriving show { with_path = false }, eq]";
+option (ocaml_opens) = "!StdLabels";
+option (ocaml_singleton_record) = true;
+option (ocaml_int64_as_int) = true;
+option (ocaml_int32_as_int) = true;
+option (ocaml_fixed_as_int) = true;
+```
+Options set in a the file overrides those set on the command line.
+
+## Using dune
 Below is a dune rule for generating code for `test.proto`:
 ```
 (rule
