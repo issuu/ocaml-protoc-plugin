@@ -30,7 +30,7 @@ let emit_enum_type ~params
   Code.append signature t;
   Code.append implementation t;
   Code.emit signature `None "val to_int: t -> int";
-  Code.emit signature `None "val from_int: int -> t Ocaml_protoc_plugin.Result.t";
+  Code.emit signature `None "val from_int: int -> t Runtime'.Result.t";
   Code.emit implementation `Begin "let to_int = function";
   List.iter ~f:(fun v ->
       let open  EnumValueDescriptorProto in
@@ -57,10 +57,10 @@ let emit_enum_type ~params
 let emit_service_type scope ServiceDescriptorProto.{ name; method' = methods; _ } =
   let emit_method t MethodDescriptorProto.{ name; input_type; output_type; _} =
     Code.emit t `Begin "let %s = " (Names.field_name name);
-    Code.emit t `None "( (module %s : Ocaml_protoc_plugin.Service.Message with type t = %s ), "
+    Code.emit t `None "( (module %s : Runtime'.Service.Message with type t = %s ), "
       (Scope.get_scoped_name scope input_type)
       (Scope.get_scoped_name ~postfix:"t" scope input_type);
-    Code.emit t `End "  (module %s : Ocaml_protoc_plugin.Service.Message with type t = %s ) ) "
+    Code.emit t `End "  (module %s : Runtime'.Service.Message with type t = %s ) ) "
       (Scope.get_scoped_name scope output_type)
       (Scope.get_scoped_name ~postfix:"t" scope output_type)
   in
@@ -87,12 +87,12 @@ let emit_extension ~scope ~params field =
   Code.emit signature `None "type t = %s %s" t.type' params.annot;
   Code.emit signature `None "type extendee = %s" extendee_type;
   Code.append implementation signature;
-  Code.emit signature `None "val get: extendee -> t Ocaml_protoc_plugin.Result.t";
+  Code.emit signature `None "val get: extendee -> t Runtime'.Result.t";
   Code.emit signature `None "val set: extendee -> t -> extendee";
 
-  Code.emit implementation `None "let get extendee = Ocaml_protoc_plugin.Extensions.get %s (extendee.%s)" t.deserialize_spec extendee_field ;
+  Code.emit implementation `None "let get extendee = Runtime'.Extensions.get %s (extendee.%s)" t.deserialize_spec extendee_field ;
   Code.emit implementation `Begin "let set extendee t =";
-  Code.emit implementation `None "let extensions' = Ocaml_protoc_plugin.Extensions.set (%s) (extendee.%s) t in" t.serialize_spec extendee_field;
+  Code.emit implementation `None "let extensions' = Runtime'.Extensions.set (%s) (extendee.%s) t in" t.serialize_spec extendee_field;
   Code.emit implementation `None "{ extendee with %s = extensions' }" extendee_field;
   Code.emit implementation `End "";
   { module_name; signature; implementation }
@@ -185,8 +185,8 @@ let rec emit_message ~params ~syntax scope
         Types.make ~params ~syntax ~is_map_entry ~has_extensions ~scope ~fields oneof_decls
       in
       Code.emit signature `None "type t = %s %s" type' params.annot;
-      Code.emit signature `None "val to_proto: t -> Ocaml_protoc_plugin.Writer.t";
-      Code.emit signature `None "val from_proto: Ocaml_protoc_plugin.Reader.t -> t Ocaml_protoc_plugin.Result.t";
+      Code.emit signature `None "val to_proto: t -> Runtime'.Writer.t";
+      Code.emit signature `None "val from_proto: Runtime'.Reader.t -> t Runtime'.Result.t";
 
       Code.emit implementation `None "type t = %s %s" type' params.annot;
 
@@ -195,14 +195,14 @@ let rec emit_message ~params ~syntax scope
       Code.emit implementation `Begin "let%s to_proto = " rec_str;
       Code.emit implementation `None "let apply = %s in" apply;
       Code.emit implementation `None "let spec%s = %s in" apply_str serialize_spec;
-      Code.emit implementation `None "let serialize%s = Ocaml_protoc_plugin.Serialize.serialize %s (spec%s) in" apply_str extension_ranges apply_str;
+      Code.emit implementation `None "let serialize%s = Runtime'.Serialize.serialize %s (spec%s) in" apply_str extension_ranges apply_str;
       Code.emit implementation `None "fun t -> apply ~f:(serialize%s) t" apply_str;
       Code.emit implementation `End "";
 
       Code.emit implementation `Begin "let%s from_proto = " rec_str;
       Code.emit implementation `None "let constructor = %s in" constructor;
       Code.emit implementation `None "let spec%s = %s in" apply_str deserialize_spec;
-      Code.emit implementation `None "let deserialize%s = Ocaml_protoc_plugin.Deserialize.deserialize %s (spec%s) constructor in" apply_str extension_ranges apply_str;
+      Code.emit implementation `None "let deserialize%s = Runtime'.Deserialize.deserialize %s (spec%s) constructor in" apply_str extension_ranges apply_str;
       Code.emit implementation `None "fun writer -> deserialize%s writer" apply_str;
       Code.emit implementation `End "";
     | None -> ()
@@ -226,12 +226,11 @@ let rec wrap_packages ~params ~syntax scope message_type services = function
     Code.emit implementation `End "end";
     implementation
 
-let parse_proto_file ~params
-      scope
-      FileDescriptorProto.{ name; package; dependency = _; public_dependency = _;
-                        weak_dependency = _; message_type = message_types;
-                        enum_type = enum_types; service = services; extension;
-                        options = _; source_code_info = _; syntax; }
+let parse_proto_file ~params scope
+    FileDescriptorProto.{ name; package; dependency = _; public_dependency = _;
+                          weak_dependency = _; message_type = message_types;
+                          enum_type = enum_types; service = services; extension;
+                          options; source_code_info = _; syntax; }
   =
   let syntax = match syntax with
     | None | Some "proto2" -> `Proto2
@@ -245,6 +244,12 @@ let parse_proto_file ~params
   in
   let implementation = Code.init () in
 
+  (* Extend options with fileoptions. File options takes precedence *)
+  let params  = match options with
+    | Some options -> Parameters.parse_file_options params options
+    | None -> params
+  in
+
   Code.emit implementation `None "(************************************************)";
   Code.emit implementation `None "(*       AUTOGENERATED FILE - DO NOT EDIT!      *)";
   Code.emit implementation `None "(************************************************)";
@@ -255,14 +260,16 @@ let parse_proto_file ~params
   Code.emit implementation `None "   Source: %s" (to_string_opt name);
   Code.emit implementation `None "   Syntax: %s " (match syntax with `Proto2 -> "proto2" | `Proto3 -> "proto3");
   Code.emit implementation `None "   Parameters:";
-  Code.emit implementation `None "     annot='%s'" params.annot;
   Code.emit implementation `None "     debug=%b" params.debug;
+  Code.emit implementation `None "     annot='%s'" params.annot;
   Code.emit implementation `None "     opens=[%s]" (String.concat ~sep:"; " params.opens);
   Code.emit implementation `None "     int64_as_int=%b" params.int64_as_int;
   Code.emit implementation `None "     int32_as_int=%b" params.int32_as_int;
   Code.emit implementation `None "     fixed_as_int=%b" params.fixed_as_int;
   Code.emit implementation `None "     singleton_record=%b" params.singleton_record;
   Code.emit implementation `None "*)";
+  Code.emit implementation `None "";
+  Code.emit implementation `None "open Ocaml_protoc_plugin.Runtime";
   List.iter ~f:(Code.emit implementation `None "open %s") params.opens;
 
   wrap_packages ~params ~syntax scope message_type services (Option.value_map ~default:[] ~f:(String.split_on_char ~sep:'.') package)

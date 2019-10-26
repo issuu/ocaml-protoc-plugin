@@ -479,7 +479,7 @@ let make ~params ~syntax ~is_map_entry ~has_extensions ~scope ~fields oneof_decl
       let type' =
         List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" name type') ts
         |> String.concat ~sep:"; "
-        |> sprintf "{ %s; extensions': Ocaml_protoc_plugin.Extensions.t }"
+        |> sprintf "{ %s; extensions': Runtime'.Extensions.t }"
       in
       (* When deserializing, we expect extensions as the last argument *)
       (* When serializing, its the first argument *)
@@ -519,12 +519,12 @@ let make ~params ~syntax ~is_map_entry ~has_extensions ~scope ~fields oneof_decl
   let deserialize_spec =
     let spec = List.map ~f:(fun (c:c) -> c.deserialize_spec) ts in
     String.concat ~sep:" ^:: " (spec @ ["nil"])
-    |> sprintf "Ocaml_protoc_plugin.Deserialize.C.( %s )"
+    |> sprintf "Runtime'.Deserialize.C.( %s )"
   in
 
   let serialize_spec =
     let spec = List.map ~f:(fun (c:c) -> c.serialize_spec) ts in
     String.concat ~sep:" ^:: " (spec @ ["nil"])
-    |> sprintf "Ocaml_protoc_plugin.Serialize.C.( %s )"
+    |> sprintf "Runtime'.Serialize.C.( %s )"
   in
   { type'; constructor; apply; deserialize_spec; serialize_spec }

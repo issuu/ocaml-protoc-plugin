@@ -22,19 +22,25 @@ uninstall: build ## uninstall
 %: %.proto
 	protoc -I $(dir $<) $< -o/dev/stdout | protoc --decode google.protobuf.FileDescriptorSet /usr/include/google/protobuf/descriptor.proto
 
-src/plugin/spec/descriptor.ml: build
+src/spec/descriptor.ml: build
 	protoc "--plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe" \
 	  -I /usr/include \
 	  --ocaml_out=src/spec/. \
 	  /usr/include/google/protobuf/descriptor.proto
 
-src/plugin/spec/plugin.ml: build
+src/spec/plugin.ml: build
 	protoc "--plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe" \
 	  -I /usr/include \
 	  --ocaml_out=src/spec/. \
 	  /usr/include/google/protobuf/compiler/plugin.proto
+
+src/spec/options.ml: build
+	protoc "--plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe" \
+	  -I src/spec -I /usr/include \
+	  --ocaml_out=src/spec/. \
+	  src/spec/options.proto
 .PHONY: bootstrap
-bootstrap: src/plugin/spec/descriptor.ml src/plugin/spec/plugin.ml
+bootstrap: src/spec/descriptor.ml src/spec/plugin.ml src/spec/options.ml
 
 
 

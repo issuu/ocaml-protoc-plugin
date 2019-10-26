@@ -41,3 +41,16 @@ let parse parameters =
       | `Stmt "" -> param
       | _ -> failwith ("Unknown parameter: " ^ option)
     )
+
+
+let parse_file_options: t -> Spec.Descriptor.Google.Protobuf.FileOptions.t -> t = fun t options ->
+  let get ~name ~default v = Ocaml_protoc_plugin.Result.get ~msg:(Printf.sprintf "Could not parse option '%s'" name) v |> Option.value ~default in
+  let open Spec.Options in
+  let debug = Ocaml_debug.get options |> get ~name:"debug" ~default:t.debug in
+  let annot = Ocaml_annot.get options |> get ~name:"annot" ~default:t.annot in
+  let opens = Ocaml_opens.get options |> Ocaml_protoc_plugin.Result.get ~msg:"Could not parse option 'opens'" in
+  let int64_as_int = Ocaml_int64_as_int.get options |> get ~name:"int64_as_int" ~default:t.int64_as_int in
+  let int32_as_int = Ocaml_int32_as_int.get options |> get ~name:"int32_as_int" ~default:t.int32_as_int in
+  let fixed_as_int = Ocaml_fixed_as_int.get options |> get ~name:"fixed_as_int" ~default:t.fixed_as_int in
+  let singleton_record = Ocaml_singleton_record.get options |> get ~name:"singleton_record" ~default:t.fixed_as_int in
+  { debug; annot; opens; int64_as_int; int32_as_int; fixed_as_int; singleton_record }
