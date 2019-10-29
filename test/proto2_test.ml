@@ -1,7 +1,7 @@
 open Proto2
 let%expect_test _ =
   let module T = Proto2.Message in
-  let t = T.{enum = Some E.B; i = 0; j = 5; required = Required.{ a = Some 7 }; k = Some 5 } in
+  let t = T.{enum = Some E.B; i = 0; j = 5; required = Some 7; k = Some 5 } in
   Test_lib.test_encode (module T) t;
   [%expect {|
     enum: B
@@ -18,7 +18,7 @@ let%expect_test "Default read default values" =
     | Ok t -> print_endline (T.show t)
     | Error e  -> Printf.printf "Decode failure: %s\n" (Ocaml_protoc_plugin.Result.show_error e)
   in ();
-  [%expect {| { i = 4 } |}]
+  [%expect {| 4 |}]
 
 let%expect_test "Required fields must be in the message" =
   let module T = Proto2.Message1 in
@@ -30,7 +30,7 @@ let%expect_test "Required fields must be in the message" =
 
 let%expect_test "Only tramitting the required field" =
   let module T = Proto2.Message1_ in
-  let writer = T.to_proto T.{ req = 0; } in
+  let writer = T.to_proto 0 in
   let module T = Proto2.Message1 in
   let () = match T.from_proto (Ocaml_protoc_plugin.Writer.contents writer |> Ocaml_protoc_plugin.Reader.create) with
     | Ok t -> print_endline (T.show t)

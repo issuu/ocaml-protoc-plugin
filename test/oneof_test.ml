@@ -10,7 +10,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Oneof.Test2 in
-  let t = T.{ x = `F3 "test"} in
+  let t = `F3 "test" in
   Test_lib.test_encode (module T) t;
   [%expect {|
     f3: "test" |}]
@@ -35,14 +35,14 @@ let%expect_test "Default values in oneof" =
 
 let%expect_test "Single field oneof" =
   let module T = Oneof.Test4 in
-  let t = T.{ a = `I 5 } in
+  let t = 5 in
   Test_lib.test_encode (module T) t;
   [%expect {|
     i: 5 |}]
 
 let%expect_test "Single field oneof" =
   let module T = Oneof.Test5 in
-  let t = T.{ a = `E () } in
+  let t = () in
   Test_lib.test_encode (module T) t;
   [%expect {|
     e {

@@ -16,11 +16,11 @@ type module' = {
   implementation : Code.t;
 }
 
-let emit_enum_type ~params
+let emit_enum_type ~scope ~params
     EnumDescriptorProto.{name; value; options = _; reserved_range = _; reserved_name = _}
     : module'
   =
-  let module_name = Names.module_name name in
+  let module_name = Scope.get_message_name scope name in
   let signature = Code.init () in
   let implementation = Code.init () in
   let t = Code.init () in
@@ -79,7 +79,7 @@ let emit_extension ~scope ~params field =
   (* Create the type of the type' / type_name *)
   let t =
     let params = Parameters.{params with singleton_record = false} in
-    Types.make ~params ~syntax:`Proto2 ~scope ~is_map_entry:false ~has_extensions:false ~fields:[field] []
+    Types.make ~params ~syntax:`Proto2 ~is_cyclic:false ~scope ~is_map_entry:false ~has_extensions:false ~fields:[field] []
   in
 
   let signature = Code.init () in
@@ -97,15 +97,6 @@ let emit_extension ~scope ~params field =
   Code.emit implementation `None "{ extendee with %s = extensions' }" extendee_field;
   Code.emit implementation `End "";
   { module_name; signature; implementation }
-
-let is_recursive scope fields =
-  let open FieldDescriptorProto in
-  let open FieldDescriptorProto.Type in
-  (* Scope.get_scoped_name ~postfix:(prefix ^ "_proto") scope type_name *)
-  List.exists ~f:(function
-      | { type' = Some TYPE_MESSAGE; type_name = Some name; _ } -> Scope.in_current_scope scope name
-      | _ -> false) fields
-
 
 let is_map_entry = function
   | Some MessageOptions.{ map_entry = Some true; _ } -> true
@@ -156,11 +147,11 @@ let rec emit_message ~params ~syntax scope
   let module_name, scope =
     match name with
     | None -> "", scope
-    | Some _ ->
-      let module_name = Names.module_name name in
-      module_name, Scope.push scope module_name
+    | Some name ->
+      let module_name = Scope.get_message_name scope (Some name) in
+      module_name, Scope.push scope name
   in
-  List.map ~f:(emit_enum_type ~params) enum_types
+  List.map ~f:(emit_enum_type ~scope ~params) enum_types
   @ List.map ~f:(emit_message ~params ~syntax scope) nested_types
   @ List.map ~f:(emit_extension ~scope ~params) extensions
   |> emit_nested_types ~syntax ~signature ~implementation;
@@ -169,7 +160,7 @@ let rec emit_message ~params ~syntax scope
     match name with
     | Some _name ->
       let is_map_entry = is_map_entry options in
-
+      let is_cyclic = Scope.is_cyclic scope in
       let extension_ranges =
         extension_ranges
         |> List.map ~f:(function
@@ -183,28 +174,26 @@ let rec emit_message ~params ~syntax scope
       Code.emit signature `None "val name': unit -> string";
       Code.emit implementation `None "let name' () = \"%s\"" (Scope.get_current_scope scope);
       let Types.{ type'; constructor; apply; deserialize_spec; serialize_spec } =
-        Types.make ~params ~syntax ~is_map_entry ~has_extensions ~scope ~fields oneof_decls
+        Types.make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields oneof_decls
       in
       Code.emit signature `None "type t = %s %s" type' params.annot;
       Code.emit signature `None "val to_proto: t -> Runtime'.Writer.t";
       Code.emit signature `None "val from_proto: Runtime'.Reader.t -> t Runtime'.Result.t";
 
-      Code.emit implementation `None "type t = %s %s" type' params.annot;
+      Code.emit implementation `None "type t = %s%s" type' params.annot;
 
-      let (rec_str, apply_str) = match is_recursive scope fields with true -> " rec", " ()" | false -> "", "" in
-
-      Code.emit implementation `Begin "let%s to_proto = " rec_str;
+      Code.emit implementation `Begin "let to_proto =";
       Code.emit implementation `None "let apply = %s in" apply;
-      Code.emit implementation `None "let spec%s = %s in" apply_str serialize_spec;
-      Code.emit implementation `None "let serialize%s = Runtime'.Serialize.serialize %s (spec%s) in" apply_str extension_ranges apply_str;
-      Code.emit implementation `None "fun t -> apply ~f:(serialize%s) t" apply_str;
+      Code.emit implementation `None "let spec = %s in" serialize_spec;
+      Code.emit implementation `None "let serialize = Runtime'.Serialize.serialize %s (spec) in" extension_ranges;
+      Code.emit implementation `None "fun t -> apply ~f:serialize t";
       Code.emit implementation `End "";
 
-      Code.emit implementation `Begin "let%s from_proto = " rec_str;
+      Code.emit implementation `Begin "let from_proto =";
       Code.emit implementation `None "let constructor = %s in" constructor;
-      Code.emit implementation `None "let spec%s = %s in" apply_str deserialize_spec;
-      Code.emit implementation `None "let deserialize%s = Runtime'.Deserialize.deserialize %s (spec%s) constructor in" apply_str extension_ranges apply_str;
-      Code.emit implementation `None "fun writer -> deserialize%s writer" apply_str;
+      Code.emit implementation `None "let spec = %s in" deserialize_spec;
+      Code.emit implementation `None "let deserialize = Runtime'.Deserialize.deserialize %s spec constructor in" extension_ranges;
+      Code.emit implementation `None "fun writer -> deserialize writer";
       Code.emit implementation `End "";
     | None -> ()
   in

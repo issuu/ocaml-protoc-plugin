@@ -455,7 +455,7 @@ let split_oneof_decl fields oneof_decls =
   inner [] oneof_decls fields
 
 (* Let create everything *)
-let make ~params ~syntax ~is_map_entry ~has_extensions ~scope ~fields oneof_decls =
+let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields oneof_decls =
   let ts =
     split_oneof_decl fields oneof_decls
     |> List.map ~f:(function
@@ -466,7 +466,7 @@ let make ~params ~syntax ~is_map_entry ~has_extensions ~scope ~fields oneof_decl
   let (type', constructor, apply) =
     match ts with
     | [] when not has_extensions-> "unit", "fun _extension -> ()", "fun ~f () -> f []"
-    | [ { type'; _ } ] when params.singleton_record = false && not has_extensions ->
+    | [ { type'; _ } ] when params.singleton_record = false && not has_extensions && not is_cyclic ->
       type', "fun _extensions a -> a", "fun ~f a -> f [] a"
     | [_; _] when is_map_entry ->
       let type' =

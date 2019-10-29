@@ -1,14 +1,15 @@
 open Recursive
 let%expect_test _ =
   let module T = Recursive.Message in
-  let t = T.{ m = Some { m = Some { m = None } }} in
+  let t = T.{ m = Some T.Message1.{ m1 = Some T.{ m = Some T.Message1.{ m1 = None } } } }  in
   Test_lib.test_encode (module T) t;
   [%expect {|
     m {
-      m {
+      m1 {
+        m {
+        }
       }
     } |}]
-
 
 let%expect_test _ =
   let module T1 = Recursive.Mutual1 in
@@ -22,7 +23,6 @@ let%expect_test _ =
         }
       }
     } |}]
-
 
 let%expect_test _ =
   let module T = Recursive.StdTree in

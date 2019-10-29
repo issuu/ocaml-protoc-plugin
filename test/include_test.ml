@@ -1,12 +1,11 @@
 open Include
-open Package
 module Enum = Enum.Enum_test
 let%expect_test _ =
   let module T = Include.I in
   let t = T.{ enum = Enum.Message.E.B;
-              m = Some (Package.A.B.M.{ i = 3; });
-              o = Some (Enum.Outside.{ enum = Enum.E1.C; });
-              c = Some (Include.X.Inner.{ i = 7; });
+              m = Some 3;
+              o = Some Enum.E1.C;
+              c = Some 7;
             } in
   Test_lib.test_encode (module T) t;
   [%expect {|
@@ -24,7 +23,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Include.Z in
-  let t = T.{ n = Some Included.Include.N.{ e = E.B }} in
+  let t = Some Included.Include.N.E.B  in
   Test_lib.test_encode (module T) t;
   [%expect {|
     n {

@@ -1,7 +1,7 @@
 open Map
 let%expect_test _ =
   let module T = Map.Test in
-  let t = T.{ m = [ 1, "1"; 2, "2"; 3, "3" ] } in
+  let t = [ 1, "1"; 2, "2"; 3, "3" ] in
   Test_lib.test_encode (module T) t;
   [%expect {|
     m {
@@ -52,10 +52,10 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Map.Map_message in
-  let t = T.{ m = [ 1, Some (T.Inner.{ i = 1});
-                    2, Some (T.Inner.{ i = 1});
-                    3, Some (T.Inner.{ i = 1});
-                    4, Some (T.Inner.{ i = 1}); ] }
+  let t = [ 1, Some 1;
+            2, Some 1;
+            3, Some 1;
+            4, Some 1; ]
   in
   Test_lib.test_encode (module T) t;
   [%expect {|

@@ -7,18 +7,13 @@ let service reader =
     s_deser reader
     |> (function Ok v -> v | Error _ -> failwith "Error")
   in
-  let s =
-    req.Service.Request.i
-    |> string_of_int
-  in
-  Service.Response.{ s }
-  |> s_ser
+  string_of_int req |> s_ser
 
 let call i =
   let (c_ser, c_deser) =
     Ocaml_protoc_plugin.Service.make_client_functions Service.String_of_int.call
   in
-  let req = Service.Request.{ i } in
+  let req = i in
   req
   |> c_ser
   |> Ocaml_protoc_plugin.Writer.contents
@@ -27,7 +22,7 @@ let call i =
   |> Ocaml_protoc_plugin.Writer.contents
   |> Ocaml_protoc_plugin.Reader.create
   |> c_deser
-  |> (function Ok r -> r.Service.Response.s | Error _ -> failwith "Error")
+  |> (function Ok r -> r | Error _ -> failwith "Error")
 
 let%expect_test _ =
   Caml.Printf.printf "%d -> \"%s\"\n" 0 (call 0);

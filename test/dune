@@ -25,7 +25,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=singleton_record=true;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets int_types_native.ml)
@@ -35,7 +35,7 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=singleton_record=true;use_int32;use_int64;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=int32_as_int=false;int64_as_int=false;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets singleton_record.ml oneof2.ml)
@@ -45,4 +45,4 @@
  (action
   (run protoc -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=singleton_record=false;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq]:." %{proto})))

@@ -31,10 +31,10 @@ let test_unsigned32 (type t) ~(create : Int32.t -> t) (module T : Test_lib.T wit
 
 let%expect_test _ =
   let module T = Int_types_native.SInt64 in
-  let create i = Int_types_native.SInt64.{i} in
+  let create i = i in
   test_signed64 ~create (module T);
   [%expect {|
-    Test Int_types_native.int_types_native.SInt64
+    Test int_types_native.int_types_native.SInt64
     i: -1073741823
     i: -2
     i: -1
@@ -44,10 +44,10 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Int_types_native.SInt32 in
-  let create i = Int_types_native.SInt32.{i} in
+  let create i = i in
   test_signed32 ~create (module T);
   [%expect {|
-    Test Int_types_native.int_types_native.SInt32
+    Test int_types_native.int_types_native.SInt32
     i: -1073741823
     i: -2
     i: -1
@@ -57,10 +57,10 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Int_types_native.Int64 in
-  let create i = Int_types_native.Int64.{i} in
+  let create i = i in
   test_signed64 ~create (module T);
   [%expect {|
-    Test Int_types_native.int_types_native.Int64
+    Test int_types_native.int_types_native.Int64
     i: -1073741823
     i: -2
     i: -1
@@ -70,11 +70,11 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Int_types_native.Int32 in
-  let create i = Int_types_native.Int32.{i} in
+  let create i = i in
   test_signed32 ~create (module T);
   [%expect
     {|
-    Test Int_types_native.int_types_native.Int32
+    Test int_types_native.int_types_native.Int32
     i: -1073741823
     i: -2
     i: -1
@@ -84,20 +84,20 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Int_types_native.UInt64 in
-  let create i = Int_types_native.UInt64.{i} in
+  let create i = i in
   test_unsigned64 ~create (module T);
   [%expect {|
-    Test Int_types_native.int_types_native.UInt64
+    Test int_types_native.int_types_native.UInt64
     i: 1
     i: 2
     i: 2147483647 |}]
 
 let%expect_test _ =
   let module T = Int_types_native.UInt32 in
-  let create i = Int_types_native.UInt32.{i} in
+  let create i = i in
   test_unsigned32 ~create (module T);
   [%expect {|
-    Test Int_types_native.int_types_native.UInt32
+    Test int_types_native.int_types_native.UInt32
     i: 1
     i: 2
     i: 2147483647 |}]

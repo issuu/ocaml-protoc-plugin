@@ -1,8 +1,8 @@
 open Message
 let%expect_test _ =
   let module T = Message.Message in
-  let submessage = Message.Submessage.{i = 3} in
-  let t = T.{m = Some submessage} in
+  let submessage = 3 in
+  let t = Some submessage in
   Test_lib.test_encode  (module T) t;
   [%expect {|
     m {
@@ -19,8 +19,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Message.Message in
-  let submessage = Message.Submessage.{i = 0} in
-  let t = T.{m = Some submessage} in
+  let t = Some 0 in
   Test_lib.test_encode (module T) t;
   [%expect {|
     m {
@@ -28,8 +27,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Message.Message in
-  let submessage = Message.Submessage.{i = 1} in
-  let t = T.{m = Some submessage} in
+  let t = Some 1 in
   Test_lib.test_encode (module T) t;
   [%expect {|
     m {
@@ -38,7 +36,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Message.Message in
-  let t = T.{m = None} in
+  let t = None in
   Test_lib.test_encode (module T) t;
   [%expect {| |}]
 
@@ -51,7 +49,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Message.Message2 in
-  let submessage = Message.Submessage.{i = 0} in
+  let submessage = 0 in
   let t = T.{i = 2; m = Some submessage} in
   Test_lib.test_encode (module T) t;
   [%expect {|

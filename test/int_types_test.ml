@@ -17,10 +17,10 @@ let test_unsigned (type t) ~(create : int -> t) (module T : Test_lib.T with type
 
 let%expect_test _ =
   let module T = Int_types.SInt64 in
-  let create i = Int_types.SInt64.{i} in
+  let create i = i in
   test_signed ~create (module T);
   [%expect {|
-    Test Int_types.int_types.SInt64
+    Test int_types.int_types.SInt64
     i: -1073741823
     i: -2
     i: -1
@@ -30,10 +30,10 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Int_types.SInt32 in
-  let create i = Int_types.SInt32.{i} in
+  let create i = i in
   test_signed ~create (module T);
   [%expect {|
-    Test Int_types.int_types.SInt32
+    Test int_types.int_types.SInt32
     i: -1073741823
     i: -2
     i: -1
@@ -43,10 +43,10 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Int_types.Int64 in
-  let create i = Int_types.Int64.{i} in
+  let create i = i in
   test_signed ~create (module T);
   [%expect {|
-    Test Int_types.int_types.Int64
+    Test int_types.int_types.Int64
     i: -1073741823
     i: -2
     i: -1
@@ -56,11 +56,11 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Int_types.Int32 in
-  let create i = Int_types.Int32.{i} in
+  let create i = i in
   test_signed ~create (module T);
   [%expect
     {|
-    Test Int_types.int_types.Int32
+    Test int_types.int_types.Int32
     i: -1073741823
     i: -2
     i: -1
@@ -70,20 +70,20 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Int_types.UInt64 in
-  let create i = Int_types.UInt64.{i} in
+  let create i = i in
   test_unsigned ~create (module T);
   [%expect {|
-    Test Int_types.int_types.UInt64
+    Test int_types.int_types.UInt64
     i: 1
     i: 2
     i: 2147483647 |}]
 
 let%expect_test _ =
   let module T = Int_types.UInt32 in
-  let create i = Int_types.UInt32.{i} in
+  let create i = i in
   test_unsigned ~create (module T);
   [%expect {|
-    Test Int_types.int_types.UInt32
+    Test int_types.int_types.UInt32
     i: 1
     i: 2
     i: 2147483647 |}]

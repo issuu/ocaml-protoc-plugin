@@ -18,7 +18,7 @@ message Tree {
 
 message Message {
   message Message1 {
-    Message m = 1;
+    Message m1 = 10;
   }
   Message1 m = 1;
 }
@@ -26,6 +26,7 @@ message Message {
 message Mutual1 {
   Mutual2 m2 = 7;
 }
+
 message Mutual2 {
   Mutual1 m1 = 17;
 }

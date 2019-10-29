@@ -3,7 +3,9 @@
 - [ ] Optimize happy path when deserializing
 
 ## 2.1.0: Not released yet
-- [x] Add custom options, so options to ocaml_protoc_plugin can be
+- [x] Fix mutually recursibe types when singleton record is false
+- [x] Fix bug in nested cursive types referencing wrong types
+- [x] Add custom options, so options to ocaml\_protoc\_plugin can be
       embedded in .proto files
 - [x] Support extensions
 - [x] Allow use of message name Ocaml\_protoc\_plugin
