@@ -8,7 +8,6 @@ open Spec.Descriptor.Google.Protobuf
 
 type element = { module_name: string; ocaml_name: string; cyclic: bool; recursive: bool }
 type t = { module_name: string;
-           (* We cannot reference with the package name, damnit. *)
            package_depth: int;
            proto_path: string;
            type_db: element StringMap.t }
@@ -26,32 +25,32 @@ let module_name_of_proto file =
   (* Strip the path *)
   Filename.chop_extension file |> Filename.basename |> String.capitalize_ascii
 
-let ocaml_name name =
-  match name.[0] with
-  | '_' -> "P" ^ name ^ "'"
-  | _ -> String.capitalize_ascii name
-
 let make_type_map: FileDescriptorProto.t list -> element StringMap.t = fun descriptions ->
   let make_proto_name path name =
     path ^ name
   in
+
   let make_ocaml_name name_set path ~f name =
-    let name = path ^ (f name) in
-    let ocaml_name = match StringSet.mem name name_set with
-      | true -> name ^ "'"
+    let name = match path with
+      | path -> path ^ (f name)
+    in
+    let rec inner name =
+      match StringSet.mem name name_set with
+      | true -> inner (name ^ "'")
       | false -> name
     in
+    let ocaml_name = inner name in
     (StringSet.add ocaml_name name_set, ocaml_name)
   in
-
-  let map_enum ~name_set ~proto_path ~ocaml_path EnumDescriptorProto.{ name; _ } =
+  (* Need to handle extensions, as they will also get a name *)
+  let map_enum ~ocaml_name ~name_set ~proto_path ~ocaml_path EnumDescriptorProto.{ name; _ } =
     let name = Option.value_exn ~message:"All enums must have a name" name in
     let proto_name = make_proto_name proto_path name in
     let name_set, ocaml_name = make_ocaml_name name_set ocaml_path ~f:ocaml_name name in
     (name_set, [proto_name, ocaml_name, []])
   in
 
-  let rec map_message ~name_set ~proto_path ~ocaml_path ~name ~fields ~messages ~enums =
+  let rec map_message ~ocaml_name ~name_set ~proto_path ~ocaml_path ~name ~fields ~messages ~enums =
     let name_set, proto_path, ocaml_path, elem = match name with
       | Some name ->
         let proto_name = make_proto_name proto_path name in
@@ -69,34 +68,49 @@ let make_type_map: FileDescriptorProto.t list -> element StringMap.t = fun descr
     in
     let (name_set, types) =
       List.fold_left ~init:(name_set, elem) ~f:(fun (name_set, acc) DescriptorProto.{ name; field; nested_type; enum_type; _} ->
-          let (name_map, types) = map_message ~name_set ~proto_path ~ocaml_path ~name ~fields:field ~messages:nested_type ~enums:enum_type in
+          let (name_map, types) = map_message ~ocaml_name ~name_set ~proto_path ~ocaml_path ~name ~fields:field ~messages:nested_type ~enums:enum_type in
           (name_map, List.rev_append acc types)
         ) messages
     in
     let (name_map, types) =
       List.fold_left ~init:(name_set, types) ~f:(fun (name_set, acc) descriptor ->
-          let (name_map, types) = map_enum ~name_set ~proto_path ~ocaml_path descriptor in
+          let (name_map, types) = map_enum ~ocaml_name ~name_set ~proto_path ~ocaml_path descriptor in
           (name_map, List.rev_append acc types)
         ) enums
     in
     (name_map, types)
   in
 
-  let make_map FileDescriptorProto.{ name; message_type = messages; package; enum_type = enums; _ } =
+  (* Based on the options in the FileDescriptorProto, we select the proto_name -> ocaml_name function *)
+  let make_map FileDescriptorProto.{ name; message_type = messages; package; enum_type = enums; options; _ } =
+    let mk_ocaml_name =
+      let use_snakecase =
+        Option.bind ~f:(fun option ->
+            let use_snakecase =
+              Spec.Options.Ocaml_options.get option
+              |> Ocaml_protoc_plugin.Result.get ~msg:"Could not parse ocaml options"
+            in
+            use_snakecase) options
+        |> Option.value ~default:false
+      in
+      match use_snakecase with
+      | false -> Names.module_name
+      | true -> fun name -> Names.to_snake_case name |> Names.module_name
+    in
     let file_name =
       Option.value_exn ~message:"All files must have a name" name
       |> module_name_of_proto
     in
     let proto_path = Option.value_map ~default:"." ~f:(fun p -> "." ^ p ^ ".") package in
-    let ocaml_path = Option.value_map ~default:"." ~f:(fun p ->
+    let ocaml_path = Option.value_map ~default:"" ~f:(fun p ->
         String.split_on_char ~sep:'.' p
-        |> List.map ~f:ocaml_name
+        |> List.map ~f:mk_ocaml_name
         |> String.concat ~sep:"."
         |> Printf.sprintf "%s."
       ) package
     in
     let name_set = StringSet.singleton ocaml_path in
-    let (_name_map, types) = map_message ~name_set ~proto_path ~ocaml_path ~name:None ~fields:[] ~messages ~enums in
+    let (_name_map, types) = map_message ~ocaml_name:mk_ocaml_name ~name_set ~proto_path ~ocaml_path ~name:None ~fields:[] ~messages ~enums in
     List.fold_left ~init:StringMap.empty ~f:(fun acc (proto_name, ocaml_name, references) ->
         StringMap.add ~key:proto_name ~data:(ocaml_name, file_name, references) acc
       ) types
@@ -138,7 +152,6 @@ let init files =
 let for_descriptor t FileDescriptorProto.{ name; package; _ } =
   let name = Option.value_exn ~message:"All file descriptors must have a name" name in
   let module_name = module_name_of_proto name in
-  (* let proto_path = Option.value_map ~default:"" ~f:(Printf.sprintf ".%s") package in *)
   let package_depth = Option.value_map ~default:0 ~f:(fun p -> String.split_on_char ~sep:'.' p |> List.length) package in
   { t with package_depth; module_name; proto_path = ""}
 
@@ -152,7 +165,7 @@ let rec drop n = function
 let get_scoped_name ?postfix t name =
   let name = Option.value_exn ~message:"Does not contain a name" name in
 
-  let { ocaml_name;  module_name; _ } = StringMap.find name t.type_db in
+  let { ocaml_name; module_name; _ } = StringMap.find name t.type_db in
   let type_name = match String.equal module_name t.module_name with
     | true ->
       ocaml_name
@@ -178,9 +191,6 @@ let get_message_name t name =
 let get_current_scope t =
   let { module_name; ocaml_name = _; _ } = StringMap.find t.proto_path t.type_db in
   (String.lowercase_ascii module_name) ^ t.proto_path
-
-let _in_current_scope t name =
-  String.equal (get_scoped_name t (Some name)) ""
 
 let is_cyclic t =
   let { cyclic; _ } = StringMap.find t.proto_path t.type_db in

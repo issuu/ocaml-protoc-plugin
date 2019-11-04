@@ -18,87 +18,36 @@
 *)
 
 open Ocaml_protoc_plugin.Runtime
-module rec Ocaml_debug : sig
-  type t = bool option 
-  val get: Descriptor.Google.Protobuf.FileOptions.t -> bool option Runtime'.Result.t
-  val set: Descriptor.Google.Protobuf.FileOptions.t -> bool option -> Descriptor.Google.Protobuf.FileOptions.t
+module rec Options : sig
+  val name': unit -> string
+  type t = bool 
+  val to_proto: t -> Runtime'.Writer.t
+  val from_proto: Runtime'.Reader.t -> t Runtime'.Result.t
 end = struct 
-  type t = bool option 
-  let get extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( basic_opt (7967, bool) ^:: nil ) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions')
-  let set extendee t =
-    let extensions' = Runtime'.Extensions.set (Runtime'.Serialize.C.( basic_opt (7967, bool) ^:: nil )) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions') t in
-    { extendee with Descriptor.Google.Protobuf.FileOptions.extensions' = extensions' }
+  let name' () = "options.Options"
+  type t = bool
+  let to_proto =
+    let apply = fun ~f a -> f [] a in
+    let spec = Runtime'.Serialize.C.( basic (1, bool, proto3) ^:: nil ) in
+    let serialize = Runtime'.Serialize.serialize [] (spec) in
+    fun t -> apply ~f:serialize t
+  
+  let from_proto =
+    let constructor = fun _extensions a -> a in
+    let spec = Runtime'.Deserialize.C.( basic (1, bool, proto3) ^:: nil ) in
+    let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
+    fun writer -> deserialize writer
   
 end
-and Ocaml_annot : sig
-  type t = string option 
-  val get: Descriptor.Google.Protobuf.FileOptions.t -> string option Runtime'.Result.t
-  val set: Descriptor.Google.Protobuf.FileOptions.t -> string option -> Descriptor.Google.Protobuf.FileOptions.t
+and Ocaml_options : sig
+  type t = Options.t option 
+  val get: Descriptor.Google.Protobuf.FileOptions.t -> Options.t option Runtime'.Result.t
+  val set: Descriptor.Google.Protobuf.FileOptions.t -> Options.t option -> Descriptor.Google.Protobuf.FileOptions.t
 end = struct 
-  type t = string option 
-  let get extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( basic_opt (7968, string) ^:: nil ) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions')
+  type t = Options.t option 
+  let get extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( basic_opt (1074, (message Options.from_proto)) ^:: nil ) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions')
   let set extendee t =
-    let extensions' = Runtime'.Extensions.set (Runtime'.Serialize.C.( basic_opt (7968, string) ^:: nil )) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions') t in
-    { extendee with Descriptor.Google.Protobuf.FileOptions.extensions' = extensions' }
-  
-end
-and Ocaml_opens : sig
-  type t = string list 
-  val get: Descriptor.Google.Protobuf.FileOptions.t -> string list Runtime'.Result.t
-  val set: Descriptor.Google.Protobuf.FileOptions.t -> string list -> Descriptor.Google.Protobuf.FileOptions.t
-end = struct 
-  type t = string list 
-  let get extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( repeated (7969, string, not_packed) ^:: nil ) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions')
-  let set extendee t =
-    let extensions' = Runtime'.Extensions.set (Runtime'.Serialize.C.( repeated (7969, string, not_packed) ^:: nil )) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions') t in
-    { extendee with Descriptor.Google.Protobuf.FileOptions.extensions' = extensions' }
-  
-end
-and Ocaml_singleton_record : sig
-  type t = bool option 
-  val get: Descriptor.Google.Protobuf.FileOptions.t -> bool option Runtime'.Result.t
-  val set: Descriptor.Google.Protobuf.FileOptions.t -> bool option -> Descriptor.Google.Protobuf.FileOptions.t
-end = struct 
-  type t = bool option 
-  let get extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( basic_opt (7970, bool) ^:: nil ) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions')
-  let set extendee t =
-    let extensions' = Runtime'.Extensions.set (Runtime'.Serialize.C.( basic_opt (7970, bool) ^:: nil )) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions') t in
-    { extendee with Descriptor.Google.Protobuf.FileOptions.extensions' = extensions' }
-  
-end
-and Ocaml_int64_as_int : sig
-  type t = bool option 
-  val get: Descriptor.Google.Protobuf.FileOptions.t -> bool option Runtime'.Result.t
-  val set: Descriptor.Google.Protobuf.FileOptions.t -> bool option -> Descriptor.Google.Protobuf.FileOptions.t
-end = struct 
-  type t = bool option 
-  let get extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( basic_opt (7971, bool) ^:: nil ) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions')
-  let set extendee t =
-    let extensions' = Runtime'.Extensions.set (Runtime'.Serialize.C.( basic_opt (7971, bool) ^:: nil )) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions') t in
-    { extendee with Descriptor.Google.Protobuf.FileOptions.extensions' = extensions' }
-  
-end
-and Ocaml_int32_as_int : sig
-  type t = bool option 
-  val get: Descriptor.Google.Protobuf.FileOptions.t -> bool option Runtime'.Result.t
-  val set: Descriptor.Google.Protobuf.FileOptions.t -> bool option -> Descriptor.Google.Protobuf.FileOptions.t
-end = struct 
-  type t = bool option 
-  let get extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( basic_opt (7972, bool) ^:: nil ) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions')
-  let set extendee t =
-    let extensions' = Runtime'.Extensions.set (Runtime'.Serialize.C.( basic_opt (7972, bool) ^:: nil )) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions') t in
-    { extendee with Descriptor.Google.Protobuf.FileOptions.extensions' = extensions' }
-  
-end
-and Ocaml_fixed_as_int : sig
-  type t = bool option 
-  val get: Descriptor.Google.Protobuf.FileOptions.t -> bool option Runtime'.Result.t
-  val set: Descriptor.Google.Protobuf.FileOptions.t -> bool option -> Descriptor.Google.Protobuf.FileOptions.t
-end = struct 
-  type t = bool option 
-  let get extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( basic_opt (7973, bool) ^:: nil ) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions')
-  let set extendee t =
-    let extensions' = Runtime'.Extensions.set (Runtime'.Serialize.C.( basic_opt (7973, bool) ^:: nil )) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions') t in
+    let extensions' = Runtime'.Extensions.set (Runtime'.Serialize.C.( basic_opt (1074, (message Options.to_proto)) ^:: nil )) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions') t in
     { extendee with Descriptor.Google.Protobuf.FileOptions.extensions' = extensions' }
   
 end

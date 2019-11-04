@@ -20,3 +20,7 @@ let map ~f = function
 let iter ~f = function
   | Some v -> f v
   | None -> ()
+
+let bind ~f = function
+  | None -> None
+  | Some v -> f v

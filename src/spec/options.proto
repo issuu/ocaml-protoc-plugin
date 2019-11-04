@@ -1,13 +1,10 @@
 syntax = "proto3";
 
 import "google/protobuf/descriptor.proto";
+message Options {
+    bool snakecase = 1;
+}
 
 extend google.protobuf.FileOptions {
-    bool ocaml_debug = 7967;
-    string ocaml_annot = 7968;
-    repeated string ocaml_opens = 7969;
-    bool ocaml_singleton_record = 7970;
-    bool ocaml_int64_as_int = 7971;
-    bool ocaml_int32_as_int = 7972;
-    bool ocaml_fixed_as_int = 7973;
+    Options ocaml_options = 1074;
 }
