@@ -53,3 +53,9 @@ message _enum {
 message equal {
   int64 equal = 1;
 }
+
+message enum_clash {
+  int64 name_one = 1;
+  oneof NameOne { int64 name_two = 2; }
+  oneof Name_one { int64 name_three = 3; }
+}

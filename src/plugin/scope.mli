@@ -17,6 +17,3 @@ val get_current_scope : t -> string
 
 (** Tell if the type pointed to by the current scope is part of a cycle. *)
 val is_cyclic: t -> bool
-
-(** Tell if the current scopt points to a type with is recursive *)
-val is_recursive: t -> bool
