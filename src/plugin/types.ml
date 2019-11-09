@@ -242,10 +242,7 @@ let string_of_packed = function
   | Packed -> "packed"
   | Not_packed -> "not_packed"
 
-let c_of_compound: type a. string -> a compound -> c = fun name ->
-  let name = Names.field_name (Some name) in
-  function
-
+let c_of_compound: type a. string -> a compound -> c = fun name -> function
   | Basic (index, spec, proto_type) ->
     let deserialize_spec = sprintf "basic (%d, %s, %s)" index (string_of_spec `Deserialize spec) (string_of_proto_type spec proto_type) in
     let serialize_spec = sprintf "basic (%d, %s, %s)" index (string_of_spec `Serialize spec) (string_of_proto_type spec proto_type) in
@@ -423,7 +420,7 @@ let c_of_oneof ~params ~syntax:_ ~scope OneofDescriptorProto.{ name; _ } fields 
       Oneof (type', deser_oneofs, ser_oneof, None)
   in
 
-  c_of_compound (Names.field_name name) oneof
+  c_of_compound (Option.value_exn name) oneof
 
 
 (** Return a list of plain fields + a list of fields per oneof_decl *)
@@ -477,7 +474,7 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
       type', "fun _extensions a b -> (a, b)", "fun ~f (a, b) -> f [] a b"
     | ts when has_extensions ->
       let type' =
-        List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" name type') ts
+        List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" (Scope.get_field_name scope name) type') ts
         |> String.concat ~sep:"; "
         |> sprintf "{ %s; extensions': Runtime'.Extensions.t }"
       in
@@ -485,7 +482,7 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
       (* When serializing, its the first argument *)
       let constructor, apply =
         let field_names =
-          List.map ~f:(fun { name; _} -> name) ts
+          List.map ~f:(fun { name; _} -> Scope.get_field_name scope name) ts
         in
 
         let args = String.concat ~sep:" " field_names in
@@ -497,14 +494,13 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
       (type', constructor, apply)
     | ts ->
       let type' =
-        List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" name type') ts
+        List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" (Scope.get_field_name scope name) type') ts
         |> String.concat ~sep:"; "
         |> sprintf "{ %s }"
       in
-      (* *)
       let constructor, apply =
         let field_names =
-          List.map ~f:(fun { name; _} -> name) ts
+          List.map ~f:(fun { name; _} -> Scope.get_field_name scope name) ts
         in
 
         let args = String.concat ~sep:" " field_names in

@@ -12,6 +12,9 @@ val push : t -> string -> t
 (** Get the ocaml name of the given proto type name, based on the current scope *)
 val get_scoped_name : ?postfix:string -> t -> string option -> string
 
+(** Get the ocaml name for a field in the current scope *)
+val get_field_name : t -> string -> string
+
 (** Get the type of the curren scope *)
 val get_current_scope : t -> string
 

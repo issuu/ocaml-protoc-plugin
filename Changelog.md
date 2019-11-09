@@ -3,7 +3,7 @@
 
 ## 2.1.0: Not released yet
 - [ ] Add option to mangle names (modules, fields and enums) to snake_case
-- [ ] Fix nameclash nameclash with oneof names
+- [x] Fix nameclash nameclash with oneof names
 - [x] Fix mutually recursibe types when singleton record is false
 - [x] Fix bug in nested cursive types referencing wrong types
 - [x] Add custom options, so options to ocaml\_protoc\_plugin can be
