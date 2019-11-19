@@ -30,7 +30,7 @@ let emit_enum_type ~scope ~params
   Code.append signature t;
   Code.append implementation t;
   Code.emit signature `None "val to_int: t -> int";
-  Code.emit signature `None "val from_int: int -> t Runtime'.Result.t";
+  Code.emit signature `None "val from_int: int -> (t, [> Runtime'.Result.error]) result";
   Code.emit implementation `Begin "let to_int = function";
   List.iter ~f:(fun v ->
       let open  EnumValueDescriptorProto in
@@ -87,11 +87,11 @@ let emit_extension ~scope ~params field =
   Code.append implementation signature;
 
   Code.emit signature `None "type t = %s %s" t.type' params.annot;
-  Code.emit signature `None "val get: %s -> %s Runtime'.Result.t" extendee_type t.type';
+  Code.emit signature `None "val get: %s -> (%s, [> Runtime'.Result.error]) result" extendee_type t.type';
   Code.emit signature `None "val set: %s -> %s -> %s" extendee_type t.type' extendee_type;
 
   Code.emit implementation `None "type t = %s %s" t.type' params.annot;
-  Code.emit implementation `None "let get extendee = Runtime'.Extensions.get %s (extendee.%s)" t.deserialize_spec extendee_field ;
+  Code.emit implementation `None "let get extendee = Runtime'.Extensions.get %s (extendee.%s) |> Runtime'.Result.open_error" t.deserialize_spec extendee_field ;
   Code.emit implementation `Begin "let set extendee t =";
   Code.emit implementation `None "let extensions' = Runtime'.Extensions.set (%s) (extendee.%s) t in" t.serialize_spec extendee_field;
   Code.emit implementation `None "{ extendee with %s = extensions' }" extendee_field;
@@ -176,7 +176,7 @@ let rec emit_message ~params ~syntax scope
       in
       Code.emit signature `None "type t = %s %s" type' params.annot;
       Code.emit signature `None "val to_proto: t -> Runtime'.Writer.t";
-      Code.emit signature `None "val from_proto: Runtime'.Reader.t -> t Runtime'.Result.t";
+      Code.emit signature `None "val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result";
 
       Code.emit implementation `None "type t = %s%s" type' params.annot;
 
@@ -191,7 +191,7 @@ let rec emit_message ~params ~syntax scope
       Code.emit implementation `None "let constructor = %s in" constructor;
       Code.emit implementation `None "let spec = %s in" deserialize_spec;
       Code.emit implementation `None "let deserialize = Runtime'.Deserialize.deserialize %s spec constructor in" extension_ranges;
-      Code.emit implementation `None "fun writer -> deserialize writer";
+      Code.emit implementation `None "fun writer -> deserialize writer |> Runtime'.Result.open_error";
       Code.emit implementation `End "";
     | None -> ()
   in

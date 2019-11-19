@@ -22,7 +22,7 @@ module rec Options : sig
   val name': unit -> string
   type t = bool 
   val to_proto: t -> Runtime'.Writer.t
-  val from_proto: Runtime'.Reader.t -> t Runtime'.Result.t
+  val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
 end = struct 
   let name' () = "options.Options"
   type t = bool
@@ -36,16 +36,16 @@ end = struct
     let constructor = fun _extensions a -> a in
     let spec = Runtime'.Deserialize.C.( basic (1, bool, proto3) ^:: nil ) in
     let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
-    fun writer -> deserialize writer
+    fun writer -> deserialize writer |> Runtime'.Result.open_error
   
 end
 and Ocaml_options : sig
   type t = Options.t option 
-  val get: Descriptor.Google.Protobuf.FileOptions.t -> Options.t option Runtime'.Result.t
+  val get: Descriptor.Google.Protobuf.FileOptions.t -> (Options.t option, [> Runtime'.Result.error]) result
   val set: Descriptor.Google.Protobuf.FileOptions.t -> Options.t option -> Descriptor.Google.Protobuf.FileOptions.t
 end = struct 
   type t = Options.t option 
-  let get extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( basic_opt (1074, (message Options.from_proto)) ^:: nil ) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions')
+  let get extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( basic_opt (1074, (message Options.from_proto)) ^:: nil ) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions') |> Runtime'.Result.open_error
   let set extendee t =
     let extensions' = Runtime'.Extensions.set (Runtime'.Serialize.C.( basic_opt (1074, (message Options.to_proto)) ^:: nil )) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions') t in
     { extendee with Descriptor.Google.Protobuf.FileOptions.extensions' = extensions' }

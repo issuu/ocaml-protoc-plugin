@@ -25,7 +25,7 @@ module Google = struct
         val name': unit -> string
         type t = { major: int option; minor: int option; patch: int option; suffix: string option } 
         val to_proto: t -> Runtime'.Writer.t
-        val from_proto: Runtime'.Reader.t -> t Runtime'.Result.t
+        val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       end = struct 
         let name' () = "plugin.google.protobuf.compiler.Version"
         type t = { major: int option; minor: int option; patch: int option; suffix: string option }
@@ -39,14 +39,14 @@ module Google = struct
           let constructor = fun _extensions major minor patch suffix -> { major; minor; patch; suffix } in
           let spec = Runtime'.Deserialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: basic_opt (3, int32_int) ^:: basic_opt (4, string) ^:: nil ) in
           let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
-          fun writer -> deserialize writer
+          fun writer -> deserialize writer |> Runtime'.Result.open_error
         
       end
       and CodeGeneratorRequest : sig
         val name': unit -> string
         type t = { file_to_generate: string list; parameter: string option; proto_file: Descriptor.Google.Protobuf.FileDescriptorProto.t list; compiler_version: Version.t option } 
         val to_proto: t -> Runtime'.Writer.t
-        val from_proto: Runtime'.Reader.t -> t Runtime'.Result.t
+        val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       end = struct 
         let name' () = "plugin.google.protobuf.compiler.CodeGeneratorRequest"
         type t = { file_to_generate: string list; parameter: string option; proto_file: Descriptor.Google.Protobuf.FileDescriptorProto.t list; compiler_version: Version.t option }
@@ -60,7 +60,7 @@ module Google = struct
           let constructor = fun _extensions file_to_generate parameter proto_file compiler_version -> { file_to_generate; parameter; proto_file; compiler_version } in
           let spec = Runtime'.Deserialize.C.( repeated (1, string, not_packed) ^:: basic_opt (2, string) ^:: repeated (15, (message Descriptor.Google.Protobuf.FileDescriptorProto.from_proto), not_packed) ^:: basic_opt (3, (message Version.from_proto)) ^:: nil ) in
           let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
-          fun writer -> deserialize writer
+          fun writer -> deserialize writer |> Runtime'.Result.open_error
         
       end
       and CodeGeneratorResponse : sig
@@ -68,18 +68,18 @@ module Google = struct
           val name': unit -> string
           type t = { name: string option; insertion_point: string option; content: string option } 
           val to_proto: t -> Runtime'.Writer.t
-          val from_proto: Runtime'.Reader.t -> t Runtime'.Result.t
+          val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         end
         val name': unit -> string
         type t = { error: string option; file: CodeGeneratorResponse.File.t list } 
         val to_proto: t -> Runtime'.Writer.t
-        val from_proto: Runtime'.Reader.t -> t Runtime'.Result.t
+        val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       end = struct 
         module rec File : sig
           val name': unit -> string
           type t = { name: string option; insertion_point: string option; content: string option } 
           val to_proto: t -> Runtime'.Writer.t
-          val from_proto: Runtime'.Reader.t -> t Runtime'.Result.t
+          val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         end = struct 
           let name' () = "plugin.google.protobuf.compiler.CodeGeneratorResponse.File"
           type t = { name: string option; insertion_point: string option; content: string option }
@@ -93,7 +93,7 @@ module Google = struct
             let constructor = fun _extensions name insertion_point content -> { name; insertion_point; content } in
             let spec = Runtime'.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (15, string) ^:: nil ) in
             let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
-            fun writer -> deserialize writer
+            fun writer -> deserialize writer |> Runtime'.Result.open_error
           
         end
         let name' () = "plugin.google.protobuf.compiler.CodeGeneratorResponse"
@@ -108,7 +108,7 @@ module Google = struct
           let constructor = fun _extensions error file -> { error; file } in
           let spec = Runtime'.Deserialize.C.( basic_opt (1, string) ^:: repeated (15, (message CodeGeneratorResponse.File.from_proto), not_packed) ^:: nil ) in
           let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
-          fun writer -> deserialize writer
+          fun writer -> deserialize writer |> Runtime'.Result.open_error
         
       end
     end

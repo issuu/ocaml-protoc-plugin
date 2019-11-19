@@ -14,6 +14,9 @@ type 'a t = ('a, error) result
 
 let ( >>| ) v f = match v with Ok x -> Ok (f x) | Error err -> Error err
 let ( >>= ) v f = match v with Ok x -> f x | Error err -> Error err
+let open_error = function
+  | Ok _ as v -> v
+  | Error #error as v -> v
 
 (* Extra functions (from Base) *)
 
@@ -23,7 +26,7 @@ let get ~msg = function
   | Ok v -> v
   | Error _ -> failwith msg
 
-let pp_error : Format.formatter -> error -> unit = fun fmt -> function
+let pp_error : Format.formatter -> [> error] -> unit = fun fmt -> function
   | `Premature_end_of_input ->
     Format.pp_print_string fmt
       "`Premature_end_of_input"
@@ -66,5 +69,5 @@ let show_error : error -> string = Format.asprintf "%a" pp_error
 
 let pp pp fmt = function
   | Ok v -> Format.fprintf fmt "Ok %a" pp v
-  | Error e -> Format.fprintf fmt "Error %a" pp_error e
+  | Error (#error as e) -> Format.fprintf fmt "Error %a" pp_error e
 (* let show : 'a t -> string = Format.asprintf "%a" pp *)
