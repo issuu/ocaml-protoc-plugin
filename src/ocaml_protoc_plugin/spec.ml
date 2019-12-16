@@ -38,7 +38,6 @@ module Make(T : T) = struct
     | Bool : bool spec
     | String : string spec
     | Bytes : bytes spec
-
     | Enum :  ('a, int -> 'a Result.t, 'a -> int) T.dir -> 'a spec
     | Message : ('a, Reader.t -> 'a Result.t, 'a -> Writer.t) T.dir -> 'a spec
 
@@ -49,7 +48,7 @@ module Make(T : T) = struct
     | Basic : int * 'a spec * 'a proto_type -> 'a compound
     | Basic_opt : int * 'a spec -> 'a option compound
     | Repeated : int * 'a spec * packed -> 'a list compound
-    | Oneof : ('a, 'a oneof list, 'a -> unit oneof) T.dir -> 'a compound
+    | Oneof : ('a, 'a oneof list, 'a -> unit oneof) T.dir -> ([> `not_set ] as 'a) compound
 
   type (_, _) compound_list =
     | Nil : ('a, 'a) compound_list

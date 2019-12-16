@@ -107,10 +107,13 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
       | Some v -> Writer.write_field writer index (f v)
       | None -> ()
   end
-  | Oneof f ->
-    fun writer v ->
-      let Oneof_elem (index, spec, v) = f v in
-      write (Basic (index, spec, Required)) writer v
+  | Oneof f -> begin
+      fun writer -> function
+        | `not_set -> ()
+        | v ->
+            let Oneof_elem (index, spec, v) = f v in
+            write (Basic (index, spec, Required)) writer v
+    end
 
 (** Allow emitted code to present a protobuf specification. *)
 let rec serialize : type a. (a, Writer.t) compound_list -> Writer.t -> a = function

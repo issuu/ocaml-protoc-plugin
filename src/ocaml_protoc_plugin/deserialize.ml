@@ -189,15 +189,15 @@ let sentinal: type a. a compound -> (int * unit decoder) list * a sentinal = fun
     in
     ([index, read], get)
   | Oneof oneofs ->
-    let make_reader: a Result.t ref -> a oneof -> (int * unit decoder) = fun v (Oneof_elem (index, spec, constr)) ->
+    let make_reader: a ref -> a oneof -> (int * unit decoder) = fun v (Oneof_elem (index, spec, constr)) ->
       let _, read = type_of_spec spec in
       let read field =
-        read field >>| fun value -> v := Ok (constr value)
+        read field >>| fun value -> v := (constr value)
       in
       (index, read)
     in
-    let v = ref (Error `Oneof_missing) in
-    let get () = !v in
+    let v = ref `not_set in
+    let get () = return !v in
     List.map ~f:(make_reader v) oneofs, get
 
 module Map = struct

@@ -47,5 +47,5 @@ message Test4 {
 
 message Test5 {
   message Empty { };
-  oneof a { Empty e  = 1; };
+  oneof a { Empty e = 1; };
 }

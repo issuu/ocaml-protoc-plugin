@@ -383,41 +383,35 @@ let c_of_oneof ~params ~syntax:_ ~scope OneofDescriptorProto.{ name; _ } fields 
       ) fields
   in
   let oneof =
-    match field_infos with
-    | [ (index, _name, type', Espec spec) ] when not params.singleton_record ->
-      let oneof_elem =   Oneof_elem (index, spec, (type', sprintf "fun v -> v", "v", None)) in
-      Oneof (type',
-             sprintf "[ %s ]" (string_of_oneof_elem `Deserialize oneof_elem),
-             sprintf "fun v -> %s" (string_of_oneof_elem `Serialize oneof_elem),
-             None)
-    | field_infos ->
-      let oneof_elems =
-        List.map ~f:(fun (index, name, type', Espec spec) ->
-            (Names.constructor_name name), Oneof_elem (index, spec, (type', sprintf "fun v -> `%s v" (Names.constructor_name name), "v", None))
-          ) field_infos
-      in
-      let type' =
-        field_infos
-        |> List.map ~f:(fun (_, name, type', _) -> sprintf "`%s of %s" (Names.constructor_name name) type')
-        |> String.concat ~sep:" | "
-        |> sprintf "[ %s ]"
-      in
-      let deser_oneofs =
-        oneof_elems
-        |> List.map ~f:snd
-        |> List.map ~f:(string_of_oneof_elem `Deserialize)
-        |> String.concat ~sep:"; "
-        |> sprintf "[ %s ]"
-      in
-      let ser_oneof =
-        oneof_elems
-        |> List.map ~f:(fun (name, oneof_elem) ->
-            sprintf "`%s v -> %s" name (string_of_oneof_elem `Serialize oneof_elem)
-          )
-        |> String.concat ~sep:" | "
-        |> sprintf "(function %s)"
-      in
-      Oneof (type', deser_oneofs, ser_oneof, None)
+    let oneof_elems =
+      List.map ~f:(fun (index, name, type', Espec spec) ->
+        (Names.constructor_name name), Oneof_elem (index, spec, (type', sprintf "fun v -> `%s v" (Names.constructor_name name), "v", None))
+      ) field_infos
+    in
+    let type' =
+      field_infos
+      |> List.map ~f:(fun (_, name, type', _) -> sprintf "`%s of %s" (Names.constructor_name name) type')
+      |> String.concat ~sep:" | "
+      |> sprintf "[ `not_set | %s ]"
+    in
+    let deser_oneofs =
+      oneof_elems
+      |> List.map ~f:snd
+      |> List.map ~f:(string_of_oneof_elem `Deserialize)
+      |> String.concat ~sep:"; "
+      |> sprintf "[ %s ]"
+    in
+    let ser_oneof =
+      let default_elem = "`not_set -> failwith \"This case should never _ever_ happen\"" in
+      oneof_elems
+      |> List.map ~f:(fun (name, oneof_elem) ->
+        sprintf "`%s v -> %s" name (string_of_oneof_elem `Serialize oneof_elem)
+      )
+      |> (fun l -> default_elem :: l)
+      |> String.concat ~sep:" | "
+      |> sprintf "(function | %s)"
+    in
+    Oneof (type', deser_oneofs, ser_oneof, None)
   in
 
   c_of_compound (Option.value_exn name) oneof
