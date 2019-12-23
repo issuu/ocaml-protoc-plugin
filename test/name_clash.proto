@@ -59,3 +59,15 @@ message enum_clash {
   oneof NameOne { int64 name_two = 2; }
   oneof Name_one { int64 name_three = 3; }
 }
+
+message not_set {
+  int64 not_set = 1;
+}
+
+message not_set2 {
+    oneof not_set { int64 not_set2 = 1; };
+}
+
+message not_set3 {
+    oneof not_set3 { int64 not_set = 1; };
+}
