@@ -1,0 +1,88 @@
+
+syntax = "proto3";
+
+package name_clash_mangle;
+
+import "google/protobuf/descriptor.proto";
+message options { bool snake_case_names = 1; }
+extend google.protobuf.FileOptions { options ocaml_options = 1074; }
+option (ocaml_options) = { snake_case_names:true };
+
+message Protobuf {
+  int64 Protobuf = 1;
+  int64 OcamlProtocPlugin = 2;
+}
+message Ocaml_protoc_plugin { }
+
+message Base { }
+
+message Pervasives { }
+
+message Stdlib { }
+
+message StdLabels { }
+
+message Enum {
+  int64 enum = 1;
+}
+
+message Enum1 {
+  int64 Enum1 = 1;
+}
+
+message struct {
+  int64 struct = 1;
+}
+
+message end {
+  int64 End = 1;
+}
+
+message basic {
+  int64 Basic = 1;
+  int64 Int64 = 2;
+}
+
+message _Enum {
+  int64 i = 1;
+}
+
+message _enum {
+  int64 i = 1;
+}
+
+message equal {
+  int64 equal = 1;
+}
+
+message enum_clash {
+  int64 name_one = 1;
+  oneof NameOne { int64 name_two = 2; }
+  oneof Name_one { int64 name_three = 3; }
+}
+
+message not_set {
+  int64 not_set = 1;
+}
+
+message not_set2 {
+    oneof not_set { int64 not_set2 = 1; };
+}
+
+message not_set3 {
+    oneof not_set3 { int64 not_set = 1; };
+}
+
+
+// Need to test service definitions and service module name
+// Need to test message priority
+// Add test to validate that the correct names are mapped as expected
+message RequestMessage {}
+message ResponseMessage {}
+
+service TestService {
+    rpc RequestEndPoint (RequestMessage) returns (ResponseMessage);
+    rpc Request_end_point (RequestMessage) returns (ResponseMessage);
+    rpc TestService (RequestMessage) returns (ResponseMessage);
+    rpc Ocaml_proto_plugin (RequestMessage) returns (ResponseMessage);
+}

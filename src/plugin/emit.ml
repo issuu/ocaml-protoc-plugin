@@ -25,7 +25,7 @@ let emit_enum_type ~scope ~params
   let implementation = Code.init () in
   let t = Code.init () in
   Code.emit t `None "type t = %s %s"
-    (List.map ~f:(fun f -> Names.constructor_name f.EnumValueDescriptorProto.name) value
+    (List.map ~f:(fun f -> Names.module_name (Option.value_exn f.EnumValueDescriptorProto.name)) value
      |> String.concat ~sep:" | ") params.Parameters.annot;
   Code.append signature t;
   Code.append implementation t;
@@ -34,7 +34,7 @@ let emit_enum_type ~scope ~params
   Code.emit implementation `Begin "let to_int = function";
   List.iter ~f:(fun v ->
       let open  EnumValueDescriptorProto in
-      Code.emit implementation `None "| %s -> %d" (Names.constructor_name v.name) (Option.value_exn v.number)
+      Code.emit implementation `None "| %s -> %d" (Names.module_name (Option.value_exn v.name)) (Option.value_exn v.number)
     ) value;
   Code.emit implementation `End "";
   Code.emit implementation `Begin "let from_int = function";
@@ -46,7 +46,7 @@ let emit_enum_type ~scope ~params
         | true -> seen
         | false ->
           let open EnumValueDescriptorProto in
-          Code.emit implementation `None "| %d -> Ok %s" idx (Names.constructor_name v.name);
+          Code.emit implementation `None "| %d -> Ok %s" idx (Names.module_name (Option.value_exn v.name));
           IntSet.add idx seen
       ) value
   in
@@ -54,9 +54,10 @@ let emit_enum_type ~scope ~params
   Code.emit implementation `End "";
   {module_name; signature; implementation}
 
+(* Argh. Service types should also be mapped *)
 let emit_service_type scope ServiceDescriptorProto.{ name; method' = methods; _ } =
   let emit_method t MethodDescriptorProto.{ name; input_type; output_type; _} =
-    Code.emit t `Begin "let %s = " (Names.field_name name);
+    Code.emit t `Begin "let %s = " (Names.field_name (Option.value_exn name));
     Code.emit t `None "( (module %s : Runtime'.Service.Message with type t = %s ), "
       (Scope.get_scoped_name scope input_type)
       (Scope.get_scoped_name ~postfix:"t" scope input_type);

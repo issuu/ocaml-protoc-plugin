@@ -11,11 +11,6 @@ let is_reserved = function
   | "val" | "virtual" | "when" | "while" | "with" -> true
   | _ -> false
 
-let module_name name =
-  match name.[0] with
-  | '_' -> "P" ^ name ^ "'"
-  | _ -> String.capitalize_ascii name
-
 let to_snake_case ident =
   let to_list s =
     let r = ref [] in
@@ -43,12 +38,14 @@ let to_snake_case ident =
   |> String.capitalize_ascii
 
 
-let field_name (field_name : string option) =
-  match String.uncapitalize_ascii (Option.value_exn field_name) with
+let field_name ?(mangle_f=(fun x -> x)) field_name =
+  match String.uncapitalize_ascii (mangle_f field_name) with
   | name when is_reserved name -> name ^ "'"
   | name -> name
 
-let variant_name name = module_name name
 
-let constructor_name (name : string option) =
-  String.capitalize_ascii (Option.value_exn name)
+let module_name ?(mangle_f=(fun x -> x)) name =
+  let name = mangle_f name in
+  match name.[0] with
+  | '_' -> "P" ^ name ^ "'"
+  | _ -> String.capitalize_ascii name

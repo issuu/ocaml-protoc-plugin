@@ -385,12 +385,12 @@ let c_of_oneof ~params ~syntax:_ ~scope OneofDescriptorProto.{ name; _ } fields 
   let oneof =
     let oneof_elems =
       List.map ~f:(fun (index, name, type', Espec spec) ->
-        (Names.constructor_name name), Oneof_elem (index, spec, (type', sprintf "fun v -> `%s v" (Names.constructor_name name), "v", None))
+        (Names.module_name (Option.value_exn name)), Oneof_elem (index, spec, (type', sprintf "fun v -> `%s v" (Names.module_name (Option.value_exn name)), "v", None))
       ) field_infos
     in
     let type' =
       field_infos
-      |> List.map ~f:(fun (_, name, type', _) -> sprintf "`%s of %s" (Names.constructor_name name) type')
+      |> List.map ~f:(fun (_, name, type', _) -> sprintf "`%s of %s" (Names.module_name (Option.value_exn name)) type')
       |> String.concat ~sep:" | "
       |> sprintf "[ `not_set | %s ]"
     in

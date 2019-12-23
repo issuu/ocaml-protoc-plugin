@@ -7,11 +7,9 @@ module StringSet = Set.Make(String)
 open Spec.Descriptor.Google.Protobuf
 
 (** TODO:
-  Break cycles if you meet a struct with more than one field (i.e. which will be wrapped in a record anyways.
-  - Maybe we dont need to take oneofs into accout.
-
-  Create named for fields. This is needed since we map oneof names in there, so we need to test for collision.
-  Oneofs might also create collisions, so we need to create a full map here.
+  - Create named for fields. This is needed since we map oneof names in there, so we need to test for collision.
+  - Oneofs might also create collisions, so we need to create a full map here.
+  - Service names should also be mangled
 *)
 
 type element = { module_name: string; ocaml_name: string; cyclic: bool; field_names: string StringMap.t }
@@ -96,31 +94,38 @@ module Type_tree = struct
      The result is a map: proto_name -> mangled name.
   *)
   let create_name_map ~standard_f ~mangle_f names =
+    (* Names where standard_f and mangle_f produce the same name
+       gets priority. So we create a pre-allocation map here *)
     let standard_name_map =
       List.fold_left ~init:StringMap.empty ~f:(fun map name ->
-          StringMap.add ~key:(standard_f name) ~data:name map
-        ) names
+        let mangle_name = mangle_f name in
+        let standard_name = standard_f name in
+        match String.equal mangle_name standard_name with
+          | true -> StringMap.add ~key:mangle_name ~data:name map
+          | false -> map
+      ) names
+    in
+    let rec uniq_name names ocaml_name =
+      match List.assoc_opt ocaml_name names with
+        | None -> ocaml_name
+        | Some _ -> uniq_name names (ocaml_name ^ "'")
     in
     List.fold_left ~init:[] ~f:(fun names proto_name ->
-        let ocaml_name = mangle_f proto_name in
-        match StringMap.find_opt ocaml_name standard_name_map with
-        | Some proto_name' when String.equal proto_name proto_name' -> (ocaml_name, proto_name) :: names
-        | Some _ -> (* Already allocated to another name. Should we lowercase this??? *)
-          let rec inner ocaml_name =
-            match List.assoc_opt ocaml_name names with
-            | None -> ocaml_name
-            | Some _ -> inner (ocaml_name ^ "'")
-          in
-          let ocaml_name = inner ocaml_name ^ "'" in
-          (ocaml_name, proto_name) :: names
-        | None -> failwith (Printf.sprintf "Name not mapped: %s" ocaml_name)
-      ) names
+      let ocaml_name = mangle_f proto_name in
+      let ocaml_name =
+        match StringMap.find_opt proto_name standard_name_map with
+          | Some name when String.equal name proto_name -> ocaml_name
+          | Some _ -> ocaml_name ^ "_"
+          | None -> ocaml_name
+      in
+      (uniq_name names ocaml_name, proto_name) :: names
+    ) names
     |> List.fold_left ~init:StringMap.empty ~f:(fun map (ocaml_name, proto_name) ->
         StringMap.add ~key:proto_name ~data:ocaml_name map
       )
 
   (* Create a type db: map proto-type -> { module_name, ocaml_name, is_cyclic } *)
-  let create_file_db cyclic_map { module_name; types } =
+  let create_file_db ~mangle_f cyclic_map { module_name; types } =
     let module_name = module_name_of_proto module_name in
     let rec traverse_type map path types =
       let inner ~map ~name_map path { name; types; field_names; _ } =
@@ -134,8 +139,8 @@ module Type_tree = struct
         let cyclic = StringMap.find path cyclic_map in
         let field_names =
           create_name_map
-            ~standard_f:(fun x -> Names.field_name (Some x))
-            ~mangle_f:(fun x -> Names.field_name (Some x))
+            ~standard_f:(Names.field_name ~mangle_f:(fun x -> x))
+            ~mangle_f:(Names.field_name ~mangle_f)
             field_names
         in
         let data = { module_name; ocaml_name; cyclic; field_names } in
@@ -144,20 +149,33 @@ module Type_tree = struct
       in
       let name_map =
         List.map ~f:(fun { name; _ } -> name) types
-        |> create_name_map ~standard_f:Names.module_name ~mangle_f:Names.module_name
+        |> create_name_map
+          ~standard_f:(Names.module_name ~mangle_f:(fun x -> x))
+          ~mangle_f:(Names.module_name ~mangle_f)
       in
       List.fold_left ~init:map ~f:(fun map type_-> inner ~map ~name_map path type_) types
     in
     let map = StringMap.singleton "" { ocaml_name = ""; module_name; cyclic = false; field_names = StringMap.empty } in
     traverse_type map "" types
 
-  let create_db files =
-    let inner proto_file =
-      (* Test to see if we need to mangle names *)
+  let option_snake_case FileDescriptorProto.{ options; _ } =
+    Option.map ~f:Spec.Options.Ocaml_options.get options
+    |> function
+    | Some (Ok (Some v)) -> v
+    | Some (Ok None) -> false
+    | None -> false
+    | Some (Error _e) -> failwith "Fas"
 
+
+  let create_db (files : FileDescriptorProto.t list)=
+    let inner proto_file =
+      let mangle_f = match option_snake_case proto_file with
+        | true -> Names.to_snake_case
+        | false -> fun x -> x
+      in
       let map = map_file proto_file in
       let cyclic_map = create_cyclic_map map in
-      let file_db = create_file_db cyclic_map map in
+      let file_db = create_file_db ~mangle_f cyclic_map map in
       file_db
     in
     List.map ~f:inner files
@@ -183,6 +201,7 @@ let dump_type_map type_map =
   Printf.eprintf "Type map end:\n%!"
 
 let _ = dump_type_map
+
 
 let init files =
   let type_db = Type_tree.create_db files in
