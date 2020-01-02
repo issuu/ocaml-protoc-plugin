@@ -1,9 +1,9 @@
-
 syntax = "proto3";
 
 package name_clash_mangle;
 
 import "google/protobuf/descriptor.proto";
+
 message options { bool snake_case_names = 1; }
 extend google.protobuf.FileOptions { options ocaml_options = 1074; }
 option (ocaml_options) = { snake_case_names:true };
@@ -73,16 +73,31 @@ message not_set3 {
     oneof not_set3 { int64 not_set = 1; };
 }
 
+enum ENUM_TEST {
+    ENUM1 = 0;
+    ENUM2 = 1;
+    ENUM_Three = 2;
+    ENUM_four = 3;
+    ENUM_Name = 4;
+    EnumName = 5;
+}
 
-// Need to test service definitions and service module name
-// Need to test message priority
-// Add test to validate that the correct names are mapped as expected
+message A {
+    enum a {
+        B1 = 0;
+    };
+    message A {
+        int64 A = 1;
+    }
+}
+
 message RequestMessage {}
 message ResponseMessage {}
 
-service TestService {
+service EnumClash {
     rpc RequestEndPoint (RequestMessage) returns (ResponseMessage);
     rpc Request_end_point (RequestMessage) returns (ResponseMessage);
     rpc TestService (RequestMessage) returns (ResponseMessage);
     rpc Ocaml_proto_plugin (RequestMessage) returns (ResponseMessage);
+    rpc method (RequestMessage) returns (ResponseMessage);
 }

@@ -37,12 +37,10 @@ let to_snake_case ident =
   |> to_string
   |> String.capitalize_ascii
 
-
 let field_name ?(mangle_f=(fun x -> x)) field_name =
   match String.uncapitalize_ascii (mangle_f field_name) with
   | name when is_reserved name -> name ^ "'"
   | name -> name
-
 
 let module_name ?(mangle_f=(fun x -> x)) name =
   let name = mangle_f name in

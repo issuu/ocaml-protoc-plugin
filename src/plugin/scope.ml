@@ -1,34 +1,57 @@
 open StdLabels
 open MoreLabels
 
-module StringMap = Map.Make(String)
+module StringMap = struct
+  include Map.Make(String)
+
+  (** Fail with an error if the key already exists *)
+  let add_uniq ~key ~data map =
+    update ~key ~f:(function
+      | None -> Some data
+      | Some _ -> failwith (Printf.sprintf "Key %s already exists" key)
+    ) map
+end
 module StringSet = Set.Make(String)
 
 open Spec.Descriptor.Google.Protobuf
 
-(** TODO:
-  - Create named for fields. This is needed since we map oneof names in there, so we need to test for collision.
-  - Oneofs might also create collisions, so we need to create a full map here.
-  - Service names should also be mangled
-*)
-
-type element = { module_name: string; ocaml_name: string; cyclic: bool; field_names: string StringMap.t }
+type element = { module_name: string; ocaml_name: string; cyclic: bool }
 
 let module_name_of_proto file =
   Filename.chop_extension file |> Filename.basename |> String.capitalize_ascii
 
+
+
 module Type_tree = struct
   (** Need to hold oneofs, and field_names. We could also stuff oneofs in here *)
-  type t = { name: string; types: t list; depends: string list; field_names: string list }
+  type t = { name: string; types: t list; depends: string list; field_names: string list; enum_names: string list; service_names: string list }
   type file = { module_name: string; types: t list }
 
   let compare { name = n1; _ } { name = n2; _ } = String.compare n1 n2
 
-  let map_enum EnumDescriptorProto.{ name; _ } =
+  let map_enum EnumDescriptorProto.{ name; value = values; _ } =
     let name = Option.value_exn ~message:"All enums must have a name" name in
-    { name; types = []; depends = []; field_names = [] }
+    let enum_names =
+      List.map ~f:(fun EnumValueDescriptorProto.{ name; _ } ->
+        Option.value_exn ~message:"All enum values must have a name" name
+      ) values
+    in
+    { name; types = []; depends = []; field_names = []; enum_names; service_names = [] }
 
-  let rec map_message DescriptorProto.{ name; field = fields; nested_type = nested_types; enum_type = enums; oneof_decl; _} : t =
+  let map_service ServiceDescriptorProto.{ name; method' = methods; _ } =
+    let name = Option.value_exn ~message:"All enums must have a name" name in
+    let service_names =
+      List.map ~f:(fun MethodDescriptorProto.{ name; _ } ->
+        Option.value_exn ~message:"All service methods must have a name" name
+      ) methods
+    in
+    { name; types = []; depends = []; field_names = []; enum_names = []; service_names}
+
+  let map_extension FieldDescriptorProto.{ name; _ } =
+    let name = Option.value_exn ~message:"All enums must have a name" name in
+    { name; types = []; depends = []; field_names = []; enum_names = []; service_names = []}
+
+  let rec map_message DescriptorProto.{ name; field = fields; nested_type = nested_types; enum_type = enums; oneof_decl = oneof_decls; extension = extensions; _} : t =
     let name = Option.value_exn ~message:"All messages must have a name" name in
     let depends =
       List.fold_left ~init:[] ~f:(fun acc -> function
@@ -40,27 +63,29 @@ module Type_tree = struct
       ) fields
     in
     let enums = List.map ~f:map_enum enums in
+    let extensions = List.map ~f:map_extension extensions in
     let nested_types = List.map ~f:map_message nested_types in
-    let types = List.sort ~cmp:compare (List.rev_append enums nested_types) in
+    let types = List.sort ~cmp:compare (enums @ extensions @ nested_types) in
     let field_names =
-      let acc = List.fold_left ~init:[] ~f:(fun acc -> function
-          | FieldDescriptorProto.{ name = Some name; oneof_index = None; _ } -> name :: acc
-          | _ -> acc
-        ) fields
+      let acc = List.map ~f:(fun FieldDescriptorProto.{ name; _} ->
+        Option.value_exn ~message:"Field names cannot be null" name
+      ) fields
       in
       List.fold_left ~init:acc ~f:(fun acc OneofDescriptorProto.{ name; _ } ->
           (Option.value_exn ~message:"Oneof names cannot be null" name) :: acc
-        ) oneof_decl
+        ) oneof_decls
     in
-    { name; types; depends; field_names }
+    { name; types; depends; field_names; enum_names = []; service_names = [] }
 
-  let map_file FileDescriptorProto.{ name; message_type = messages; package; enum_type = enums; options = _; _ } =
+  let map_file FileDescriptorProto.{ name; message_type = messages; package; enum_type = enums; service = services; extension = extensions; _ } =
     let messages = List.map ~f:map_message messages in
     let enums = List.map ~f:map_enum enums in
-    let types = enums @ messages in
+    let services = List.map ~f:map_service services in
+    let extensions = List.map ~f:map_extension extensions in
+    let types = enums @ messages @ services @ extensions in
     let module_name = Option.value_exn ~message:"File descriptor must have a name" name in
     let packages = Option.value_map ~default:[] ~f:(String.split_on_char ~sep:'.') package in
-    let types = List.fold_right ~init:types ~f:(fun name types -> [ { name; types; depends = []; field_names = [] } ]) packages in
+    let types = List.fold_right ~init:types ~f:(fun name types -> [ { name; types; depends = []; field_names = []; enum_names = []; service_names = [] } ]) packages in
     { module_name; types }
 
   let create_cyclic_map { module_name = _ ; types } =
@@ -88,34 +113,45 @@ module Type_tree = struct
     StringMap.mapi ~f:(fun name _ -> is_cyclic map name) map
 
   (* Create a map: proto_name -> ocaml_name.
-     Mapping is done in two passes:
+     Mapping is done in multiple passes:
      The first pass uses the standard name mapping function, to preserve names which maps to a standard type.
      The second pass does the actual mapping, while prioritizing the standard mapping in case of name collision.
      The result is a map: proto_name -> mangled name.
+
   *)
   let create_name_map ~standard_f ~mangle_f names =
-    (* Names where standard_f and mangle_f produce the same name
-       gets priority. So we create a pre-allocation map here *)
-    let standard_name_map =
-      List.fold_left ~init:StringMap.empty ~f:(fun map name ->
-        let mangle_name = mangle_f name in
-        let standard_name = standard_f name in
-        match String.equal mangle_name standard_name with
-          | true -> StringMap.add ~key:mangle_name ~data:name map
-          | false -> map
-      ) names
-    in
     let rec uniq_name names ocaml_name =
       match List.assoc_opt ocaml_name names with
         | None -> ocaml_name
         | Some _ -> uniq_name names (ocaml_name ^ "'")
     in
-    List.fold_left ~init:[] ~f:(fun names proto_name ->
-      let ocaml_name = mangle_f proto_name in
+    let names =
+      List.map ~f:(fun name ->
+        let mangle_name = mangle_f name in
+        let standard_name = standard_f name in
+        (name, mangle_name, standard_name)
+      ) names
+    in
+    let standard_name_map =
+      let inject ~f map =
+        List.fold_left ~init:map ~f:(fun map (name, mangled_name, standard_name) ->
+          match f name mangled_name standard_name with
+            | true when StringMap.mem mangled_name map -> map
+            | true -> StringMap.add ~key:mangled_name ~data:name map
+            | false -> map
+        ) names
+      in
+      StringMap.empty
+      |> inject ~f:(fun name mangled_name _standard_name -> String.equal mangled_name name)
+      |> inject ~f:(fun _name mangled_name standard_name -> String.equal mangled_name standard_name)
+      |> inject ~f:(fun name mangled_name _standard_name -> String.equal (String.lowercase_ascii mangled_name) (String.lowercase_ascii name))
+      |> inject ~f:(fun _name mangled_name standard_name -> String.equal (String.lowercase_ascii mangled_name) (String.lowercase_ascii standard_name))
+    in
+    List.fold_left ~init:[] ~f:(fun names (proto_name, ocaml_name, _) ->
       let ocaml_name =
-        match StringMap.find_opt proto_name standard_name_map with
+        match StringMap.find_opt ocaml_name standard_name_map with
           | Some name when String.equal name proto_name -> ocaml_name
-          | Some _ -> ocaml_name ^ "_"
+          | Some _ -> ocaml_name ^ "'"
           | None -> ocaml_name
       in
       (uniq_name names ocaml_name, proto_name) :: names
@@ -125,10 +161,18 @@ module Type_tree = struct
       )
 
   (* Create a type db: map proto-type -> { module_name, ocaml_name, is_cyclic } *)
-  let create_file_db ~mangle_f cyclic_map { module_name; types } =
+  let create_file_db ~mangle cyclic_map { module_name; types } =
+    let mangle_f = match mangle with
+      | true -> Names.to_snake_case
+      | false -> fun x -> x
+    in
     let module_name = module_name_of_proto module_name in
-    let rec traverse_type map path types =
-      let inner ~map ~name_map path { name; types; field_names; _ } =
+    let add_names ~path ~ocaml_name map names =
+      StringMap.fold ~init:map ~f:(fun ~key ~data map -> StringMap.add_uniq ~key:(path ^ "." ^ key) ~data:{ module_name; ocaml_name = ocaml_name ^ "." ^ data; cyclic = false } map) names
+    in
+
+    let rec traverse_types map path types =
+      let map_type ~map ~name_map path { name; types; field_names; enum_names; service_names; _} =
         let ocaml_name =
           let ocaml_name = StringMap.find name name_map in
           match StringMap.find path map with
@@ -137,15 +181,33 @@ module Type_tree = struct
         in
         let path = path ^ "." ^ name in
         let cyclic = StringMap.find path cyclic_map in
-        let field_names =
+        (* Add field names *)
+        let map =
           create_name_map
             ~standard_f:(Names.field_name ~mangle_f:(fun x -> x))
             ~mangle_f:(Names.field_name ~mangle_f)
             field_names
+          |> add_names ~path ~ocaml_name map
         in
-        let data = { module_name; ocaml_name; cyclic; field_names } in
-        let map = StringMap.add ~key:path ~data map in
-        traverse_type map path types
+        let map =
+          create_name_map
+            ~standard_f:(Names.module_name ~mangle_f:(fun x -> x))
+            ~mangle_f:(Names.module_name ~mangle_f)
+            enum_names
+          |> add_names ~path ~ocaml_name map
+        in
+
+        let map =
+          create_name_map
+            ~standard_f:(Names.field_name ~mangle_f:(fun x -> x))
+            ~mangle_f:(Names.field_name ~mangle_f)
+            service_names
+          |> add_names ~path ~ocaml_name map
+        in
+
+        let map = StringMap.add_uniq ~key:path ~data:{ module_name; ocaml_name; cyclic } map in (* We should validate that we never observe a name clash here *)
+
+        traverse_types map path types
       in
       let name_map =
         List.map ~f:(fun { name; _ } -> name) types
@@ -153,10 +215,11 @@ module Type_tree = struct
           ~standard_f:(Names.module_name ~mangle_f:(fun x -> x))
           ~mangle_f:(Names.module_name ~mangle_f)
       in
-      List.fold_left ~init:map ~f:(fun map type_-> inner ~map ~name_map path type_) types
+      List.fold_left ~init:map ~f:(fun map type_ -> map_type ~map ~name_map path type_) types
     in
-    let map = StringMap.singleton "" { ocaml_name = ""; module_name; cyclic = false; field_names = StringMap.empty } in
-    traverse_type map "" types
+
+    let map = StringMap.singleton "" { ocaml_name = ""; module_name; cyclic = false } in
+    traverse_types map "" types
 
   let option_snake_case FileDescriptorProto.{ options; _ } =
     Option.map ~f:Spec.Options.Ocaml_options.get options
@@ -164,18 +227,13 @@ module Type_tree = struct
     | Some (Ok (Some v)) -> v
     | Some (Ok None) -> false
     | None -> false
-    | Some (Error _e) -> failwith "Fas"
-
+    | Some (Error _e) -> failwith "Could not parse ocaml-protoc-plugin options with id 1074"
 
   let create_db (files : FileDescriptorProto.t list)=
     let inner proto_file =
-      let mangle_f = match option_snake_case proto_file with
-        | true -> Names.to_snake_case
-        | false -> fun x -> x
-      in
       let map = map_file proto_file in
       let cyclic_map = create_cyclic_map map in
-      let file_db = create_file_db ~mangle_f cyclic_map map in
+      let file_db = create_file_db ~mangle:(option_snake_case proto_file) cyclic_map map in
       file_db
     in
     List.map ~f:inner files
@@ -186,7 +244,6 @@ module Type_tree = struct
         )
     )
 end
-
 
 type t = { module_name: string;
            package_depth: int;
@@ -205,7 +262,7 @@ let _ = dump_type_map
 
 let init files =
   let type_db = Type_tree.create_db files in
-  if false then dump_type_map type_db;
+  if true then dump_type_map type_db;
   { module_name = ""; proto_path = ""; package_depth = 0; type_db }
 
 let for_descriptor t FileDescriptorProto.{ name; package; _ } =
@@ -236,22 +293,16 @@ let get_scoped_name ?postfix t name =
   (* Strip away the package depth *)
   Option.value_map ~default:type_name ~f:(fun postfix -> type_name ^ "." ^ postfix) postfix
 
-(* Need a function to get the module name based on the path *)
-let get_message_name t name =
-  let name = Option.value_exn ~message:"Does not contain a name" name in
-  (* Find the correct mapping *)
-  let proto_name = t.proto_path ^ "." ^ name in
-  let { ocaml_name; _ } = StringMap.find proto_name t.type_db in
-  (* Let the last part of the ocaml name *)
-  String.split_on_char ~sep:'.' ocaml_name
-  |> List.rev
-  |> List.hd
+let get_name t name =
+  let path = t.proto_path ^ "." ^ name in
+  match StringMap.find_opt path t.type_db with
+    | Some { ocaml_name; _ } -> String.split_on_char ~sep:'.' ocaml_name |> List.rev |> List.hd
+    | None -> failwith (Printf.sprintf "Cannot find %s in %s." name t.proto_path)
 
-let get_field_name t name =
-  let { field_names; _ } = StringMap.find t.proto_path t.type_db in
-  match StringMap.find_opt name field_names with
-  | None -> failwith (Printf.sprintf "Cannot find %s in %s. [%s]" name t.proto_path (String.concat ~sep:"; " (StringMap.bindings field_names |> List.map ~f:snd)))
-  | Some name -> name
+let get_name_exn t name =
+  let name = Option.value_exn ~message:"Does not contain a name" name in
+  get_name t name
+
 
 let get_current_scope t =
   let { module_name; ocaml_name = _; _ } = StringMap.find t.proto_path t.type_db in

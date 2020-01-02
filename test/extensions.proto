@@ -7,6 +7,9 @@ message Foo {
     extensions 100 to 199;
     extensions 500 to max;
 }
+message Baz {
+    optional uint32 a = 1;
+}
 
 extend Foo {
     optional uint32 baz = 128;
