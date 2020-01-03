@@ -24,8 +24,6 @@ module Type_tree = struct
   type t = { name: string; types: t list; depends: string list; fields: string list * string list list; enum_names: string list; service_names: string list }
   type file = { module_name: string; types: t list }
 
-  let compare { name = n1; _ } { name = n2; _ } = String.compare n1 n2
-
   let map_enum EnumDescriptorProto.{ name; value = values; _ } =
     let name = Option.value_exn ~message:"All enums must have a name" name in
     let enum_names =
@@ -60,7 +58,7 @@ module Type_tree = struct
       | FieldDescriptorProto.{ oneof_index = Some number; _ } -> number
     in
 
-    let fields = List.sort ~cmp:(fun a b -> Int.compare (field_number_of_field a) (field_number_of_field b)) fields in
+    let fields = List.sort ~cmp:(fun a b -> compare (field_number_of_field a) (field_number_of_field b)) fields in
     group [] ~eq:(fun a b -> field_number_of_field a = field_number_of_field b) fields
 
 
