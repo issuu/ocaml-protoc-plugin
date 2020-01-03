@@ -3,6 +3,7 @@ syntax = "proto3";
 package name_clash_mangle;
 
 import "google/protobuf/descriptor.proto";
+import "name_clash.proto";
 
 message options { bool snake_case_names = 1; }
 extend google.protobuf.FileOptions { options ocaml_options = 1074; }
@@ -21,6 +22,10 @@ message Pervasives { }
 message Stdlib { }
 
 message StdLabels { }
+
+message _StdLabels {
+    message StdLabels { int64 _blah = 5; }
+}
 
 message Enum {
   int64 enum = 1;
@@ -100,4 +105,5 @@ service EnumClash {
     rpc TestService (RequestMessage) returns (ResponseMessage);
     rpc Ocaml_proto_plugin (RequestMessage) returns (ResponseMessage);
     rpc method (RequestMessage) returns (ResponseMessage);
+    rpc included (name_clash.StdLabels) returns (ResponseMessage);
 }

@@ -45,5 +45,8 @@ let field_name ?(mangle_f=(fun x -> x)) field_name =
 let module_name ?(mangle_f=(fun x -> x)) name =
   let name = mangle_f name in
   match name.[0] with
-  | '_' -> "P" ^ name ^ "'"
+  | '_' -> "P" ^ name
   | _ -> String.capitalize_ascii name
+
+let poly_constructor_name ?(mangle_f=(fun x -> x)) name =
+  "`" ^ (mangle_f name |> String.capitalize_ascii)

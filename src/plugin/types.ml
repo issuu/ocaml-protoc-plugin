@@ -385,13 +385,13 @@ let c_of_oneof ~params ~syntax:_ ~scope OneofDescriptorProto.{ name; _ } fields 
   let oneof =
     let oneof_elems =
       List.map ~f:(fun (index, name, type', Espec spec) ->
-        let adt_name = Scope.get_name_exn scope name |> String.capitalize_ascii in
-        adt_name, Oneof_elem (index, spec, (type', sprintf "fun v -> `%s v" adt_name, "v", None))
+        let adt_name = Scope.get_name_exn scope name in
+        adt_name, Oneof_elem (index, spec, (type', sprintf "fun v -> %s v" adt_name, "v", None))
       ) field_infos
     in
     let type' =
       field_infos
-      |> List.map ~f:(fun (_, name, type', _) -> sprintf "`%s of %s" (Scope.get_name_exn scope name |> String.capitalize_ascii) type')
+      |> List.map ~f:(fun (_, name, type', _) -> sprintf "%s of %s" (Scope.get_name_exn scope name) type')
       |> String.concat ~sep:" | "
       |> sprintf "[ `not_set | %s ]"
     in
@@ -406,7 +406,7 @@ let c_of_oneof ~params ~syntax:_ ~scope OneofDescriptorProto.{ name; _ } fields 
       let default_elem = "`not_set -> failwith \"This case should never _ever_ happen\"" in
       oneof_elems
       |> List.map ~f:(fun (name, oneof_elem) ->
-        sprintf "`%s v -> %s" name (string_of_oneof_elem `Serialize oneof_elem)
+        sprintf "%s v -> %s" name (string_of_oneof_elem `Serialize oneof_elem)
       )
       |> (fun l -> default_elem :: l)
       |> String.concat ~sep:" | "
