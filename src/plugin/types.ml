@@ -137,8 +137,8 @@ let string_of_spec: type a. [`Deserialize | `Serialize] -> a spec -> string = fu
   | _, Bytes -> "bytes"
   | `Deserialize, Enum (_, deser, _ , _)  -> sprintf "(enum %s)" deser
   | `Serialize,   Enum (_, _,    ser, _)  -> sprintf "(enum %s)" ser
-  | `Deserialize, Message (_, deser, _ , _) -> sprintf "(message %s)" deser
-  | `Serialize,   Message (_, _,    ser, _) -> sprintf "(message %s)" ser
+  | `Deserialize, Message (_, deser, _ , _) -> sprintf "(message (fun t -> %s t))" deser
+  | `Serialize,   Message (_, _,    ser, _) -> sprintf "(message (fun t -> %s t))" ser
 
 let type_of_spec: type a. a spec -> string = function
   | Double -> "float"
