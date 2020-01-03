@@ -1,5 +1,6 @@
 syntax = "proto3";
 
+
 message CamelCaseName {
   uint32 CamelCaseField = 1;
   enum CamelCaseEnum {

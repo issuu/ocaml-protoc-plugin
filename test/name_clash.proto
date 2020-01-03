@@ -11,6 +11,10 @@ message Ocaml_protoc_plugin {
   int64 Protobuf = 1;
   int64 Ocaml_protoc_plugin = 2;
 }
+message OcamlProtocPlugin {
+  int64 Protobuf = 1;
+  int64 Ocaml_protoc_plugin = 2;
+}
 message Base {
   int64 Protobuf = 1;
   int64 Ocaml_protoc_plugin = 2;

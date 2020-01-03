@@ -3,7 +3,7 @@
 [![BuildStatus](https://travis-ci.org/issuu/ocaml-protoc-plugin.svg?branch=master)](https://travis-ci.org/issuu/ocaml-protoc-plugin)
 
 The goal of Ocaml protoc plugin is to create an up to date plugin for
-the google protobuf compiler (`protoc`) to generate ocaml types and
+the google protobuf compiler (`protoc`) to generate Ocaml types and
 serialization and de-serialization function from a `.proto` file.
 
 The main features include:
@@ -127,35 +127,54 @@ passed with the `--ocaml_out` flag:
 ```
 protoc --plugin=protoc-gen-ocaml=../plugin/ocaml.exe --ocaml_out=annot=debug;[@@deriving show { with_path = false }, eq]:. <file>.proto
 ```
+## Mangle generated names
+Idiomatic protobuf names are somewhat alien to
+Ocaml. `Ocaml_protoc_plugin` as an option to mangle protobuf names
+into somewhat more Ocaml idiomatic names. When this option is set (see
+below), names are mangled to snake case as described in the table
+below:
 
-## Embedding options in .proto files
-All options can be embedded into a .proto file. Below is an example of
-this:
+| Protobyf type | Protobuf name            | Ocaml name               |
+|:--------------|:-------------------------|:-------------------------|
+| message       | `CapitalizedSnakeCase`   | `Capitalized_snake_case` |
+| field         | `lowercased_snake_case`  | `lowercased_snake_case`  |
+| oneof name    | `lowercased_snake_case`  | `lowercased_snake_case`  |
+| oneof field   | `capitalized_snake_case` | `Capitalized_snake_case` |
+| enum          | `CAPITALIZED_SNAKE_CASE` | `Capitalized_snake_case` |
+| service name  | `CapitalizedSnakeCase`   | `Capitalized_snake_case` |
+| rpc name      | `LowercasedSnakeCase`    | `lowercased_snake_case`  |
 
+`protoc` cannot guarantee that names do not clash when mangling is
+enabled. If a name clash is detected (eg. `SomeMessage` and
+`some_message` exists in same file) an apostrophe is appended to the
+name to make sure names are unique.
+
+### Setting mangle option
+Name mangling option can only be controlled from within the protobuf
+specification file. This is needed as protobuf files may reference each
+other and it its important to make sure that included names are
+referenced correctly across compilation units (and invocations of
+protoc).
+
+To set the option use:
 ```protobuf
-syntax = "proto3";
-
+// This can be placed in a common file and then included
 import "google/protobuf/descriptor.proto";
-
+message options { bool mangle_names = 1; }
 extend google.protobuf.FileOptions {
-    bool ocaml_debug = 7967;
-    string ocaml_annot = 7968;
-    repeated string ocaml_opens = 7969;
-    bool ocaml_singleton_record = 7970;
-    bool ocaml_int64_as_int = 7971;
-    bool ocaml_int32_as_int = 7972;
-    bool ocaml_fixed_as_int = 7973;
+    options ocaml_options = 1074;
 }
 
-// Set options as needed. If an option is not needed, then comment out the line.
-option (ocaml_annot) = "[@@deriving show { with_path = false }, eq]";
-option (ocaml_opens) = "!StdLabels";
-option (ocaml_singleton_record) = true;
-option (ocaml_int64_as_int) = true;
-option (ocaml_int32_as_int) = true;
-option (ocaml_fixed_as_int) = true;
+// This option controls name generation. If true names are converted
+// into more ocaml ideomatic names
+
+option (ocaml_options) = { mangle_names:true };
+
+// This message will be mapped to module name My_proto_message
+message MyProtoMessage { }
+
 ```
-Options set in a the file overrides those set on the command line.
+
 
 ## Using dune
 Below is a dune rule for generating code for `test.proto`:
@@ -180,7 +199,7 @@ The service function is a `string -> string` function which takes a
 handler working over the actual message types.
 
 ## Proto2 extensions
-Proto2 extensions allows for messages to be exteded. For each
+Proto2 extensions allows for messages to be extended. For each
 extending field, the plugin create a module with a get and set
 function for reading/writing extension fields.
 
@@ -219,6 +238,12 @@ assert (bar' = Some 42);
 assert (baz' = Some "Test String");
 ()
 ```
+Extensions are replace by proto3 Any type and use is discouraged.
+
+## Proto3 Any type
+No special handling of any type is supported, as Ocaml does not allow
+for runtime types, so any type must be handled manually by
+serializing and deserializing the embedded message.
 
 ## Google Well know types
 Protobuf distributes a set of [*Well-Known
@@ -229,7 +254,7 @@ used by linking with the library `ocaml-protoc-plugin.google_types`
 The distributed google types are compiled using default
 parameters.
 
-If you want to change this, or add type annotaions, you can copy the
+If you want to change this, or add type annotations, you can copy the
 [dune](https://github.com/issuu/ocaml-protoc-plugin/tree/master/src/google_types/dune)
 from the distribution to your own project, and make alterations
 there. See the [echo\_deriving](https://github.com/issuu/ocaml-protoc-plugin/tree/master/examples/echo_deriving)
@@ -289,7 +314,7 @@ end = struct
 ```
 
 Note that if `test.proto` had a package declaration such as `package testing`,
-the modules `Address` and `Person` listed above would be defined as submodules
+the modules `Address` and `Person` listed above would be defined as sub-modules
 of a top-level module `Testing`.
 
 `Protobuf.Reader` and `Protobuf.Writer` are used then reading or
@@ -315,3 +340,5 @@ let read_person binary_message =
 
 More examples can be found under
 [examples](https://github.com/issuu/ocaml-protoc-plugin/tree/master/examples)
+
+<!--  LocalWords:  protobuf protoc Ocaml -->

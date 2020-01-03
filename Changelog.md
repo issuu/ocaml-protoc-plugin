@@ -1,17 +1,18 @@
+(*) indicates breaking change
+
 - [ ] Do not add unit argument for oneof constructors referencing empty messages
-- [ ] Optimize happy path when deserializing
 
 ## 2.1.0: Not released yet
-- [ ] Add option to mangle names (modules, fields and enums) to snake_case
+- [x] Add custom option to mangle names (modules, fields and enums) to
+      more Ocaml idiomatic names (snake_cased)
 - [x] Change type of deserialize error type to be an lower bound polymorphic variant
-- [x] Fix nameclash nameclash with oneof names
-- [x] Fix mutually recursibe types when singleton record is false
+- [x] Rewrite type mapping to ensure that no name clashes can exist.
 - [x] Fix bug in nested cursive types referencing wrong types
 - [x] Add custom options, so options to ocaml\_protoc\_plugin can be
       embedded in .proto files
 - [x] Support extensions
 - [x] Allow use of message name Ocaml\_protoc\_plugin
-- [x] Do not treat oneof fields as required, adding a `not_set variant
+- [*] Do not treat oneof fields as required, adding a `not_set variant
       to all oneofs.
 
 ## 2.0.0: 2019-10-20

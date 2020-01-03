@@ -2,7 +2,7 @@ syntax = "proto3";
 
 import "google/protobuf/descriptor.proto";
 message Options {
-    bool snake_case_names = 1;
+    bool mangle_names = 1;
 }
 
 extend google.protobuf.FileOptions {

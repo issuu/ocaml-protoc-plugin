@@ -245,7 +245,7 @@ module Type_tree = struct
     let map = StringMap.singleton "" { ocaml_name = ""; module_name; cyclic = false } in
     traverse_types map "" types
 
-  let option_snake_case FileDescriptorProto.{ options; _ } =
+  let option_mangle_names FileDescriptorProto.{ options; _ } =
     Option.map ~f:Spec.Options.Ocaml_options.get options
     |> function
     | Some (Ok (Some v)) -> v
@@ -257,7 +257,7 @@ module Type_tree = struct
     let inner proto_file =
       let map = map_file proto_file in
       let cyclic_map = create_cyclic_map map in
-      let file_db = create_file_db ~mangle:(option_snake_case proto_file) cyclic_map map in
+      let file_db = create_file_db ~mangle:(option_mangle_names proto_file) cyclic_map map in
       file_db
     in
     List.map ~f:inner files
@@ -286,7 +286,7 @@ let _ = dump_type_map
 
 let init files =
   let type_db = Type_tree.create_db files in
-  if false then dump_type_map type_db;
+  if true then dump_type_map type_db;
   { module_name = ""; proto_path = ""; package_depth = 0; type_db }
 
 let for_descriptor t FileDescriptorProto.{ name; package; _ } =

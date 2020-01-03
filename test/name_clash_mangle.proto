@@ -1,13 +1,10 @@
 syntax = "proto3";
 
 package name_clash_mangle;
+import "options.proto";
+option (ocaml_options) = { mangle_names:true };
 
-import "google/protobuf/descriptor.proto";
 import "name_clash.proto";
-
-message options { bool snake_case_names = 1; }
-extend google.protobuf.FileOptions { options ocaml_options = 1074; }
-option (ocaml_options) = { snake_case_names:true };
 
 message Protobuf {
   int64 Protobuf = 1;
