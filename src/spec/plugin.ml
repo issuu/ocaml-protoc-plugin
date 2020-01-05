@@ -57,13 +57,13 @@ module Google = struct
         type t = { file_to_generate: string list; parameter: string option; proto_file: Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.t list; compiler_version: Version.t option }
         let to_proto =
           let apply = fun ~f:f' { file_to_generate; parameter; proto_file; compiler_version } -> f' [] file_to_generate parameter proto_file compiler_version in
-          let spec = Runtime'.Serialize.C.( repeated (1, string, not_packed) ^:: basic_opt (2, string) ^:: repeated (15, (message Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.to_proto), not_packed) ^:: basic_opt (3, (message Version.to_proto)) ^:: nil ) in
+          let spec = Runtime'.Serialize.C.( repeated (1, string, not_packed) ^:: basic_opt (2, string) ^:: repeated (15, (message (fun t -> Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.to_proto t)), not_packed) ^:: basic_opt (3, (message (fun t -> Version.to_proto t))) ^:: nil ) in
           let serialize = Runtime'.Serialize.serialize [] (spec) in
           fun t -> apply ~f:serialize t
         
         let from_proto =
           let constructor = fun _extensions file_to_generate parameter proto_file compiler_version -> { file_to_generate; parameter; proto_file; compiler_version } in
-          let spec = Runtime'.Deserialize.C.( repeated (1, string, not_packed) ^:: basic_opt (2, string) ^:: repeated (15, (message Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.from_proto), not_packed) ^:: basic_opt (3, (message Version.from_proto)) ^:: nil ) in
+          let spec = Runtime'.Deserialize.C.( repeated (1, string, not_packed) ^:: basic_opt (2, string) ^:: repeated (15, (message (fun t -> Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.from_proto t)), not_packed) ^:: basic_opt (3, (message (fun t -> Version.from_proto t))) ^:: nil ) in
           let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
           fun writer -> deserialize writer |> Runtime'.Result.open_error
         
@@ -105,13 +105,13 @@ module Google = struct
         type t = { error: string option; file: CodeGeneratorResponse.File.t list }
         let to_proto =
           let apply = fun ~f:f' { error; file } -> f' [] error file in
-          let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: repeated (15, (message CodeGeneratorResponse.File.to_proto), not_packed) ^:: nil ) in
+          let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: repeated (15, (message (fun t -> CodeGeneratorResponse.File.to_proto t)), not_packed) ^:: nil ) in
           let serialize = Runtime'.Serialize.serialize [] (spec) in
           fun t -> apply ~f:serialize t
         
         let from_proto =
           let constructor = fun _extensions error file -> { error; file } in
-          let spec = Runtime'.Deserialize.C.( basic_opt (1, string) ^:: repeated (15, (message CodeGeneratorResponse.File.from_proto), not_packed) ^:: nil ) in
+          let spec = Runtime'.Deserialize.C.( basic_opt (1, string) ^:: repeated (15, (message (fun t -> CodeGeneratorResponse.File.from_proto t)), not_packed) ^:: nil ) in
           let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
           fun writer -> deserialize writer |> Runtime'.Result.open_error
         
