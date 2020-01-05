@@ -22,19 +22,25 @@ let to_snake_case ident =
     List.iteri ~f:(fun i c -> Bytes.set bytes i c) l;
     Bytes.to_string bytes
   in
-  let is_upper c = Char.uppercase_ascii c = c && Char.lowercase_ascii c != c in
-  let is_lower c = Char.lowercase_ascii c = c && Char.uppercase_ascii c != c in
+  let char_case = function
+    | 'a' .. 'z' -> `Lower
+    | 'A' .. 'Z' -> `upper
+    | _ -> `Neither
+  in
+  let is_lower c = char_case c = `Lower in
+  let is_upper c = char_case c = `Upper in
 
   let rec to_snake_case = function
     | c1 :: c2 :: cs when is_lower c1 && is_upper c2 ->
-      c1 :: '_' :: to_snake_case (c2 :: cs)
+      c1 :: '_' :: c2 :: to_snake_case cs
     | c1 :: cs ->
-      (Char.lowercase_ascii c1) :: (to_snake_case cs)
+      c1 :: (to_snake_case cs)
     | [] -> []
   in
   to_list ident
   |> to_snake_case
   |> to_string
+  |> String.lowercase_ascii
   |> String.capitalize_ascii
 
 let field_name ?(mangle_f=(fun x -> x)) field_name =

@@ -19,20 +19,19 @@ The main features include:
 
 ## Comparison with other OCaml protobuf handlers.
 
-| Feature           | ocaml-protoc         | ocaml-pb            | ocaml-protoc-plugin |
-| -------           | ------------         | ---------------     | ------------------- |
-| Ocaml types       | Supported            | Defined runtime[^1] | Supported           |
-| Service endpoints | Not supported        | N/A                 | Supported           |
-| proto3            | Partly supported[^2] | Supported           | Supported           |
-| proto2            | Supported            | Supported           | Supported           |
+| Feature           | ocaml-protoc | ocaml-pb            | ocaml-protoc-plugin |
+| -------           | ------------ | ---------------     | ------------------- |
+| Ocaml types       | Supported    | Defined runtime[^1] | Supported           |
+| Service endpoints | Ignored      | N/A                 | Supported           |
+| proto3            | Supported    | Supported           | Supported           |
+| proto2            | Supported    | Supported           | Supported           |
+| proto2 extends    | Ignored      | Supported           | Supported           |
+| proto2 groups     | Ignored      | ?                   | Ignored             |
 
 [^1] Ocaml-bp has a sister project `Ocaml-bp-plugin` which emit
 Ocaml-pb definitions from a `.proto`. The plugin parses files are proto2
 Ocaml type definitions (all fields are option types), and repeated
 fields are not packed by default.
-
-[^2]: `Ocaml-protoc` release 1.2.0 does not yet fully support proto3, the
-master branch does, however.
 
 ## Types
 Basic types are mapped trivially to Ocaml types:
@@ -136,6 +135,7 @@ below:
 
 | Protobyf type | Protobuf name            | Ocaml name               |
 |:--------------|:-------------------------|:-------------------------|
+| package       | `CapitalizedSnakeCase`   | `Capitalized_snake_case` |
 | message       | `CapitalizedSnakeCase`   | `Capitalized_snake_case` |
 | field         | `lowercased_snake_case`  | `lowercased_snake_case`  |
 | oneof name    | `lowercased_snake_case`  | `lowercased_snake_case`  |
@@ -148,6 +148,10 @@ below:
 enabled. If a name clash is detected (eg. `SomeMessage` and
 `some_message` exists in same file) an apostrophe is appended to the
 name to make sure names are unique.
+
+The algorithm for converting CamelCased names to snake_case is done by
+injecting an underscore between any lowercase and uppercase character
+and then lowercasing the result.
 
 ### Setting mangle option
 Name mangling option can only be controlled from within the protobuf
@@ -206,6 +210,7 @@ Below is an example on how to set and get extension fields
 
 ```protobuf
 // File ext.proto
+syntax = "proto2";
 message Foo {
   extensions 100 to 200;
 }
@@ -236,7 +241,7 @@ assert (bar' = Some 42);
 assert (baz' = Some "Test String");
 ()
 ```
-Extensions are replace by proto3 Any type and use is discouraged.
+Extensions are replaced by proto3 `Any` type, and use is discouraged.
 
 ## Proto3 Any type
 No special handling of any type is supported, as Ocaml does not allow
@@ -258,10 +263,10 @@ from the distribution to your own project, and make alterations
 there. See the [echo\_deriving](https://github.com/issuu/ocaml-protoc-plugin/tree/master/examples/echo_deriving)
 example on how to do this.
 
-# Example:
+# Example
 
 `test.proto`
-```proto3
+```protobuf
 syntax = "proto3";
 message Address {
   enum Planet {

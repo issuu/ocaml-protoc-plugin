@@ -12,7 +12,7 @@
       embedded in .proto files
 - [x] Support extensions
 - [x] Allow use of message name Ocaml\_protoc\_plugin
-- [x] *Do not treat oneof fields as required, adding a `not_set variant
+- [x] `*`Do not treat oneof fields as required, adding a `not_set variant
       to all oneofs.
 - [x] Avoid name clash with imported .proto files
 
@@ -48,5 +48,3 @@
 
 ## 0.9: 2019-09-25
 - [x] Initial Release
-
-(*) indicates breaking change
