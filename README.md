@@ -129,7 +129,7 @@ protoc --plugin=protoc-gen-ocaml=../plugin/ocaml.exe --ocaml_out=annot=debug;[@@
 ```
 ## Mangle generated names
 Idiomatic protobuf names are somewhat alien to
-Ocaml. `Ocaml_protoc_plugin` as an option to mangle protobuf names
+Ocaml. `Ocaml_protoc_plugin` has an option to mangle protobuf names
 into somewhat more Ocaml idiomatic names. When this option is set (see
 below), names are mangled to snake case as described in the table
 below:
@@ -167,12 +167,10 @@ extend google.protobuf.FileOptions {
 
 // This option controls name generation. If true names are converted
 // into more ocaml ideomatic names
-
 option (ocaml_options) = { mangle_names:true };
 
 // This message will be mapped to module name My_proto_message
 message MyProtoMessage { }
-
 ```
 
 
