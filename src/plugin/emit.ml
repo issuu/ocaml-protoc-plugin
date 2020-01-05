@@ -4,9 +4,6 @@ open Spec.Descriptor.Google.Protobuf
 
 module IntSet = Set.Make(struct type t = int let compare = compare end)
 let sprintf = Printf.sprintf
-let to_string_opt = function
-  | Some s -> s
-  | None -> "<None>"
 
 (** Slightly overloaded name here.
     Its also used for all other types which would go into a module *)
@@ -218,11 +215,12 @@ let rec wrap_packages ~params ~syntax scope message_type services = function
     implementation
 
 let parse_proto_file ~params scope
-    FileDescriptorProto.{ name; package; dependency = _; public_dependency = _;
+    FileDescriptorProto.{ name; package; dependency = dependencies; public_dependency = _;
                           weak_dependency = _; message_type = message_types;
                           enum_type = enum_types; service = services; extension;
                           options = _; source_code_info = _; syntax; }
   =
+  let name = Option.value_exn ~message:"All files must have a name" name in
   let syntax = match syntax with
     | None | Some "proto2" -> `Proto2
     | Some "proto3" -> `Proto3
@@ -242,7 +240,7 @@ let parse_proto_file ~params scope
   Code.emit implementation `None "(* https://github.com/issuu/ocaml-protoc-plugin *)";
   Code.emit implementation `None "(************************************************)";
   Code.emit implementation `None "(*";
-  Code.emit implementation `None "   Source: %s" (to_string_opt name);
+  Code.emit implementation `None "   Source: %s" name;
   Code.emit implementation `None "   Syntax: %s " (match syntax with `Proto2 -> "proto2" | `Proto3 -> "proto3");
   Code.emit implementation `None "   Parameters:";
   Code.emit implementation `None "     debug=%b" params.debug;
@@ -254,7 +252,19 @@ let parse_proto_file ~params scope
   Code.emit implementation `None "     singleton_record=%b" params.singleton_record;
   Code.emit implementation `None "*)";
   Code.emit implementation `None "";
-  Code.emit implementation `None "open Ocaml_protoc_plugin.Runtime";
+  Code.emit implementation `None "open Ocaml_protoc_plugin.Runtime [@@warning \"-33\"]";
+  let _ = match dependencies with
+    | [] -> ()
+    | dependencies ->
+      Code.emit implementation `None "(**/**)";
+      Code.emit implementation `Begin "module %s = struct" Scope.import_module_name;
+      List.iter ~f:(fun proto_file ->
+          let module_name = Scope.module_name_of_proto proto_file in
+          Code.emit implementation `None "module %s = %s" module_name module_name;
+        ) dependencies;
+      Code.emit implementation `End "end";
+      Code.emit implementation `None "(**/**)";
+  in
   List.iter ~f:(Code.emit implementation `None "open %s") params.opens;
 
   wrap_packages ~params ~syntax scope message_type services (Option.value_map ~default:[] ~f:(String.split_on_char ~sep:'.') package)
@@ -262,9 +272,7 @@ let parse_proto_file ~params scope
 
 
   let out_name =
-    Option.map ~f:(fun proto_file_name ->
-        Filename.remove_extension proto_file_name
-        |> sprintf "%s.ml"
-      ) name
+    Filename.remove_extension name
+    |> sprintf "%s.ml"
   in
   out_name, implementation

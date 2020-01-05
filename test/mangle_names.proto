@@ -1,5 +1,8 @@
 syntax = "proto3";
 
+import "options.proto";
+option (ocaml_options) = { mangle_names:true };
+
 
 message CamelCaseName {
   uint32 CamelCaseField = 1;
@@ -11,7 +14,6 @@ message CamelCaseName {
   };
   uint32 xid_zero = 11;
 }
-
 
 message camel_case_name {
   uint32 CamelCaseField = 1;

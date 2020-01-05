@@ -1,6 +1,8 @@
 open StdLabels
 open MoreLabels
 
+let dump_tree = false
+
 module StringMap = struct
   include Map.Make(String)
 
@@ -16,6 +18,8 @@ module StringSet = Set.Make(String)
 open Spec.Descriptor.Google.Protobuf
 
 type element = { module_name: string; ocaml_name: string; cyclic: bool }
+
+let import_module_name = "Imported'modules"
 
 let module_name_of_proto file =
   Filename.chop_extension file |> Filename.basename |> String.capitalize_ascii
@@ -183,7 +187,12 @@ module Type_tree = struct
     in
     let module_name = module_name_of_proto module_name in
     let add_names ~path ~ocaml_name map names =
-      StringMap.fold ~init:map ~f:(fun ~key ~data map -> StringMap.add_uniq ~key:(path ^ "." ^ key) ~data:{ module_name; ocaml_name = ocaml_name ^ "." ^ data; cyclic = false } map) names
+      StringMap.fold ~init:map ~f:(fun ~key ~data map ->
+          StringMap.add_uniq
+            ~key:(path ^ "." ^ key)
+            ~data:{ module_name; ocaml_name = ocaml_name ^ "." ^ data; cyclic = false }
+            map
+        ) names
     in
 
     let rec traverse_types map path types =
@@ -270,7 +279,8 @@ end
 type t = { module_name: string;
            package_depth: int;
            proto_path: string;
-           type_db: element StringMap.t }
+           type_db: element StringMap.t;
+         }
 
 let dump_type_map type_map =
   Printf.eprintf "Type map:\n";
@@ -279,19 +289,16 @@ let dump_type_map type_map =
     ) type_map;
   Printf.eprintf "Type map end:\n%!"
 
-let _ = dump_type_map
-
-
 let init files =
   let type_db = Type_tree.create_db files in
-  if true then dump_type_map type_db;
-  { module_name = ""; proto_path = ""; package_depth = 0; type_db }
+  if dump_tree then dump_type_map type_db;
+  { module_name = ""; proto_path = ""; package_depth = 0; type_db; }
 
 let for_descriptor t FileDescriptorProto.{ name; package; _ } =
   let name = Option.value_exn ~message:"All file descriptors must have a name" name in
   let module_name = module_name_of_proto name in
   let package_depth = Option.value_map ~default:0 ~f:(fun p -> String.split_on_char ~sep:'.' p |> List.length) package in
-  { t with package_depth; module_name; proto_path = ""}
+  { t with package_depth; module_name; proto_path = "" }
 
 let push: t -> string -> t = fun t name -> { t with proto_path = t.proto_path ^ "." ^ name }
 
@@ -310,7 +317,7 @@ let get_scoped_name ?postfix t name =
       |> String.split_on_char ~sep:'.'
       |> drop t.package_depth
       |> String.concat ~sep:"."
-    | false -> module_name ^ "." ^ ocaml_name
+    | false -> Printf.sprintf "%s.%s.%s" import_module_name module_name ocaml_name
   in
   (* Strip away the package depth *)
   Option.value_map ~default:type_name ~f:(fun postfix -> type_name ^ "." ^ postfix) postfix

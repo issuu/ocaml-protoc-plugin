@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package name_clash_mangle;
+package NameClashMangle;
 import "options.proto";
 option (ocaml_options) = { mangle_names:true };
 

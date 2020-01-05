@@ -44,9 +44,8 @@ let parse_request Plugin.CodeGeneratorRequest.{file_to_generate = files_to_gener
         let scope = Scope.for_descriptor scope proto_file in
         Emit.parse_proto_file ~params scope proto_file
       ) target_proto_files
-    |> List.map ~f:(fun (v, code) ->
-        let v = Option.map ~f:(Filename.basename) v in
-        (v, code)
+    |> List.map ~f:(fun (name, code) ->
+        (Filename.basename name, code)
       )
   in
   (match params.debug with
@@ -62,7 +61,7 @@ let () =
   let response_of_output (name, code) =
     let insertion_point = None in
     let content = Some (Code.contents code) in
-    Plugin.CodeGeneratorResponse.File.{name; insertion_point; content}
+    Plugin.CodeGeneratorResponse.File.{name = Some name; insertion_point; content}
   in
   let response : Plugin.CodeGeneratorResponse.t =
     {error = None; file = List.map ~f:response_of_output outputs}
