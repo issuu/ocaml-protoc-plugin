@@ -26,12 +26,14 @@ The main features include:
 | proto3            | Supported    | Supported           | Supported           |
 | proto2            | Supported    | Supported           | Supported           |
 | proto2 extends    | Ignored      | Supported           | Supported           |
-| proto2 groups     | Ignored      | ?                   | Ignored             |
+| proto2 groups     | Ignored      | ?                   | Not supported[^2]   |
 
 [^1] Ocaml-bp has a sister project `Ocaml-bp-plugin` which emit
 Ocaml-pb definitions from a `.proto`. The plugin parses files are proto2
 Ocaml type definitions (all fields are option types), and repeated
 fields are not packed by default.
+
+[^2] Groups has been deprecated by google and should not be used.
 
 ## Types
 Basic types are mapped trivially to Ocaml types:
