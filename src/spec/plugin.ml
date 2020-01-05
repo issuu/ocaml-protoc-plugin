@@ -17,7 +17,12 @@
      singleton_record=false
 *)
 
-open Ocaml_protoc_plugin.Runtime
+open Ocaml_protoc_plugin.Runtime [@@warning "-33"]
+(**/**)
+module Imported'modules = struct
+  module Descriptor = Descriptor
+end
+(**/**)
 module Google = struct
   module Protobuf = struct
     module Compiler = struct
@@ -44,21 +49,21 @@ module Google = struct
       end
       and CodeGeneratorRequest : sig
         val name': unit -> string
-        type t = { file_to_generate: string list; parameter: string option; proto_file: Descriptor.Google.Protobuf.FileDescriptorProto.t list; compiler_version: Version.t option } 
+        type t = { file_to_generate: string list; parameter: string option; proto_file: Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.t list; compiler_version: Version.t option } 
         val to_proto: t -> Runtime'.Writer.t
         val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       end = struct 
         let name' () = "plugin.google.protobuf.compiler.CodeGeneratorRequest"
-        type t = { file_to_generate: string list; parameter: string option; proto_file: Descriptor.Google.Protobuf.FileDescriptorProto.t list; compiler_version: Version.t option }
+        type t = { file_to_generate: string list; parameter: string option; proto_file: Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.t list; compiler_version: Version.t option }
         let to_proto =
           let apply = fun ~f:f' { file_to_generate; parameter; proto_file; compiler_version } -> f' [] file_to_generate parameter proto_file compiler_version in
-          let spec = Runtime'.Serialize.C.( repeated (1, string, not_packed) ^:: basic_opt (2, string) ^:: repeated (15, (message Descriptor.Google.Protobuf.FileDescriptorProto.to_proto), not_packed) ^:: basic_opt (3, (message Version.to_proto)) ^:: nil ) in
+          let spec = Runtime'.Serialize.C.( repeated (1, string, not_packed) ^:: basic_opt (2, string) ^:: repeated (15, (message Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.to_proto), not_packed) ^:: basic_opt (3, (message Version.to_proto)) ^:: nil ) in
           let serialize = Runtime'.Serialize.serialize [] (spec) in
           fun t -> apply ~f:serialize t
         
         let from_proto =
           let constructor = fun _extensions file_to_generate parameter proto_file compiler_version -> { file_to_generate; parameter; proto_file; compiler_version } in
-          let spec = Runtime'.Deserialize.C.( repeated (1, string, not_packed) ^:: basic_opt (2, string) ^:: repeated (15, (message Descriptor.Google.Protobuf.FileDescriptorProto.from_proto), not_packed) ^:: basic_opt (3, (message Version.from_proto)) ^:: nil ) in
+          let spec = Runtime'.Deserialize.C.( repeated (1, string, not_packed) ^:: basic_opt (2, string) ^:: repeated (15, (message Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.from_proto), not_packed) ^:: basic_opt (3, (message Version.from_proto)) ^:: nil ) in
           let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
           fun writer -> deserialize writer |> Runtime'.Result.open_error
         

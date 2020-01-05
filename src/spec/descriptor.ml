@@ -17,7 +17,7 @@
      singleton_record=false
 *)
 
-open Ocaml_protoc_plugin.Runtime
+open Ocaml_protoc_plugin.Runtime [@@warning "-33"]
 module Google = struct
   module Protobuf = struct
     module rec FileDescriptorSet : sig

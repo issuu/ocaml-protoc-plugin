@@ -17,7 +17,12 @@
      singleton_record=false
 *)
 
-open Ocaml_protoc_plugin.Runtime
+open Ocaml_protoc_plugin.Runtime [@@warning "-33"]
+(**/**)
+module Imported'modules = struct
+  module Descriptor = Descriptor
+end
+(**/**)
 module rec Options : sig
   val name': unit -> string
   type t = bool 
@@ -41,13 +46,13 @@ end = struct
 end
 and Ocaml_options : sig
   type t = Options.t option 
-  val get: Descriptor.Google.Protobuf.FileOptions.t -> (Options.t option, [> Runtime'.Result.error]) result
-  val set: Descriptor.Google.Protobuf.FileOptions.t -> Options.t option -> Descriptor.Google.Protobuf.FileOptions.t
+  val get: Imported'modules.Descriptor.Google.Protobuf.FileOptions.t -> (Options.t option, [> Runtime'.Result.error]) result
+  val set: Imported'modules.Descriptor.Google.Protobuf.FileOptions.t -> Options.t option -> Imported'modules.Descriptor.Google.Protobuf.FileOptions.t
 end = struct 
   type t = Options.t option 
-  let get extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( basic_opt (1074, (message Options.from_proto)) ^:: nil ) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions') |> Runtime'.Result.open_error
+  let get extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( basic_opt (1074, (message Options.from_proto)) ^:: nil ) (extendee.Imported'modules.Descriptor.Google.Protobuf.FileOptions.extensions') |> Runtime'.Result.open_error
   let set extendee t =
-    let extensions' = Runtime'.Extensions.set (Runtime'.Serialize.C.( basic_opt (1074, (message Options.to_proto)) ^:: nil )) (extendee.Descriptor.Google.Protobuf.FileOptions.extensions') t in
-    { extendee with Descriptor.Google.Protobuf.FileOptions.extensions' = extensions' }
+    let extensions' = Runtime'.Extensions.set (Runtime'.Serialize.C.( basic_opt (1074, (message Options.to_proto)) ^:: nil )) (extendee.Imported'modules.Descriptor.Google.Protobuf.FileOptions.extensions') t in
+    { extendee with Imported'modules.Descriptor.Google.Protobuf.FileOptions.extensions' = extensions' }
   
 end
