@@ -1,0 +1,24 @@
+// Test including a file those module name would conflict
+// with an existing name.
+
+syntax = "proto3";
+
+import "options.proto";
+option (ocaml_options) = { mangle_names:true };
+package ImportModuleName.subPackageName;
+
+import "name_clash.proto";
+import "mangle_names.proto";
+
+message Name_clash {
+    name_clash.Ocaml_protoc_plugin a = 1;
+}
+
+message imports { }
+message Imports { }
+
+message Mangle_names {
+    int64 a = 1;
+    CamelCaseName b = 2;
+    camel_case_name c = 3;
+}

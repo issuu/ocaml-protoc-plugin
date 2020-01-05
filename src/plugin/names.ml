@@ -11,11 +11,6 @@ let is_reserved = function
   | "val" | "virtual" | "when" | "while" | "with" -> true
   | _ -> false
 
-let module_name name =
-  match name.[0] with
-  | '_' -> "P" ^ name ^ "'"
-  | _ -> String.capitalize_ascii name
-
 let to_snake_case ident =
   let to_list s =
     let r = ref [] in
@@ -27,28 +22,37 @@ let to_snake_case ident =
     List.iteri ~f:(fun i c -> Bytes.set bytes i c) l;
     Bytes.to_string bytes
   in
-  let is_upper c = Char.uppercase_ascii c = c && Char.lowercase_ascii c != c in
-  let is_lower c = Char.lowercase_ascii c = c && Char.uppercase_ascii c != c in
+  let char_case = function
+    | 'a' .. 'z' -> `Lower
+    | 'A' .. 'Z' -> `upper
+    | _ -> `Neither
+  in
+  let is_lower c = char_case c = `Lower in
+  let is_upper c = char_case c = `Upper in
 
   let rec to_snake_case = function
     | c1 :: c2 :: cs when is_lower c1 && is_upper c2 ->
-      c1 :: '_' :: to_snake_case (c2 :: cs)
+      c1 :: '_' :: c2 :: to_snake_case cs
     | c1 :: cs ->
-      (Char.lowercase_ascii c1) :: (to_snake_case cs)
+      c1 :: (to_snake_case cs)
     | [] -> []
   in
   to_list ident
   |> to_snake_case
   |> to_string
+  |> String.lowercase_ascii
   |> String.capitalize_ascii
 
-
-let field_name (field_name : string option) =
-  match String.uncapitalize_ascii (Option.value_exn field_name) with
+let field_name ?(mangle_f=(fun x -> x)) field_name =
+  match String.uncapitalize_ascii (mangle_f field_name) with
   | name when is_reserved name -> name ^ "'"
   | name -> name
 
-let variant_name name = module_name name
+let module_name ?(mangle_f=(fun x -> x)) name =
+  let name = mangle_f name in
+  match name.[0] with
+  | '_' -> "P" ^ name
+  | _ -> String.capitalize_ascii name
 
-let constructor_name (name : string option) =
-  String.capitalize_ascii (Option.value_exn name)
+let poly_constructor_name ?(mangle_f=(fun x -> x)) name =
+  "`" ^ (mangle_f name |> String.capitalize_ascii)

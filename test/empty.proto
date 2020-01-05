@@ -1,0 +1,2 @@
+// Test that code for an empty protofile will compile
+syntax = "proto3";

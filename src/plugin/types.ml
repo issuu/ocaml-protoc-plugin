@@ -385,12 +385,13 @@ let c_of_oneof ~params ~syntax:_ ~scope OneofDescriptorProto.{ name; _ } fields 
   let oneof =
     let oneof_elems =
       List.map ~f:(fun (index, name, type', Espec spec) ->
-        (Names.constructor_name name), Oneof_elem (index, spec, (type', sprintf "fun v -> `%s v" (Names.constructor_name name), "v", None))
+        let adt_name = Scope.get_name_exn scope name in
+        adt_name, Oneof_elem (index, spec, (type', sprintf "fun v -> %s v" adt_name, "v", None))
       ) field_infos
     in
     let type' =
       field_infos
-      |> List.map ~f:(fun (_, name, type', _) -> sprintf "`%s of %s" (Names.constructor_name name) type')
+      |> List.map ~f:(fun (_, name, type', _) -> sprintf "%s of %s" (Scope.get_name_exn scope name) type')
       |> String.concat ~sep:" | "
       |> sprintf "[ `not_set | %s ]"
     in
@@ -405,7 +406,7 @@ let c_of_oneof ~params ~syntax:_ ~scope OneofDescriptorProto.{ name; _ } fields 
       let default_elem = "`not_set -> failwith \"This case should never _ever_ happen\"" in
       oneof_elems
       |> List.map ~f:(fun (name, oneof_elem) ->
-        sprintf "`%s v -> %s" name (string_of_oneof_elem `Serialize oneof_elem)
+        sprintf "%s v -> %s" name (string_of_oneof_elem `Serialize oneof_elem)
       )
       |> (fun l -> default_elem :: l)
       |> String.concat ~sep:" | "
@@ -468,7 +469,7 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
       type', "fun _extensions a b -> (a, b)", "fun ~f (a, b) -> f [] a b"
     | ts when has_extensions ->
       let type' =
-        List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" (Scope.get_field_name scope name) type') ts
+        List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" (Scope.get_name scope name) type') ts
         |> String.concat ~sep:"; "
         |> sprintf "{ %s; extensions': Runtime'.Extensions.t }"
       in
@@ -476,7 +477,7 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
       (* When serializing, its the first argument *)
       let constructor, apply =
         let field_names =
-          List.map ~f:(fun { name; _} -> Scope.get_field_name scope name) ts
+          List.map ~f:(fun { name; _} -> Scope.get_name scope name) ts
         in
 
         let args = String.concat ~sep:" " field_names in
@@ -488,13 +489,13 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
       (type', constructor, apply)
     | ts ->
       let type' =
-        List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" (Scope.get_field_name scope name) type') ts
+        List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" (Scope.get_name scope name) type') ts
         |> String.concat ~sep:"; "
         |> sprintf "{ %s }"
       in
       let constructor, apply =
         let field_names =
-          List.map ~f:(fun { name; _} -> Scope.get_field_name scope name) ts
+          List.map ~f:(fun { name; _} -> Scope.get_name scope name) ts
         in
 
         let args = String.concat ~sep:" " field_names in

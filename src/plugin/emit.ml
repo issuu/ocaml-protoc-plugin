@@ -4,9 +4,6 @@ open Spec.Descriptor.Google.Protobuf
 
 module IntSet = Set.Make(struct type t = int let compare = compare end)
 let sprintf = Printf.sprintf
-let to_string_opt = function
-  | Some s -> s
-  | None -> "<None>"
 
 (** Slightly overloaded name here.
     Its also used for all other types which would go into a module *)
@@ -16,47 +13,49 @@ type module' = {
   implementation : Code.t;
 }
 
+(* Enums are not mangled - Maybe they should be lowercased though. *)
 let emit_enum_type ~scope ~params
-    EnumDescriptorProto.{name; value; options = _; reserved_range = _; reserved_name = _}
-    : module'
-  =
-  let module_name = Scope.get_message_name scope name in
+    EnumDescriptorProto.{name; value = values; options = _; reserved_range = _; reserved_name = _}
+    : module' =
+  let name = Option.value_exn ~message:"Enums must have a name" name in
+  let module_name = Scope.get_name scope name in
   let signature = Code.init () in
   let implementation = Code.init () in
+  let scope = Scope.push scope name in
   let t = Code.init () in
   Code.emit t `None "type t = %s %s"
-    (List.map ~f:(fun f -> Names.constructor_name f.EnumValueDescriptorProto.name) value
-     |> String.concat ~sep:" | ") params.Parameters.annot;
+    (List.map ~f:(fun EnumValueDescriptorProto.{name; _} -> Scope.get_name_exn scope name) values
+     |> String.concat ~sep:" | "
+    )
+    params.Parameters.annot;
   Code.append signature t;
   Code.append implementation t;
   Code.emit signature `None "val to_int: t -> int";
   Code.emit signature `None "val from_int: int -> (t, [> Runtime'.Result.error]) result";
   Code.emit implementation `Begin "let to_int = function";
-  List.iter ~f:(fun v ->
-      let open  EnumValueDescriptorProto in
-      Code.emit implementation `None "| %s -> %d" (Names.constructor_name v.name) (Option.value_exn v.number)
-    ) value;
+  List.iter ~f:(fun EnumValueDescriptorProto.{name; number; _} ->
+    Code.emit implementation `None "| %s -> %d" (Scope.get_name_exn scope name) (Option.value_exn number)
+    ) values;
   Code.emit implementation `End "";
   Code.emit implementation `Begin "let from_int = function";
 
   let _ =
-    List.fold_left ~init:IntSet.empty ~f:(fun seen v ->
-        let idx = (Option.value_exn v.EnumValueDescriptorProto.number) in
+    List.fold_left ~init:IntSet.empty ~f:(fun seen EnumValueDescriptorProto.{name; number; _} ->
+        let idx = (Option.value_exn ~message:"All enum descriptions must have a value" number) in
         match IntSet.mem idx seen with
         | true -> seen
         | false ->
-          let open EnumValueDescriptorProto in
-          Code.emit implementation `None "| %d -> Ok %s" idx (Names.constructor_name v.name);
+          Code.emit implementation `None "| %d -> Ok %s" idx (Scope.get_name_exn scope name);
           IntSet.add idx seen
-      ) value
+      ) values
   in
   Code.emit implementation `None "| n -> Error (`Unknown_enum_value n)";
   Code.emit implementation `End "";
   {module_name; signature; implementation}
 
 let emit_service_type scope ServiceDescriptorProto.{ name; method' = methods; _ } =
-  let emit_method t MethodDescriptorProto.{ name; input_type; output_type; _} =
-    Code.emit t `Begin "let %s = " (Names.field_name name);
+  let emit_method t scope MethodDescriptorProto.{ name; input_type; output_type; _} =
+    Code.emit t `Begin "let %s = " (Scope.get_name_exn scope name);
     Code.emit t `None "( (module %s : Runtime'.Service.Message with type t = %s ), "
       (Scope.get_scoped_name scope input_type)
       (Scope.get_scoped_name ~postfix:"t" scope input_type);
@@ -64,16 +63,17 @@ let emit_service_type scope ServiceDescriptorProto.{ name; method' = methods; _ 
       (Scope.get_scoped_name scope output_type)
       (Scope.get_scoped_name ~postfix:"t" scope output_type)
   in
+  let name = Option.value_exn ~message:"Service definitions must have a name" name in
   let t = Code.init () in
-  Code.emit t `Begin "module %s = struct" (Names.module_name (Option.value_exn ~message:"Service entries must have a name" name));
-  List.iter ~f:(emit_method t) methods;
+  Code.emit t `Begin "module %s = struct" (Scope.get_name scope name);
+  List.iter ~f:(emit_method t (Scope.push scope name)) methods;
   Code.emit t `End "end";
   t
 
 let emit_extension ~scope ~params field =
-  let FieldDescriptorProto.{ name; extendee; _ } = field
-  in
-  let module_name = (Names.module_name (Option.value_exn ~message:"Extensions must have a name" name)) in
+  let FieldDescriptorProto.{ name; extendee; _ } = field in
+  let name = Option.value_exn ~message:"Extensions must have a name" name in
+  let module_name = (Scope.get_name scope name) in
   let extendee_type = Scope.get_scoped_name scope ~postfix:"t" extendee in
   let extendee_field = Scope.get_scoped_name scope ~postfix:"extensions'" extendee in
   (* Create the type of the type' / type_name *)
@@ -146,7 +146,7 @@ let rec emit_message ~params ~syntax scope
     match name with
     | None -> "", scope
     | Some name ->
-      let module_name = Scope.get_message_name scope (Some name) in
+      let module_name = Scope.get_name scope name in
       module_name, Scope.push scope name
   in
   List.map ~f:(emit_enum_type ~scope ~params) enum_types
@@ -207,7 +207,7 @@ let rec wrap_packages ~params ~syntax scope message_type services = function
 
   | package :: packages ->
     let implementation = Code.init () in
-    let package_name = Names.module_name package in (* This should be based on mangle_names *)
+    let package_name = Scope.get_name scope package in
     let scope = Scope.push scope package in
     Code.emit implementation `Begin "module %s = struct" package_name;
     Code.append implementation (wrap_packages ~params ~syntax scope message_type services packages);
@@ -215,11 +215,12 @@ let rec wrap_packages ~params ~syntax scope message_type services = function
     implementation
 
 let parse_proto_file ~params scope
-    FileDescriptorProto.{ name; package; dependency = _; public_dependency = _;
+    FileDescriptorProto.{ name; package; dependency = dependencies; public_dependency = _;
                           weak_dependency = _; message_type = message_types;
                           enum_type = enum_types; service = services; extension;
                           options = _; source_code_info = _; syntax; }
   =
+  let name = Option.value_exn ~message:"All files must have a name" name in
   let syntax = match syntax with
     | None | Some "proto2" -> `Proto2
     | Some "proto3" -> `Proto3
@@ -239,7 +240,7 @@ let parse_proto_file ~params scope
   Code.emit implementation `None "(* https://github.com/issuu/ocaml-protoc-plugin *)";
   Code.emit implementation `None "(************************************************)";
   Code.emit implementation `None "(*";
-  Code.emit implementation `None "   Source: %s" (to_string_opt name);
+  Code.emit implementation `None "   Source: %s" name;
   Code.emit implementation `None "   Syntax: %s " (match syntax with `Proto2 -> "proto2" | `Proto3 -> "proto3");
   Code.emit implementation `None "   Parameters:";
   Code.emit implementation `None "     debug=%b" params.debug;
@@ -251,7 +252,19 @@ let parse_proto_file ~params scope
   Code.emit implementation `None "     singleton_record=%b" params.singleton_record;
   Code.emit implementation `None "*)";
   Code.emit implementation `None "";
-  Code.emit implementation `None "open Ocaml_protoc_plugin.Runtime";
+  Code.emit implementation `None "open Ocaml_protoc_plugin.Runtime [@@warning \"-33\"]";
+  let _ = match dependencies with
+    | [] -> ()
+    | dependencies ->
+      Code.emit implementation `None "(**/**)";
+      Code.emit implementation `Begin "module %s = struct" Scope.import_module_name;
+      List.iter ~f:(fun proto_file ->
+          let module_name = Scope.module_name_of_proto proto_file in
+          Code.emit implementation `None "module %s = %s" module_name module_name;
+        ) dependencies;
+      Code.emit implementation `End "end";
+      Code.emit implementation `None "(**/**)";
+  in
   List.iter ~f:(Code.emit implementation `None "open %s") params.opens;
 
   wrap_packages ~params ~syntax scope message_type services (Option.value_map ~default:[] ~f:(String.split_on_char ~sep:'.') package)
@@ -259,9 +272,7 @@ let parse_proto_file ~params scope
 
 
   let out_name =
-    Option.map ~f:(fun proto_file_name ->
-        Filename.remove_extension proto_file_name
-        |> sprintf "%s.ml"
-      ) name
+    Filename.remove_extension name
+    |> sprintf "%s.ml"
   in
   out_name, implementation

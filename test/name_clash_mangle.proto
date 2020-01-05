@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package NameClashMangle;
+import "options.proto";
+option (ocaml_options) = { mangle_names:true };
+
+import "name_clash.proto";
+
+message Protobuf {
+  int64 Protobuf = 1;
+  int64 OcamlProtocPlugin = 2;
+}
+message Ocaml_protoc_plugin { }
+
+message Base { }
+
+message Pervasives { }
+
+message Stdlib { }
+
+message StdLabels { }
+
+message _StdLabels {
+    message StdLabels { int64 _blah = 5; }
+}
+
+message Enum {
+  int64 enum = 1;
+}
+
+message Enum1 {
+  int64 Enum1 = 1;
+}
+
+message struct {
+  int64 struct = 1;
+}
+
+message end {
+  int64 End = 1;
+}
+
+message basic {
+  int64 Basic = 1;
+  int64 Int64 = 2;
+}
+
+message _Enum {
+  int64 i = 1;
+}
+
+message _enum {
+  int64 i = 1;
+}
+
+message equal {
+  int64 equal = 1;
+}
+
+message enum_clash {
+  int64 name_one = 1;
+  oneof NameOne { int64 name_two = 2; }
+  oneof Name_one { int64 name_three = 3; }
+}
+
+message not_set {
+  int64 not_set = 1;
+}
+
+message not_set2 {
+    oneof not_set { int64 not_set2 = 1; };
+}
+
+message not_set3 {
+    oneof not_set3 { int64 not_set = 1; };
+}
+
+enum ENUM_TEST {
+    ENUM1 = 0;
+    ENUM2 = 1;
+    ENUM_Three = 2;
+    ENUM_four = 3;
+    ENUM_Name = 4;
+    EnumName = 5;
+}
+
+message A {
+    enum a {
+        B1 = 0;
+    };
+    message A {
+        int64 A = 1;
+    }
+}
+
+message RequestMessage {}
+message ResponseMessage {}
+
+service EnumClash {
+    rpc RequestEndPoint (RequestMessage) returns (ResponseMessage);
+    rpc Request_end_point (RequestMessage) returns (ResponseMessage);
+    rpc TestService (RequestMessage) returns (ResponseMessage);
+    rpc Ocaml_proto_plugin (RequestMessage) returns (ResponseMessage);
+    rpc method (RequestMessage) returns (ResponseMessage);
+    rpc included (name_clash.StdLabels) returns (ResponseMessage);
+}

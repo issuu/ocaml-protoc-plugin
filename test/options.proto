@@ -1,32 +1,7 @@
 syntax = "proto3";
 
 import "google/protobuf/descriptor.proto";
-message options {
-    bool snakecase = 1;
-}
-
+message options { bool mangle_names = 1; }
 extend google.protobuf.FileOptions {
     options ocaml_options = 1074;
-}
-option (ocaml_options) = { snakecase:true };
-
-
-message ThisShouldBeConvertedToSnakeCase {
-    int32 i = 1;
-}
-
-message This_should_be_converted_to_snake_case {
-    int32 conflict = 2;
-}
-
-message P_strangeName {
-}
-
-message P_strange_name {
-}
-
-message _strange_name {
-}
-
-message _strangeName {
 }

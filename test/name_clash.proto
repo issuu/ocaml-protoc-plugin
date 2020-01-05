@@ -11,6 +11,10 @@ message Ocaml_protoc_plugin {
   int64 Protobuf = 1;
   int64 Ocaml_protoc_plugin = 2;
 }
+message OcamlProtocPlugin {
+  int64 Protobuf = 1;
+  int64 Ocaml_protoc_plugin = 2;
+}
 message Base {
   int64 Protobuf = 1;
   int64 Ocaml_protoc_plugin = 2;
@@ -58,4 +62,16 @@ message enum_clash {
   int64 name_one = 1;
   oneof NameOne { int64 name_two = 2; }
   oneof Name_one { int64 name_three = 3; }
+}
+
+message not_set {
+  int64 not_set = 1;
+}
+
+message not_set2 {
+    oneof not_set { int64 not_set2 = 1; };
+}
+
+message not_set3 {
+    oneof not_set3 { int64 not_set = 1; };
 }
