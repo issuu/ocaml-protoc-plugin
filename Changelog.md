@@ -2,7 +2,7 @@
 
 - [ ] Do not add unit argument for oneof constructors referencing empty messages
 
-## 2.1.0: Not released yet
+## 3.0.0: 2920-01-06
 - [x] Add custom option to mangle names (modules, fields and enums) to
       more Ocaml idiomatic names (snake_cased)
 - [x] Change type of deserialize error type to be an lower bound polymorphic variant
@@ -15,6 +15,8 @@
 - [x] `*`Do not treat oneof fields as required, adding a `not_set variant
       to all oneofs.
 - [x] Avoid name clash with imported .proto files
+- [x] Avoid eager evaluation of members of recursivbe modules to fix
+      bug triggered in bucklescript - @wokalski
 
 ## 2.0.0: 2019-10-20
 - [x] Add examples
