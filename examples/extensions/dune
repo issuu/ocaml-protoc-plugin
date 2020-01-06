@@ -1,0 +1,16 @@
+(executable
+ (name        test)
+ (libraries   ocaml-protoc-plugin ocaml-protoc-plugin.google_types unix)
+)
+
+(rule
+ (targets extensions.ml)
+ (deps
+  (:proto extensions.proto))
+ (action
+  (run protoc -I . "--ocaml_out=:." %{proto})))
+
+(alias
+ (name runtest)
+ (deps test.exe)
+)

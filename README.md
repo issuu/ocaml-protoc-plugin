@@ -211,37 +211,43 @@ Below is an example on how to set and get extension fields
 
 
 ```protobuf
-// File ext.proto
+// file: ext.proto
 syntax = "proto2";
 message Foo {
+  required uint32 i = 1;
   extensions 100 to 200;
+
 }
 extend Foo {
-  option uint32 bar = 128;
-  option string baz = 128;
+  optional uint32 bar = 128;
+  optional string baz = 129;
 }
 ```
 
 ```ocaml
-(* test.ml *)
+(* file: test.ml *)
+
+open Extensions
 
 (* Set extensions *)
-let foo = Foo.{ extensions' = Ocaml_protoc_plugin.Extensions.default }
-let foo_with_bar = Bar.set foo (Some 42) in
-let foo_with_baz = Bar.set foo (Some "Test String") in
-let foo_with_bar_baz = Bar.set foo_with_bar (Some "Test String") in
+let _ =
+  let foo = Foo.{ i = 31; extensions' = Ocaml_protoc_plugin.Extensions.default } in
+  let foo_with_bar = Bar.set foo (Some 42) in
+  let foo_with_baz = Baz.set foo (Some "Test String") in
+  let foo_with_bar_baz = Baz.set foo_with_bar (Some "Test String") in
 
-(* Get extensions *)
-let open Ocaml_protoc_plugin.Result in
-Bar.get foo_with_bar >>= fun bar ->
-Bar.get foo_with_baz >>= fun baz ->
-assert (bar = Some 42);
-assert (baz = Some "Test String");
-Bar.get foo_with_bar_baz >>= fun bar' ->
-Bar.get foo_with_bar_baz >>= fun baz' ->
-assert (bar' = Some 42);
-assert (baz' = Some "Test String");
-()
+  (* Get extensions *)
+  let open Ocaml_protoc_plugin.Result in
+  Bar.get foo_with_bar >>= fun bar ->
+  Baz.get foo_with_baz >>= fun baz ->
+  assert (bar = Some 42);
+  assert (baz = Some "Test String");
+  Bar.get foo_with_bar_baz >>= fun bar' ->
+  Baz.get foo_with_bar_baz >>= fun baz' ->
+  assert (bar' = Some 42);
+  assert (baz' = Some "Test String");
+  return ()
+
 ```
 Extensions are replaced by proto3 `Any` type, and use is discouraged.
 

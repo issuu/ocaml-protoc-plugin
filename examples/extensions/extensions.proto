@@ -1,0 +1,10 @@
+syntax = "proto2";
+message Foo {
+  required uint32 i = 1;
+  extensions 100 to 200;
+
+}
+extend Foo {
+  optional uint32 bar = 128;
+  optional string baz = 129;
+}
