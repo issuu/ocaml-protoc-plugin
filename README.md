@@ -13,7 +13,7 @@ The main features include:
 * proto2 compliant
 * Supports includes
 * Supports proto2 extensions
-* Buildin support for google well known types
+* Builtin support for google well known types
 * Configurable annotations for all generated types
 
 
@@ -86,7 +86,7 @@ proto2 syntax. (i.e. should fields with default values be
 serialized?).  This implementation chooses to always serialize values,
 default or otherwise, for all fields which are set (i.e. `Some x`).
 This differs from proto3, which explicitly states that fields with
-default values does not need to be transmitted).
+default values should not be transmitted).
 
 ## Invocation
 If the plugin is available in the path as `protoc-gen-ocaml`, then you
@@ -100,18 +100,18 @@ can generate the Ocaml code by running
 
 *Options* control the code/types generated.
 
-| Option            | Description                                                     | Example                   | Default |
-| -----------       | ------------------------------                                  | -----------------------   | ------- |
-| annot             | Type annotations.                                               | `annot=[@@deriving show]` | ""      |
-| debug             | Enable debugging                                                | `debug`                   | Not set |
-| open              | Add open at top of generated files. May be given multiple times | `open=Base.Sexp`          | []      |
-| int64\_as\_int    | Map \*int64 types to int instead of `int64`                     | `int64_as_int=false`      | true    |
-| int32\_as\_int    | Map \*int32 types to int instead of `int32`                     | `int32_as_int=false`      | true    |
-| fixed\_as\_int    | Map \*fixed\* types to `int`                                    | `fixed_as_int=true`       | false   |
-| singleton\_record | Messages with only one field will be wrapped in a record        | `singleton_records=true`  | false   |
+| Option               | Description                                                     | Example                      | Default |
+| -----------          | ------------------------------                                  | -----------------------      | ------- |
+| annot                | Type annotations.                                               | `annot=[@@deriving show]`    | ""      |
+| debug                | Enable debugging                                                | `debug`                      | Not set |
+| open                 | Add open at top of generated files. May be given multiple times | `open=Base.Sexp`             | []      |
+| int64\_as\_int       | Map \*int64 types to int instead of `int64`                     | `int64_as_int=false`         | true    |
+| int32\_as\_int       | Map \*int32 types to int instead of `int32`                     | `int32_as_int=false`         | true    |
+| fixed\_as\_int       | Map \*fixed\* types to `int`                                    | `fixed_as_int=true`          | false   |
+| singleton\_record    | Messages with only one field will be wrapped in a record        | `singleton_records=true`     | false   |
 
 
-Parameters are seperated by `;`
+Parameters are separated by `;`
 
 If `protoc-gen-ocaml` is not located in the path, it is possible to
 specify the exact path to the plugin:
@@ -256,14 +256,23 @@ No special handling of any type is supported, as Ocaml does not allow
 for runtime types, so any type must be handled manually by
 serializing and deserializing the embedded message.
 
-## Google Well know types
+## Imported protofiles
+The generated code assumes that imported modules (generated from proto
+files) are available in the compilation scope. If the modules
+generated from imported protofiles resides in different a different
+scope (e.g. is compiled with `wrapped true`, they need to be made
+available by adding parameter `open=<module name>` to make the modules
+available for the compilation.
+
+### Google Well know types
 Protobuf distributes a set of [*Well-Known
 types*](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf).
-`ocaml-protoc-plugin` installs compiled versions of these, and can be
-used by linking with the library `ocaml-protoc-plugin.google_types`
+`ocaml-protoc-plugin` installs compiled versions of these. These can
+be used by linking with the package `ocaml-protoc-plugin.google_types`, and adding
+option `open=Google_types` to the list of parameters
 
-The distributed google types are compiled using default
-parameters.
+The distributed google types are compiled using default parameters,
+i.e. without any ppx annotations.
 
 If you want to change this, or add type annotations, you can copy the
 [dune](https://github.com/issuu/ocaml-protoc-plugin/tree/master/src/google_types/dune)

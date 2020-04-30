@@ -8,7 +8,7 @@
  (deps
   (:proto echo.proto))
  (action
-  (run protoc -I . "--ocaml_out=:." %{proto})))
+  (run protoc -I . "--ocaml_out=open=Google_types:." %{proto})))
 
 (alias
  (name runtest)

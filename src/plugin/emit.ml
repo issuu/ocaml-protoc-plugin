@@ -253,8 +253,7 @@ let parse_proto_file ~params scope
   Code.emit implementation `None "*)";
   Code.emit implementation `None "";
   Code.emit implementation `None "open Ocaml_protoc_plugin.Runtime [@@warning \"-33\"]";
-  Code.emit implementation `None "open Ocaml_protoc_plugin.Google_types [@@warning \"-33\"]";
-  List.iter ~f:(Code.emit implementation `None "open %s") params.opens;
+  List.iter ~f:(Code.emit implementation `None "open %s [@@warning \"-33\"]" ) params.opens;
   let _ = match dependencies with
     | [] -> ()
     | dependencies ->
