@@ -12,7 +12,7 @@
   (:proto echo.proto))
  (action
   (run protoc -I .
-       "--ocaml_out=annot=[@@deriving show { with_path = false }, eq, ord]:."
+       "--ocaml_out=open=Google_types_deriving;annot=[@@deriving show { with_path = false }, eq, ord]:."
        %{proto}))
 )
 

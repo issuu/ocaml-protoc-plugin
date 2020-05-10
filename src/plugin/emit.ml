@@ -253,6 +253,7 @@ let parse_proto_file ~params scope
   Code.emit implementation `None "*)";
   Code.emit implementation `None "";
   Code.emit implementation `None "open Ocaml_protoc_plugin.Runtime [@@warning \"-33\"]";
+  List.iter ~f:(Code.emit implementation `None "open %s [@@warning \"-33\"]" ) params.opens;
   let _ = match dependencies with
     | [] -> ()
     | dependencies ->
@@ -265,8 +266,6 @@ let parse_proto_file ~params scope
       Code.emit implementation `End "end";
       Code.emit implementation `None "(**/**)";
   in
-  List.iter ~f:(Code.emit implementation `None "open %s") params.opens;
-
   wrap_packages ~params ~syntax scope message_type services (Option.value_map ~default:[] ~f:(String.split_on_char ~sep:'.') package)
   |> Code.append implementation;
 

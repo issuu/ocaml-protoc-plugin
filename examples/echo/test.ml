@@ -1,4 +1,5 @@
 open Echo
+open Google_types
 
 let mk_timestamp () =
   let now = Unix.gettimeofday () in
