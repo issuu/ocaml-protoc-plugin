@@ -6,11 +6,11 @@ let () =
             let prefix = "/usr/include" in
             let name = Filename.concat prefix suffix in
             if Sys.file_exists name && Sys.is_directory name then
-                print_endline name
+                print_endline prefix
             else
                 let prefix = "/usr/local/include" in
                 let name = Filename.concat prefix suffix in
                 if Sys.file_exists name && Sys.is_directory name then
-                    print_endline name
+                    print_endline prefix
                 else
                     failwith "Where is the include folder ?"
