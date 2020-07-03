@@ -1,5 +1,3 @@
-let _ = Sys.getenv "INCLUDE_GOOGLE_PROTOBUF"
-
 let () =
     match Sys.getenv_opt "INCLUDE_GOOGLE_PROTOBUF" with
       Some s -> print_endline s
