@@ -24,3 +24,7 @@ let iter ~f = function
 let bind ~f = function
   | None -> None
   | Some v -> f v
+
+let some v = Some v
+
+let none = None

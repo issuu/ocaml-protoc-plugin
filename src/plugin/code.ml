@@ -7,7 +7,11 @@ type t = {
 
 let init () = {indent = ""; code = []}
 let incr t = t.indent <- "  " ^ t.indent
-let decr t = t.indent <- String.sub ~pos:0 ~len:(String.length t.indent - 2) t.indent
+let decr t =
+  match String.length t.indent >= 2 with
+  | true ->
+    t.indent <- String.sub ~pos:0 ~len:(String.length t.indent - 2) t.indent
+  | false -> failwith "Cannot decr indentation level at this point"
 
 let emit t indent fmt =
   let emit s =

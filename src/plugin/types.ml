@@ -13,12 +13,29 @@ module T = Ocaml_protoc_plugin.Spec.Make(struct
   end)
 open T
 
+open Spec.Descriptor.Google.Protobuf
+
+module type Stringable = sig
+  type t
+  val to_string: t -> string
+  val of_string: string -> t
+end
 
 (* Existential types *)
 type espec = Espec: _ spec -> espec
+
+type type_modifier =
+  | No_modifier of string (* The default value *)
+  | Optional
+  | List
+  | Required
+
+type type' =
+  { name: string; modifier: type_modifier }
+
 type c = {
   name : string;
-  type' : string;
+  type' : type';
   serialize_spec: string;
   deserialize_spec: string;
 }
@@ -29,9 +46,9 @@ type t = {
   apply: string;
   deserialize_spec: string;
   serialize_spec: string;
+  default_constructor_sig: string;
+  default_constructor_impl: string;
 }
-
-open Spec.Descriptor.Google.Protobuf
 
 let sprintf = Printf.sprintf
 
@@ -73,11 +90,11 @@ let string_of_default: type a. a spec -> a -> string = function
   | Double -> string_of_float
   | Float -> string_of_float
 
-  | Int32 -> Int32.to_string
-  | UInt32 -> Int32.to_string
-  | SInt32 -> Int32.to_string
-  | Fixed32 -> Int32.to_string
-  | SFixed32 -> Int32.to_string
+  | Int32 -> sprintf "%ldl"
+  | UInt32 -> sprintf "%ldl"
+  | SInt32 -> sprintf "%ldl"
+  | Fixed32 -> sprintf "%ldl"
+  | SFixed32 -> sprintf "%ldl"
 
   | Int32_int -> string_of_int
   | UInt32_int -> string_of_int
@@ -85,11 +102,11 @@ let string_of_default: type a. a spec -> a -> string = function
   | Fixed32_int -> string_of_int
   | SFixed32_int -> string_of_int
 
-  | UInt64 -> Int64.to_string
-  | Int64 -> Int64.to_string
-  | SInt64 -> Int64.to_string
-  | Fixed64 -> Int64.to_string
-  | SFixed64 -> Int64.to_string
+  | Int64 -> sprintf "%LdL"
+  | UInt64 -> sprintf "%LdL"
+  | SInt64 -> sprintf "%LdL"
+  | Fixed64 -> sprintf "%LdL"
+  | SFixed64 -> sprintf "%LdL"
 
   | UInt64_int -> string_of_int
   | Int64_int -> string_of_int
@@ -101,6 +118,40 @@ let string_of_default: type a. a spec -> a -> string = function
   | String -> sprintf "{|%s|}"
   | Bytes -> fun bytes -> sprintf "(Bytes.of_string {|%s|})" (Bytes.to_string bytes)
   | Enum (_, _, _,  s) -> fun _ -> Option.value_exn s
+  | Message _ -> failwith "Messages defaults are not relevant"
+
+let default_of_spec: type a. a spec -> string = fun spec -> match spec with
+  | Double -> string_of_default spec 0.0
+  | Float -> string_of_default spec 0.0
+
+  | Int32 -> string_of_default spec 0l
+  | UInt32 -> string_of_default spec 0l
+  | SInt32 -> string_of_default spec 0l
+  | Fixed32 -> string_of_default spec 0l
+  | SFixed32 -> string_of_default spec 0l
+
+  | Int32_int -> string_of_default spec 0
+  | UInt32_int -> string_of_default spec 0
+  | SInt32_int -> string_of_default spec 0
+  | Fixed32_int -> string_of_default spec 0
+  | SFixed32_int -> string_of_default spec 0
+
+  | Int64 -> string_of_default spec 0L
+  | UInt64 -> string_of_default spec 0L
+  | SInt64 -> string_of_default spec 0L
+  | Fixed64 -> string_of_default spec 0L
+  | SFixed64 -> string_of_default spec 0L
+
+  | UInt64_int -> string_of_default spec 0
+  | Int64_int -> string_of_default spec 0
+  | SInt64_int -> string_of_default spec 0
+  | Fixed64_int -> string_of_default spec 0
+  | SFixed64_int -> string_of_default spec 0
+
+  | Bool -> string_of_default spec false
+  | String -> string_of_default spec ""
+  | Bytes -> string_of_default spec (Bytes.of_string "")
+  | Enum (_ , s, _,  _) -> sprintf {|(%s 0 |> Runtime'.Result.get ~msg:"Code gen error")|} s
   | Message _ -> failwith "Messages defaults are not relevant"
 
 let string_of_spec: type a. [`Deserialize | `Serialize] -> a spec -> string = fun dir spec ->
@@ -242,25 +293,34 @@ let string_of_packed = function
   | Packed -> "packed"
   | Not_packed -> "not_packed"
 
-let c_of_compound: type a. string -> a compound -> c = fun name -> function
+let c_of_compound: type a. string -> a compound -> c = fun name compound ->
+  match compound with
   | Basic (index, spec, proto_type) ->
     let deserialize_spec = sprintf "basic (%d, %s, %s)" index (string_of_spec `Deserialize spec) (string_of_proto_type spec proto_type) in
     let serialize_spec = sprintf "basic (%d, %s, %s)" index (string_of_spec `Serialize spec) (string_of_proto_type spec proto_type) in
-    let type' = type_of_spec spec in
+    let modifier =
+      match spec, proto_type with
+      | _, Required -> Required
+      | Message _, _ -> Optional
+      | _, Proto3 -> No_modifier (default_of_spec spec)
+      | _, Proto2 v -> No_modifier (string_of_default spec v)
+    in
+    let type' = { name = type_of_spec spec; modifier } in
     { name; type'; deserialize_spec; serialize_spec }
   | Basic_opt (index, spec) ->
     let deserialize_spec = sprintf "basic_opt (%d, %s)" index (string_of_spec `Deserialize spec) in
     let serialize_spec = sprintf "basic_opt (%d, %s)" index (string_of_spec `Serialize spec) in
-    let type' = sprintf "%s option" (type_of_spec spec) in
+    let type' = { name = type_of_spec spec; modifier = Optional } in
     { name; type'; deserialize_spec; serialize_spec }
   | Repeated (index, spec, packed) ->
-    let type' = sprintf "%s list" (type_of_spec spec) in
     let deserialize_spec = sprintf "repeated (%d, %s, %s)" index (string_of_spec `Deserialize spec) (string_of_packed packed) in
     let serialize_spec = sprintf "repeated (%d, %s, %s)" index (string_of_spec `Serialize spec) (string_of_packed packed) in
-    { name; type'; deserialize_spec; serialize_spec }
+    let type' = { name = type_of_spec spec; modifier = List } in
+    { name; type'; deserialize_spec; serialize_spec; }
   | Oneof (type', deserialize_spec, serialize_spec, _) ->
     let deserialize_spec = sprintf "oneof (%s)" deserialize_spec in
     let serialize_spec = sprintf "oneof (%s)" serialize_spec in
+    let type' = { name = type'; modifier = No_modifier {|`not_set|} } in
     { name; type'; deserialize_spec; serialize_spec }
 
 let c_of_field ~params ~syntax ~scope field =
@@ -446,6 +506,67 @@ let split_oneof_decl fields oneof_decls =
   in
   inner [] oneof_decls fields
 
+let _get_default_value_str ~syntax ~scope ~params field =
+  (* let create_value (type t) ~default (scan: ('a, 'b, 'c, 'd) Scanf.scanner) (print: ('a, unit, string, 'd) format4) value = *)
+  let create_value (type t) (module T: Stringable with type t = t) ?(format=("%s": _ format)) ~default value =
+    match syntax, value with
+    | `Proto2, None -> None
+    | `Proto2, Some v ->
+      T.of_string v |> T.to_string |> sprintf format |> Option.some
+    | `Proto3, Some _ -> failwith "Proto3 does not support default values"
+    | `Proto3, None ->
+      T.to_string default |> sprintf format |> Option.some
+  in
+
+  let open FieldDescriptorProto in
+  match field with
+  | { label = Some Label.LABEL_OPTIONAL; _ } -> None
+  | { type' = Some (TYPE_DOUBLE | TYPE_FLOAT); default_value; _ } ->
+    create_value (module Float) ~default:0.0 default_value
+  | { type' = Some (TYPE_INT64|TYPE_UINT64|TYPE_SINT64); default_value; _ } when params.int64_as_int ->
+    create_value (module Int64) ~default:0L default_value
+  | { type' = Some (TYPE_INT64|TYPE_UINT64|TYPE_SINT64); default_value; _ } ->
+    create_value (module Int64) ~format:"%sL" ~default:0L default_value
+
+  | { type' = Some (TYPE_INT32|TYPE_UINT32|TYPE_SINT32); default_value; _ } when params.int32_as_int ->
+    create_value (module Int32) ~default:0l default_value
+  | { type' = Some (TYPE_INT32|TYPE_UINT32|TYPE_SINT32); default_value; _ } ->
+    create_value (module Int32) ~format:"%sl" ~default:0l default_value
+
+  | { type' = Some (TYPE_FIXED64|TYPE_SFIXED64); default_value; _ } when params.fixed_as_int ->
+    create_value (module Int64) ~default:0L default_value
+  | { type' = Some (TYPE_FIXED64|TYPE_SFIXED64); default_value; _ } ->
+    create_value (module Int64) ~format:"%sL" ~default:0L default_value
+
+  | { type' = Some (TYPE_FIXED32|TYPE_SFIXED32); default_value; _ } when params.fixed_as_int ->
+    create_value (module Int32) ~default:0l default_value
+  | { type' = Some (TYPE_FIXED32|TYPE_SFIXED32); default_value; _ } ->
+    create_value (module Int32) ~format:"%sl" ~default:0l default_value
+
+  | { type' = Some (TYPE_BOOL); default_value; _ } ->
+    create_value (module struct type t = bool let to_string = string_of_bool let of_string = bool_of_string end) ~default:false default_value
+
+  | { type' = Some (TYPE_STRING); default_value; _ } ->
+    create_value (module struct type t = string let to_string x = x let of_string x = x  end) ~default:"\"%s\"" default_value
+
+  | { type' = Some (TYPE_BYTES); default_value; _ } ->
+    create_value (module struct type t = string let to_string x = x let of_string x = x  end) ~default:"(Bytes.of_string \"%s\")" default_value
+
+  | { type' = Some (TYPE_MESSAGE); _ } -> None
+
+  | { type' = Some TYPE_ENUM; default_value; type_name; _ } ->
+    begin
+      match syntax, default_value with
+      | `Proto3, None ->
+        let default = Scope.get_scoped_name ~postfix:"of_int" scope type_name in
+        sprintf "(%s 0)" default |> Option.some
+      | `Proto3, Some _ -> failwith "Proto3 does not support default values"
+      | `Proto2, None -> None
+      | `Proto2, Some default -> sprintf "failwith \"Proto2 default values for enums not supported here. Default is: '%s'\"" default |> Option.some
+    end
+  | { type' = Some TYPE_GROUP; _ } -> failwith "Group types not supported"
+  | { type' = None; _ } -> failwith "Type must have a type"
+
 (* Let create everything *)
 let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields oneof_decls =
   let ts =
@@ -455,67 +576,136 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
         | `Oneof (decl, fields) -> c_of_oneof ~params ~syntax ~scope decl fields
       )
   in
-  let (type', constructor, apply) =
+  let typestr_of_type = function
+    | { name; modifier = (No_modifier _ | Required); _ } -> name
+    | { name; modifier = List; _ } -> sprintf "%s list" name
+    | { name; modifier = Optional; _ } -> sprintf "%s option" name
+  in
+
+  let constructor_sig_arg = function
+    | {name; type' = { name = type_name; modifier = Required }; _ } ->
+      sprintf "%s:%s" (Scope.get_name scope name) type_name
+    | {name; type' = { name = type_name; modifier = List }; _} ->
+      sprintf "?%s:%s list" (Scope.get_name scope name) type_name
+    | {name; type' = { name = type_name; modifier = (Optional | No_modifier _) }; _} ->
+      sprintf "?%s:%s" (Scope.get_name scope name) type_name
+  in
+
+  let constructor_arg = function
+    | {name; type' = { modifier = Required; _}; _ } -> sprintf "~%s" (Scope.get_name scope name)
+    | {name; _ } -> sprintf "?%s" (Scope.get_name scope name)
+  in
+  let constructor_default_value: c -> string option = fun c ->
+    let dv = match c with
+      | { type' = { modifier = (Optional | Required); _ }; _} -> None
+      | { name; type' = { modifier = List; _ }; _} -> Some ((Scope.get_name scope name), "[]")
+      | { name; type' = { modifier = No_modifier default; _}; _} -> Some ((Scope.get_name scope name), default)
+    in
+    Option.map ~f:(fun (name, default) ->
+      sprintf "let %s = match %s with Some v -> v | None -> %s in " name name default
+    ) dv
+  in
+
+  let (type', constructor, apply, default_constructor_sig, default_constructor_impl) =
     match ts with
-    | [] when not has_extensions-> "unit", "fun _extension -> ()", "fun ~f () -> f []"
-    | [ { type'; _ } ] when params.singleton_record = false && not has_extensions && not is_cyclic ->
-      type', "fun _extensions a -> a", "fun ~f a -> f [] a"
-    | [_; _] when is_map_entry ->
+    | [] when not has_extensions->
+      ("unit", "fun _extension -> ()", "fun ~f () -> f []",
+       "unit -> t", "fun () -> ()")
+    | [ {name; type'; _ } as c ] when params.singleton_record = false && not has_extensions && not is_cyclic ->
+      (typestr_of_type type',
+       "fun _extensions a -> a",
+       "fun ~f a -> f [] a",
+       sprintf "%s -> unit -> t" (constructor_sig_arg c),
+       sprintf "fun %s () -> %s%s"
+         (constructor_arg c) (constructor_default_value c |> Option.value ~default:"") (Scope.get_name scope name)
+      )
+    | [key; value] when is_map_entry ->
       let type' =
-        List.map ~f:(fun { name = _; type'; _} -> sprintf "%s" type') ts
+        List.map ~f:(fun { name = _; type'; _} -> sprintf "%s" (typestr_of_type type')) ts
         |> String.concat ~sep:" * "
         |> sprintf "(%s)"
       in
-      type', "fun _extensions a b -> (a, b)", "fun ~f (a, b) -> f [] a b"
-    | ts when has_extensions ->
-      let type' =
-        List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" (Scope.get_name scope name) type') ts
-        |> String.concat ~sep:"; "
-        |> sprintf "{ %s; extensions': Runtime'.Extensions.t }"
-      in
-      (* When deserializing, we expect extensions as the last argument *)
-      (* When serializing, its the first argument *)
-      let constructor, apply =
-        let field_names =
-          List.map ~f:(fun { name; _} -> Scope.get_name scope name) ts
-        in
-
-        let args = String.concat ~sep:" " field_names in
-        let constr = String.concat ~sep:"; " field_names in
-        let constructor = sprintf "fun extensions' %s -> { %s; extensions' }" args constr in
-        let apply = sprintf "fun ~f:f' { %s; extensions' } -> f' extensions' %s" constr args in
-        constructor, apply
-      in
-      (type', constructor, apply)
+      (type',
+       "fun _extensions key value -> (key, value)",
+       "fun ~f (key, value) -> f [] key value",
+       (* These are wrong. We should look at the defaults here also *)
+       sprintf "key:%s -> value:%s -> unit -> t" (typestr_of_type key.type') (typestr_of_type value.type'),
+       sprintf "fun ~key ~value () -> (key, value)"
+      )
     | ts ->
+      let prepend ?(cond=true) elm l = match cond with
+        | true -> elm :: l
+        | false -> l
+      in
+      let append ?(cond=true) elm l = match cond with
+        | true -> l @ [elm]
+        | false -> l
+      in
       let type' =
-        List.map ~f:(fun { name; type'; _} -> sprintf "%s: %s" (Scope.get_name scope name) type') ts
+        List.rev_map ~f:(fun { name; type'; _} -> ((Scope.get_name scope name), (typestr_of_type type'))) ts
+        |> prepend ~cond:has_extensions ("extensions'", "Runtime'.Extensions.t")
+        |> List.rev_map ~f:(fun (name, type') -> sprintf "%s: %s" name type')
         |> String.concat ~sep:"; "
         |> sprintf "{ %s }"
       in
-      let constructor, apply =
-        let field_names =
-          List.map ~f:(fun { name; _} -> Scope.get_name scope name) ts
+      (* When deserializing, we expect extensions as the last argument *)
+      (* When serializing, its the first argument *)
+      let field_names =
+        List.map ~f:(fun { name; _} -> Scope.get_name scope name) ts
+      in
+
+      let args = String.concat ~sep:" " field_names in
+      let constr = String.concat ~sep:"; " (append ~cond:has_extensions "extensions'" field_names) in
+      let constructor =
+        sprintf "fun %s %s -> { %s }"
+          (if has_extensions then "extensions'" else "_extensions ") args constr
+      in
+      let apply =
+        sprintf "fun ~f:f' { %s } -> f' %s %s"
+          constr (if has_extensions then "extensions'" else "[]") args
+      in
+
+      let default_constructor_sig =
+        List.rev_map ~f:constructor_sig_arg ts
+        |> prepend ~cond:has_extensions "?extensions':Runtime'.Extensions.t"
+        |> prepend "unit"
+        |> prepend "t"
+        |> List.rev
+        |> String.concat ~sep:" -> "
+      in
+      let default_constructor_impl =
+        let args =
+          List.map ~f:constructor_arg ts
+          |> append ~cond:has_extensions "?(extensions' = Runtime'.Extensions.default)"
+          |> String.concat ~sep: " "
+        in
+        let mappings =
+          List.filter_map ~f:constructor_default_value ts
+          |> String.concat ~sep:"\n"
         in
 
-        let args = String.concat ~sep:" " field_names in
-        let constr = String.concat ~sep:"; " field_names in
-        let constructor = sprintf "fun _extensions %s -> { %s }" args constr in
-        let apply = sprintf "fun ~f:f' { %s } -> f' [] %s" constr args in
-        constructor, apply
+        let constructor =
+          List.map ~f:(fun {name; _} -> sprintf "%s" (Scope.get_name scope name)) ts
+          |> append ~cond:has_extensions "extensions'"
+          |> String.concat ~sep:"; "
+          |> sprintf "{ %s }"
+        in
+        sprintf "fun %s () -> \n%s %s" args mappings constructor
       in
-      (type', constructor, apply)
+      (type', constructor, apply, default_constructor_sig, default_constructor_impl)
   in
   (* Create the deserialize spec *)
   let deserialize_spec =
-    let spec = List.map ~f:(fun (c:c) -> c.deserialize_spec) ts in
+    let spec = List.map ~f:(fun (c : c) -> c.deserialize_spec) ts in
     String.concat ~sep:" ^:: " (spec @ ["nil"])
     |> sprintf "Runtime'.Deserialize.C.( %s )"
   in
 
   let serialize_spec =
-    let spec = List.map ~f:(fun (c:c) -> c.serialize_spec) ts in
+    let spec = List.map ~f:(fun (c : c) -> c.serialize_spec) ts in
     String.concat ~sep:" ^:: " (spec @ ["nil"])
     |> sprintf "Runtime'.Serialize.C.( %s )"
   in
-  { type'; constructor; apply; deserialize_spec; serialize_spec }
+
+  (* The type contains optional elements. We should not have those *)
+  { type'; constructor; apply; deserialize_spec; serialize_spec; default_constructor_sig; default_constructor_impl }

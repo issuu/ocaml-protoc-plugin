@@ -32,13 +32,14 @@ let emit_enum_type ~scope ~params
   Code.append implementation t;
   Code.emit signature `None "val to_int: t -> int";
   Code.emit signature `None "val from_int: int -> (t, [> Runtime'.Result.error]) result";
+
   Code.emit implementation `Begin "let to_int = function";
   List.iter ~f:(fun EnumValueDescriptorProto.{name; number; _} ->
     Code.emit implementation `None "| %s -> %d" (Scope.get_name_exn scope name) (Option.value_exn number)
-    ) values;
+  ) values;
   Code.emit implementation `End "";
-  Code.emit implementation `Begin "let from_int = function";
 
+  Code.emit implementation `Begin "let from_int = function";
   let _ =
     List.fold_left ~init:IntSet.empty ~f:(fun seen EnumValueDescriptorProto.{name; number; _} ->
         let idx = (Option.value_exn ~message:"All enum descriptions must have a value" number) in
@@ -169,16 +170,20 @@ let rec emit_message ~params ~syntax scope
         |> String.concat ~sep:"; "
         |> sprintf "[%s]"
       in
-      Code.emit signature `None "val name': unit -> string";
-      Code.emit implementation `None "let name' () = \"%s\"" (Scope.get_current_scope scope);
-      let Types.{ type'; constructor; apply; deserialize_spec; serialize_spec } =
+      let Types.{ type'; constructor; apply; deserialize_spec; serialize_spec; default_constructor_sig; default_constructor_impl } =
         Types.make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields oneof_decls
       in
+      ignore (default_constructor_sig, default_constructor_impl);
+
+      Code.emit signature `None "val name': unit -> string";
       Code.emit signature `None "type t = %s %s" type' params.annot;
+      Code.emit signature `None "val make : %s" default_constructor_sig;
       Code.emit signature `None "val to_proto: t -> Runtime'.Writer.t";
       Code.emit signature `None "val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result";
 
+      Code.emit implementation `None "let name' () = \"%s\"" (Scope.get_current_scope scope);
       Code.emit implementation `None "type t = %s%s" type' params.annot;
+      Code.emit implementation `None "let make = %s" default_constructor_impl;
 
       Code.emit implementation `Begin "let to_proto =";
       Code.emit implementation `None "let apply = %s in" apply;
