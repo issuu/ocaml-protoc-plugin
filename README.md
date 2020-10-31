@@ -318,6 +318,7 @@ module Address : sig
     number: int;
     planet: Planet.t;
   }
+  val make: ?street:string ?number:int ?planet:Planet.t -> unit -> t
   val to_proto: t -> Protobuf.Writer.t
   val from_proto: Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result
 end
@@ -328,6 +329,7 @@ module Person : sig
     name: string;
     address: Address.t option;
   }
+  val make: ?id:int ?name:string ?planet:Address.t -> unit -> t
   val to_proto: t -> Protobuf.Writer.t
   val from_proto: Protobuf.Reader.t -> (t, Protobuf.Deserialize.error) result
 end = struct
@@ -340,6 +342,11 @@ of a top-level module `Testing`.
 `Protobuf.Reader` and `Protobuf.Writer` are used then reading or
 writing protobuf binary format. Below is an example on how to decode a message
 and how to read a message.
+
+The function `make` allows the user to create message without
+specifying all (or any) fields. Using this function will allow users
+to add fields to message later without needing to modify any code, as
+new fields will be set to default values.
 
 ```ocaml
 let string_of_planet = function
