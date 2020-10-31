@@ -1,4 +1,4 @@
-## 4.1.0: (unreleased)
+## 4.1.0: 2020-10-31
 - [x] Fix bug with Proto2 default integer arguments for Int32 and
       Int64 types
 - [x] Add function to construct messages with default values
