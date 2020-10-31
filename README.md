@@ -339,14 +339,14 @@ Note that if `test.proto` had a package declaration such as `package testing`,
 the modules `Address` and `Person` listed above would be defined as sub-modules
 of a top-level module `Testing`.
 
-`Protobuf.Reader` and `Protobuf.Writer` are used then reading or
-writing protobuf binary format. Below is an example on how to decode a message
-and how to read a message.
-
 The function `make` allows the user to create message without
 specifying all (or any) fields. Using this function will allow users
 to add fields to message later without needing to modify any code, as
 new fields will be set to default values.
+
+`Protobuf.Reader` and `Protobuf.Writer` are used then reading or
+writing protobuf binary format. Below is an example on how to decode a message
+and how to read a message.
 
 ```ocaml
 let string_of_planet = function
