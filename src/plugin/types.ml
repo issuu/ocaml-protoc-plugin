@@ -534,7 +534,7 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
       | { name; type' = { modifier = No_modifier default; _}; _} -> Some ((Scope.get_name scope name), default)
     in
     Option.map ~f:(fun (name, default) ->
-      sprintf "let %s = match %s with Some v -> v | None -> %s in " name name default
+      sprintf "let %s = match %s with Some v -> v | None -> %s in" name name default
     ) dv
   in
   let prepend ?(cond=true) elm l = match cond with
