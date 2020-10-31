@@ -43,3 +43,7 @@ message Test5 {
   }
   M m = 45;
 }
+
+message Test6 {
+  map<uint64, string> m = 1;
+}

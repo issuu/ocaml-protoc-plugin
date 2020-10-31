@@ -1,8 +1,9 @@
 open Repeated
 let%expect_test _ =
   let module T = Repeated.UInt64 in
+  let validate = T.make ~i:[5; 6; 7; 8; 9] () in
   let t = [5; 6; 7; 8; 9] in
-  Test_lib.test_encode (module T) t;
+  Test_lib.test_encode (module T) ~validate t;
   [%expect {|
     i: 5
     i: 6
