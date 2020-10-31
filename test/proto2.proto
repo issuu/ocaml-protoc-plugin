@@ -41,3 +41,15 @@ message Message1_ {
 message MessageEnumDefault {
   optional Message.E e = 8 [default = B];
 }
+
+message Map_message2 {
+  map<uint64, Map_message2> m = 1;
+}
+
+message Map_message3 {
+  enum Enum {
+    A = 0;
+    B = 1;
+  };
+  map<uint64, Enum> m = 1;
+}
