@@ -15,12 +15,6 @@ open T
 
 open Spec.Descriptor.Google.Protobuf
 
-module type Stringable = sig
-  type t
-  val to_string: t -> string
-  val of_string: string -> t
-end
-
 (* Existential types *)
 type espec = Espec: _ spec -> espec
 
@@ -506,68 +500,6 @@ let split_oneof_decl fields oneof_decls =
   in
   inner [] oneof_decls fields
 
-let _get_default_value_str ~syntax ~scope ~params field =
-  (* let create_value (type t) ~default (scan: ('a, 'b, 'c, 'd) Scanf.scanner) (print: ('a, unit, string, 'd) format4) value = *)
-  let create_value (type t) (module T: Stringable with type t = t) ?(format=("%s": _ format)) ~default value =
-    match syntax, value with
-    | `Proto2, None -> None
-    | `Proto2, Some v ->
-      T.of_string v |> T.to_string |> sprintf format |> Option.some
-    | `Proto3, Some _ -> failwith "Proto3 does not support default values"
-    | `Proto3, None ->
-      T.to_string default |> sprintf format |> Option.some
-  in
-
-  let open FieldDescriptorProto in
-  match field with
-  | { label = Some Label.LABEL_OPTIONAL; _ } -> None
-  | { type' = Some (TYPE_DOUBLE | TYPE_FLOAT); default_value; _ } ->
-    create_value (module Float) ~default:0.0 default_value
-  | { type' = Some (TYPE_INT64|TYPE_UINT64|TYPE_SINT64); default_value; _ } when params.int64_as_int ->
-    create_value (module Int64) ~default:0L default_value
-  | { type' = Some (TYPE_INT64|TYPE_UINT64|TYPE_SINT64); default_value; _ } ->
-    create_value (module Int64) ~format:"%sL" ~default:0L default_value
-
-  | { type' = Some (TYPE_INT32|TYPE_UINT32|TYPE_SINT32); default_value; _ } when params.int32_as_int ->
-    create_value (module Int32) ~default:0l default_value
-  | { type' = Some (TYPE_INT32|TYPE_UINT32|TYPE_SINT32); default_value; _ } ->
-    create_value (module Int32) ~format:"%sl" ~default:0l default_value
-
-  | { type' = Some (TYPE_FIXED64|TYPE_SFIXED64); default_value; _ } when params.fixed_as_int ->
-    create_value (module Int64) ~default:0L default_value
-  | { type' = Some (TYPE_FIXED64|TYPE_SFIXED64); default_value; _ } ->
-    create_value (module Int64) ~format:"%sL" ~default:0L default_value
-
-  | { type' = Some (TYPE_FIXED32|TYPE_SFIXED32); default_value; _ } when params.fixed_as_int ->
-    create_value (module Int32) ~default:0l default_value
-  | { type' = Some (TYPE_FIXED32|TYPE_SFIXED32); default_value; _ } ->
-    create_value (module Int32) ~format:"%sl" ~default:0l default_value
-
-  | { type' = Some (TYPE_BOOL); default_value; _ } ->
-    create_value (module struct type t = bool let to_string = string_of_bool let of_string = bool_of_string end) ~default:false default_value
-
-  | { type' = Some (TYPE_STRING); default_value; _ } ->
-    create_value (module struct type t = string let to_string x = x let of_string x = x  end) ~default:"\"%s\"" default_value
-
-  | { type' = Some (TYPE_BYTES); default_value; _ } ->
-    create_value (module struct type t = string let to_string x = x let of_string x = x  end) ~default:"(Bytes.of_string \"%s\")" default_value
-
-  | { type' = Some (TYPE_MESSAGE); _ } -> None
-
-  | { type' = Some TYPE_ENUM; default_value; type_name; _ } ->
-    begin
-      match syntax, default_value with
-      | `Proto3, None ->
-        let default = Scope.get_scoped_name ~postfix:"of_int" scope type_name in
-        sprintf "(%s 0)" default |> Option.some
-      | `Proto3, Some _ -> failwith "Proto3 does not support default values"
-      | `Proto2, None -> None
-      | `Proto2, Some default -> sprintf "failwith \"Proto2 default values for enums not supported here. Default is: '%s'\"" default |> Option.some
-    end
-  | { type' = Some TYPE_GROUP; _ } -> failwith "Group types not supported"
-  | { type' = None; _ } -> failwith "Type must have a type"
-
-(* Let create everything *)
 let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields oneof_decls =
   let ts =
     split_oneof_decl fields oneof_decls
