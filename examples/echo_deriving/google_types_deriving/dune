@@ -12,6 +12,7 @@
 )
 
 (rule
+ (deps (package ocaml-protoc-plugin))
  (targets any.ml api.ml descriptor.ml duration.ml empty.ml field_mask.ml
           source_context.ml struct.ml timestamp.ml type.ml wrappers.ml)
  (action

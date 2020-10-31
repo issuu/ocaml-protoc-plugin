@@ -6,7 +6,7 @@
 (rule
  (targets extensions.ml)
  (deps
-  (:proto extensions.proto))
+  (:proto extensions.proto) (package ocaml-protoc-plugin))
  (action
   (run protoc -I . "--ocaml_out=:." %{proto})))
 
