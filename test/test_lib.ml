@@ -42,7 +42,11 @@ let dump_protoc name data =
 
 
 (** Create a common function for testing. *)
-let test_encode (type t) ?dump ?(protoc=true) (module M : T with type t = t) (expect : t) =
+let test_encode (type t) ?dump ?(protoc=true) (module M : T with type t = t) ?(validate : t option) (expect : t) =
+  let () = match validate with
+    | Some v when v <> expect -> Printf.printf "Validate match failed\n"
+    | _ -> ()
+  in
   let data = M.to_proto expect |> Ocaml_protoc_plugin.Writer.contents in
   let () =
     match dump with

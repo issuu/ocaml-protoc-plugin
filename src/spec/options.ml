@@ -5,16 +5,16 @@
 (* https://github.com/issuu/ocaml-protoc-plugin *)
 (************************************************)
 (*
-   Source: options.proto
-   Syntax: proto3 
-   Parameters:
-     debug=false
-     annot=''
-     opens=[]
-     int64_as_int=true
-     int32_as_int=true
-     fixed_as_int=false
-     singleton_record=false
+  Source: options.proto
+  Syntax: proto3 
+  Parameters:
+    debug=false
+    annot=''
+    opens=[]
+    int64_as_int=true
+    int32_as_int=true
+    fixed_as_int=false
+    singleton_record=false
 *)
 
 open Ocaml_protoc_plugin.Runtime [@@warning "-33"]
@@ -26,19 +26,25 @@ end
 module rec Options : sig
   val name': unit -> string
   type t = bool 
+  val make : ?mangle_names:bool -> unit -> t
   val to_proto: t -> Runtime'.Writer.t
   val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
 end = struct 
   let name' () = "options.Options"
   type t = bool
+  let make =
+    fun ?mangle_names () -> 
+    let mangle_names = match mangle_names with Some v -> v | None -> false in
+    mangle_names
+  
   let to_proto =
-    let apply = fun ~f a -> f [] a in
+    let apply = fun ~f:f' mangle_names -> f' [] mangle_names in
     let spec = Runtime'.Serialize.C.( basic (1, bool, proto3) ^:: nil ) in
     let serialize = Runtime'.Serialize.serialize [] (spec) in
     fun t -> apply ~f:serialize t
   
   let from_proto =
-    let constructor = fun _extensions a -> a in
+    let constructor = fun _extensions mangle_names -> mangle_names in
     let spec = Runtime'.Deserialize.C.( basic (1, bool, proto3) ^:: nil ) in
     let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
     fun writer -> deserialize writer |> Runtime'.Result.open_error

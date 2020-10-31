@@ -59,11 +59,9 @@ let () =
   let request = read () in
   let outputs = parse_request request in
   let response_of_output (name, code) =
-    let insertion_point = None in
-    let content = Some (Code.contents code) in
-    Plugin.CodeGeneratorResponse.File.{name = Some name; insertion_point; content}
+    Plugin.CodeGeneratorResponse.File.make ~name ~content:(Code.contents code) ()
   in
   let response : Plugin.CodeGeneratorResponse.t =
-    {error = None; file = List.map ~f:response_of_output outputs}
+    Plugin.CodeGeneratorResponse.make ~file:(List.map ~f:response_of_output outputs) ()
   in
   write response

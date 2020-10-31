@@ -1,0 +1,33 @@
+syntax = "proto2";
+
+package int_types_native_proto2;
+
+message SInt64 {
+  required sint64 i = 1;
+  optional sint64 j = 2 [default = 4];
+}
+
+message SInt32 {
+  required sint32 i = 1;
+  optional sint32 j = 2 [default = 4];
+}
+
+message UInt64 {
+  required uint64 i = 1;
+  optional uint64 j = 2 [default = 4];
+}
+
+message UInt32 {
+  required uint32 i = 1;
+  optional uint32 j = 2 [default = 4];
+}
+
+message Int64 {
+  required int64 i = 1;
+  optional int64 j = 2 [default = 4];
+}
+
+message Int32 {
+  required int32 i = 1;
+  optional int32 j = 2 [default = 4];
+}

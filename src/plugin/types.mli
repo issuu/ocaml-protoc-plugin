@@ -6,6 +6,8 @@ type t = {
   apply: string;
   deserialize_spec: string;
   serialize_spec: string;
+  default_constructor_sig: string;
+  default_constructor_impl: string;
 }
 
 val make:

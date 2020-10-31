@@ -9,7 +9,7 @@
 (rule
  (targets echo.ml)
  (deps
-  (:proto echo.proto))
+  (:proto echo.proto) (package ocaml-protoc-plugin))
  (action
   (run protoc -I .
        "--ocaml_out=open=Google_types_deriving;annot=[@@deriving show { with_path = false }, eq, ord]:."
