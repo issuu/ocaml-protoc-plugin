@@ -6,6 +6,12 @@ package name_clash;
 message Protobuf {
   int64 Protobuf = 1;
   int64 Ocaml_protoc_plugin = 2;
+  int64 make = 3;
+  int64 t = 4;
+  int64 to_proto = 5;
+  int64 from_proto = 6;
+  int64 Runtime = 7;
+  int64 name = 8;
 }
 message Ocaml_protoc_plugin {
   int64 Protobuf = 1;
