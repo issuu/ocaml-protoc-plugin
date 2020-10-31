@@ -612,7 +612,9 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
       |> String.concat ~sep: " "
     in
     let mappings =
-      List.filter_map ~f:constructor_default_value ts
+      List.map ~f:constructor_default_value ts
+      |> List.filter ~f:(function None->false | Some _ -> true)
+      |> List.map ~f:(function Some v -> v | None -> failwith "Cannot be none")
       |> String.concat ~sep:"\n"
     in
 
