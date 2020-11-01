@@ -77,16 +77,15 @@ fields which are not transmitted should be set the the default value
 (either 0, or the value of the default option).
 
 However, It seems to be the norm for proto2, that it should
-be possible to determine if a field was transmitted or not.  Therefore
-all non-repeated fields in proto2 are default - unless it has a
+be possible to determine if a field was transmitted or not. Therefore
+all non-repeated fields in proto2 are option types - unless the field has a
 default value, or is a required field.
 
-The specification is vague when it comes to serializing fields for
-proto2 syntax. (i.e. should fields with default values be
-serialized?).  This implementation chooses to always serialize values,
-default or otherwise, for all fields which are set (i.e. `Some x`).
-This differs from proto3, which explicitly states that fields with
-default values should not be transmitted).
+The proto2 specification states that no default values should be
+transmitted. However, as it is normal to be able to identify if a
+field has been transmitted or not, only fields with an explicit
+default value will be omitted when the value for the field matches the
+default value.
 
 ## Invocation
 If the plugin is available in the path as `protoc-gen-ocaml`, then you

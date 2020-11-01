@@ -39,3 +39,13 @@ let%expect_test "Only tramitting the required field" =
   [%expect {|
     { opt = None; req = 0; s = "default string"; u = 27; b = "default bytes";
       c = 27; f = 27.; e = B } |}]
+
+let%expect_test "Default created messages should not set any fields" =
+  let module T = Proto2.MessageDefaults in
+  let t = T.make () in
+  let message = T.to_proto t in
+  Printf.printf "Size of message: %d\n" (String.length (Ocaml_protoc_plugin.Writer.contents message));
+  let () = match T.from_proto (Ocaml_protoc_plugin.Reader.create "") with
+    | Ok t -> print_endline (T.show t)
+    | Error e  -> Printf.printf "Decode failure: %s\n" (Ocaml_protoc_plugin.Result.show_error e)
+  in ();

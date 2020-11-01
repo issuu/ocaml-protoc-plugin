@@ -53,3 +53,21 @@ message Map_message3 {
   };
   map<uint64, Enum> m = 1;
 }
+
+message MessageDefaults {
+  optional string   o0 = 10 [default = "default string"];
+  optional bytes    o1 = 11 [default = "default bytes"];
+  optional uint32   o2 = 12 [default = 27];
+  optional uint64   o3 = 13 [default = 27];
+  optional int32    o4 = 14 [default = -27];
+  optional int64    o5 = 15 [default = -27];
+  optional sint32   o6 = 16 [default = -27];
+  optional sint64   o7 = 17 [default = -27];
+  optional fixed32  o8 = 18 [default = 27];
+  optional fixed64  o9 = 19 [default = 27];
+  optional sfixed32 oa = 20 [default = -27];
+  optional sfixed64 ob = 21 [default = -27];
+  optional float    oc = 22 [default = -27];
+  optional double   od = 23 [default = -27];
+  optional bool     oe = 24 [default = true];
+}

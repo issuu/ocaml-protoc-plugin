@@ -98,7 +98,11 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
             | Length_delimited {length = 0; _} -> ()
             | field -> Writer.write_field writer index field
         end
-      | Proto2 _
+      | Proto2 default -> fun writer -> begin
+          function
+          | v when v = default -> ()
+          | v -> Writer.write_field writer index (f v)
+        end
       | Required -> fun writer v -> Writer.write_field writer index (f v)
     end
   | Basic_opt (index, spec) -> begin
