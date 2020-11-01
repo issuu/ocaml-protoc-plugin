@@ -5,6 +5,9 @@
  (preprocess
   (pps ppx_expect ppx_deriving.show ppx_deriving.eq)))
 
+(rule
+ (targets google_include)
+ (action (with-stdout-to %{targets} (system "[ -d /usr/include/google/protobuf ] && echo /usr/include || echo /usr/local/include" ))))
 
 (rule
  (targets
@@ -25,7 +28,7 @@
   )
  )
  (action
-  (run protoc -I .
+  (run protoc -I %{read-lines:google_include} -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
        "--ocaml_out=open=Google_types;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
@@ -35,7 +38,7 @@
   (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto int_types_native.proto int_types_native_proto2.proto))
  (action
-  (run protoc -I .
+  (run protoc -I %{read-lines:google_include} -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
        "--ocaml_out=open=Google_types;int32_as_int=false;int64_as_int=false;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
@@ -45,6 +48,6 @@
   (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto singleton_record.proto oneof2.proto))
  (action
-  (run protoc -I .
+  (run protoc -I %{read-lines:google_include} -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
        "--ocaml_out=open=Google_types;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))

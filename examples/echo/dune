@@ -4,11 +4,15 @@
 )
 
 (rule
+ (targets google_include)
+ (action (with-stdout-to %{targets} (system "[ -d /usr/include/google/protobuf ] && echo /usr/include || echo /usr/local/include" ))))
+
+(rule
  (targets echo.ml)
  (deps
   (:proto echo.proto) (package ocaml-protoc-plugin))
  (action
-  (run protoc -I . "--ocaml_out=open=Google_types:." %{proto})))
+  (run protoc -I %{read-lines:google_include} -I . "--ocaml_out=open=Google_types:." %{proto})))
 
 (alias
  (name runtest)

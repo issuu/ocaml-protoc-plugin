@@ -181,14 +181,20 @@ message MyProtoMessage { }
 
 
 ## Using dune
-Below is a dune rule for generating code for `test.proto`:
+Below is a dune rule for generating code for `test.proto`. The
+`google_include` target is used to determine the base include path for
+google protobuf well known types.
 ```
+(rule
+ (targets google_include)
+ (action (with-stdout-to %{targets} (system "[ -d /usr/include/google/protobuf ] && echo /usr/include || echo /usr/local/include" ))))
+
 (rule
  (targets test.ml)
  (deps
   (:proto test.proto))
  (action
-  (run protoc -I .  "--ocaml_opt=annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
+  (run protoc -I %{read-lines:google_include} -I .  "--ocaml_opt=annot=[@@deriving show { with_path = false }, eq]" --ocaml_out=. %{proto})))
 ```
 
 ## Service interface
