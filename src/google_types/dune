@@ -18,7 +18,7 @@
  (action
   (run protoc -I %{read-lines:google_include}
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=annot=[@@deriving std]:."
+       "--ocaml_out=annot=[@@deriving ord, eq, show, iter, map, fold]:."
        %{read-lines:google_include}/google/protobuf/any.proto
        %{read-lines:google_include}/google/protobuf/api.proto
        %{read-lines:google_include}/google/protobuf/descriptor.proto
