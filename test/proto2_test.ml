@@ -49,3 +49,8 @@ let%expect_test "Default created messages should not set any fields" =
     | Ok t -> print_endline (T.show t)
     | Error e  -> Printf.printf "Decode failure: %s\n" (Ocaml_protoc_plugin.Result.show_error e)
   in ();
+  [%expect {|
+    Size of message: 0
+    { o0 = "default string"; o1 = "default bytes"; o2 = 27; o3 = 27; o4 = -27;
+      o5 = -27; o6 = -27; o7 = -27; o8 = 27l; o9 = 27L; oa = -27l; ob = -27L;
+      oc = -27.; od = -27.; oe = true } |}]

@@ -1,6 +1,8 @@
 ## 4.2.0: unreleased
 - [x] Do not serialize field values when the same as the default
       attribute.
+- [x] Fix bug when uint32/64 where values are converted to negative
+      integers if high bit is set.
 
 ## 4.1.0: 2020-10-31
 - [x] Fix bug with Proto2 default integer arguments for Int32 and

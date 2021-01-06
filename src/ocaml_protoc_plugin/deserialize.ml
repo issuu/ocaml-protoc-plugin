@@ -45,6 +45,14 @@ let rec type_of_spec: type a. a spec -> 'b * a decoder =
     (tpe, f)
   in
 
+  let int_of_uint32 spec =
+    let (tpe, f) = type_of_spec spec in
+    let f field =
+      f field >>| (fun x -> match Int32.unsigned_to_int x with None -> Int32.to_int x | Some v -> v)
+    in
+    (tpe, f)
+  in
+
   let int_of_int64 spec =
     let (tpe, f) = type_of_spec spec in
     let f field =
@@ -52,6 +60,15 @@ let rec type_of_spec: type a. a spec -> 'b * a decoder =
     in
     (tpe, f)
   in
+
+  let int_of_uint64 spec =
+    let (tpe, f) = type_of_spec spec in
+    let f field =
+      f field >>| (fun x -> match Int64.unsigned_to_int x with None -> Int64.to_int x | Some v -> v)
+    in
+    (tpe, f)
+  in
+
   function
   | Double -> (`Fixed_64_bit, function
       | Field.Fixed_64_bit v -> return (Int64.float_of_bits v)
@@ -64,9 +81,9 @@ let rec type_of_spec: type a. a spec -> 'b * a decoder =
   | Int64 ->  (`Varint, read_varint ~signed:false ~type_name:"int64")
   | Int64_int -> int_of_int64 Int64
   | UInt32 -> (`Varint, read_varint32 ~signed:false ~type_name:"uint32")
-  | UInt32_int -> int_of_int32 UInt32
+  | UInt32_int -> int_of_uint32 UInt32
   | UInt64 -> (`Varint, read_varint ~signed:false ~type_name:"uint64")
-  | UInt64_int -> int_of_int64 UInt64
+  | UInt64_int -> int_of_uint64 UInt64
   | SInt32 -> (`Varint, read_varint32 ~signed:true ~type_name:"sint32")
   | SInt32_int -> int_of_int32 SInt32
   | SInt64 -> (`Varint, read_varint ~signed:true ~type_name:"sint64")
