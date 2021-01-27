@@ -30,7 +30,7 @@ let parse parameters =
   |> List.fold_left ~init:default ~f:(fun param option ->
       match parse_option option with
       | `Expr ("annot", annot) -> { param with annot }
-      | `Expr ("open", open') -> { param with opens = default.opens @ [open'] }
+      | `Expr ("open", open') -> { param with opens = param.opens @ [open'] }
       | `Stmt "use_int32" -> { param with int32_as_int = false }
       | `Stmt "use_int64" -> { param with int64_as_int = false }
       | `Expr ("fixed_as_int", (("true"|"false") as v)) -> { param with fixed_as_int = (bool_of_string v) };
