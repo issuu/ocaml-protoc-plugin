@@ -3,6 +3,7 @@
       attribute.
 - [x] Fix bug when uint32/64 where values are converted to negative
       integers if high bit is set.
+- [x] Fix bug which prevented specification of multiple opens (thanks @rauanmayemir)
 
 ## 4.1.0: 2020-10-31
 - [x] Fix bug with Proto2 default integer arguments for Int32 and
