@@ -76,7 +76,8 @@ let%expect_test _ =
     Test int_types.int_types.UInt64
     i: 1
     i: 2
-    i: 2147483647 |}]
+    i: 2147483647
+    i: 4294967295 |}]
 
 let%expect_test _ =
   let module T = Int_types.UInt32 in
@@ -86,4 +87,5 @@ let%expect_test _ =
     Test int_types.int_types.UInt32
     i: 1
     i: 2
-    i: 2147483647 |}]
+    i: 2147483647
+    i: 4294967295 |}]
