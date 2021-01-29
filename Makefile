@@ -1,6 +1,6 @@
 .PHONY: build
 build: ## Build
-	@dune build
+	@dune build @install
 
 .PHONY: clean
 clean: ## Clean
