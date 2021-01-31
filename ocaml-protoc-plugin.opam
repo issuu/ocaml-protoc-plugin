@@ -5,6 +5,7 @@ license: "APACHE-2.0"
 homepage: "https://github.com/issuu/ocaml-protoc-plugin"
 dev-repo: "git+https://github.com/issuu/ocaml-protoc-plugin"
 bug-reports: "https://github.com/issuu/ocaml-protoc-plugin/issues"
+doc: "https://issuu.github.io/ocaml-protoc-plugin/"
 build: [
   ["dune" "subst"] {pinned}
   ["dune" "build" "-p" name "-j" jobs]
