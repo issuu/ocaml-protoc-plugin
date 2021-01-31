@@ -1,4 +1,4 @@
-## 4.2.0: unreleased
+## 4.2.0: 2021-01-31
 - [x] Do not serialize field values when the same as the default
       attribute.
 - [x] Fix bug when uint32/64 where values are converted to negative
