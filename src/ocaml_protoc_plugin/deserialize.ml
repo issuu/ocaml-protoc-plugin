@@ -48,7 +48,16 @@ let rec type_of_spec: type a. a spec -> 'b * a decoder =
   let int_of_uint32 spec =
     let (tpe, f) = type_of_spec spec in
     let f field =
-      f field >>| (fun x -> match Int32.unsigned_to_int x with None -> Int32.to_int x | Some v -> v)
+      f field >>| (fun v ->
+        match Sys.word_size with
+        | 32 ->
+          (* If the high bit is set, we cannot represent it anyways *)
+          Int32.to_int v
+        | 64 ->
+          let move = int_of_string "0x1_0000_0000" in
+          let i = Int32.to_int v in (if i < 0 then i + move else i)
+        | _ -> assert false
+      )
     in
     (tpe, f)
   in
@@ -64,7 +73,8 @@ let rec type_of_spec: type a. a spec -> 'b * a decoder =
   let int_of_uint64 spec =
     let (tpe, f) = type_of_spec spec in
     let f field =
-      f field >>| (fun x -> match Int64.unsigned_to_int x with None -> Int64.to_int x | Some v -> v)
+      (* If high-bit is set, we cannot represent it *)
+      f field >>| Int64.to_int
     in
     (tpe, f)
   in
