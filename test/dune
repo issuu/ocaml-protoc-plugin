@@ -1,5 +1,6 @@
 (library
  (name test)
+ (enabled_if %{arch_sixtyfour})
  (libraries ocaml_protoc_plugin google_types)
  (inline_tests)
  (preprocess
@@ -37,7 +38,6 @@
  (deps
   (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto int_types_native.proto int_types_native_proto2.proto))
- (enabled_if %{arch_sixtyfour})
  (action
   (run protoc -I %{read-lines:google_include} -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
