@@ -1,5 +1,6 @@
 (library
  (name test)
+ (enabled_if %{arch_sixtyfour})
  (libraries ocaml_protoc_plugin google_types)
  (inline_tests)
  (preprocess
