@@ -7,7 +7,7 @@
 
 (rule
  (targets google_include)
- (action (with-stdout-to %{targets} (system "[ -d /usr/include/google/protobuf ] && echo /usr/include || echo /usr/local/include" ))))
+ (action (with-stdout-to %{targets} (system "[ -d $(dirname %{bin:protoc})/../include/google/protobuf ] && echo $(dirname %{bin:protoc})/../include "))))
 
 (rule
  (targets any.ml api.ml descriptor.ml duration.ml empty.ml field_mask.ml
