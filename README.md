@@ -186,7 +186,8 @@ google protobuf well known types.
 ```
 (rule
  (targets google_include)
- (action (with-stdout-to %{targets} (system "[ -d /usr/include/google/protobuf ] && echo /usr/include || echo /usr/local/include" ))))
+ (action (with-stdout-to %{targets}
+          (system "pkg-config protobuf --variable=includedir"))))
 
 (rule
  (targets test.ml)

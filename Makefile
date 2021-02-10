@@ -1,3 +1,5 @@
+GOOGLE_INCLUDE=$(shell pkg-config protobuf --variable=includedir)/google/protobuf
+
 .PHONY: build
 build: ## Build
 	@dune build @install
@@ -20,19 +22,19 @@ uninstall: build ## uninstall
 	@dune uninstall
 
 %: %.proto
-	protoc -I $(dir $<) $< -o/dev/stdout | protoc --decode google.protobuf.FileDescriptorSet /usr/include/google/protobuf/descriptor.proto
+	protoc -I $(dir $<) $< -o/dev/stdout | protoc --decode google.protobuf.FileDescriptorSet $(GOOGLE_INCLUDE)/descriptor.proto
 
 src/spec/descriptor.ml: build
 	protoc "--plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe" \
 	  -I /usr/include \
 	  --ocaml_out=src/spec/. \
-	  /usr/include/google/protobuf/descriptor.proto
+	  $(GOOGLE_INCLUDE)/descriptor.proto
 
 src/spec/plugin.ml: build
 	protoc "--plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe" \
 	  -I /usr/include \
 	  --ocaml_out=src/spec/. \
-	  /usr/include/google/protobuf/compiler/plugin.proto
+	  $(GOOGLE_INCLUDE)/compiler/plugin.proto
 
 src/spec/options.ml: build
 	protoc "--plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe" \
