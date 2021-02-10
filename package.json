@@ -1,6 +1,6 @@
 {
   "name": "ocaml-protoc-plugin-runtime-bs",
-  "version": "0.0.1",
+  "version": "3.0.0",
   "description": "BuckleScript runtime for ocaml-protoc-plugin",
   "peerDependencies": {
     "bs-platform": ">=5.0.0"
@@ -19,7 +19,8 @@
   ],
   "license": "Apache-2.0",
   "files": [
-    "./bsconfig.json",
-    "./src/protobuf"
+    "bsconfig.json",
+    "src/ocaml_protoc_plugin"
   ]
 }
+
