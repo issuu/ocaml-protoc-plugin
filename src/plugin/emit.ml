@@ -56,13 +56,26 @@ let emit_enum_type ~scope ~params
 
 let emit_service_type scope ServiceDescriptorProto.{ name; method' = methods; _ } =
   let emit_method t scope MethodDescriptorProto.{ name; input_type; output_type; _} =
-    Code.emit t `Begin "let %s = " (Scope.get_name_exn scope name);
+    let name = Scope.get_name_exn scope name in
+    let uncapital_name = Names.field_name name in
+    let capital_name = String.capitalize_ascii name in
+    let input = Scope.get_scoped_name scope input_type in
+    let input_t = Scope.get_scoped_name scope input_type ~postfix:"t"in
+    let output = Scope.get_scoped_name scope output_type in
+    let output_t = Scope.get_scoped_name scope output_type ~postfix:"t" in
+    Code.emit t `Begin "module %s = struct" capital_name;
+    Code.emit t `None "let name' () = \"/%s/%s\"" (Scope.get_current_proto_path scope) name;
+    Code.emit t `None "module Request = %s" input;
+    Code.emit t `None "module Response = %s" output;
+    Code.emit t `End "end";
+    Code.emit t `None "let %s = " uncapital_name;
     Code.emit t `None "( (module %s : Runtime'.Service.Message with type t = %s ), "
-      (Scope.get_scoped_name scope input_type)
-      (Scope.get_scoped_name ~postfix:"t" scope input_type);
-    Code.emit t `End "  (module %s : Runtime'.Service.Message with type t = %s ) ) "
-      (Scope.get_scoped_name scope output_type)
-      (Scope.get_scoped_name ~postfix:"t" scope output_type)
+      input
+      input_t;
+    Code.emit t `None "  (module %s : Runtime'.Service.Message with type t = %s ) ) "
+      output
+      output_t;
+    Code.emit t `None "let %s' = (module %s : Runtime'.Service.Rpc with type Request.t = %s and type Response.t = %s)" uncapital_name capital_name input_t output_t;
   in
   let name = Option.value_exn ~message:"Service definitions must have a name" name in
   let t = Code.init () in
