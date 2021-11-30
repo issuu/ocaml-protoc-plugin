@@ -65,6 +65,8 @@ let emit_service_type scope ServiceDescriptorProto.{ name; method' = methods; _ 
     let output_t = Scope.get_scoped_name scope output_type ~postfix:"t" in
     Code.emit t `Begin "module %s = struct" capital_name;
     Code.emit t `None "let name' () = \"/%s/%s\"" (Scope.get_current_proto_path scope) name;
+    Code.emit t `None "let service () = \"%s\"" (Scope.get_current_proto_path scope);
+    Code.emit t `None "let rpc () = \"%s\"" name;
     Code.emit t `None "module Request = %s" input;
     Code.emit t `None "module Response = %s" output;
     Code.emit t `End "end";
@@ -193,6 +195,8 @@ let rec emit_message ~params ~syntax scope
       Code.emit signature `None "val make : %s" default_constructor_sig;
       Code.emit signature `None "val to_proto: t -> Runtime'.Writer.t";
       Code.emit signature `None "val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result";
+      Code.emit signature `None "val encode: t -> string";
+      Code.emit signature `None "val decode: string -> (t, [> Runtime'.Result.error]) result";
 
       Code.emit implementation `None "let name' () = \"%s\"" (Scope.get_current_scope scope);
       Code.emit implementation `None "type t = %s%s" type' params.annot;
@@ -213,6 +217,9 @@ let rec emit_message ~params ~syntax scope
       Code.emit implementation `None "let deserialize = Runtime'.Deserialize.deserialize %s spec constructor in" extension_ranges;
       Code.emit implementation `None "fun writer -> deserialize writer |> Runtime'.Result.open_error";
       Code.emit implementation `End "";
+
+      Code.emit implementation `None "let encode t = to_proto t |> Runtime'.Writer.contents";
+      Code.emit implementation `None "let decode s = Runtime'.Reader.create s |> from_proto";
     | None -> ()
   in
   {module_name; signature; implementation}
