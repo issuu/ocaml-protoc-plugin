@@ -26,6 +26,8 @@ let to_yojson = function
   | Fixed_32_bit a0 ->
       `List [ `String "Field.Fixed_32_bit"; `Intlit (Int32.to_string a0) ]
 
+let yojson_of_t = to_yojson
+
 let varint v = Varint v
 let fixed_32_bit v = Fixed_32_bit v
 let fixed_64_bit v = Fixed_64_bit v
