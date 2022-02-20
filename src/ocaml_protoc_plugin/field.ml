@@ -8,6 +8,24 @@ type t =
     } (* string, bytes, embedded messages, packed repeated fields *)
   | Fixed_32_bit of Int32.t (* fixed32, sfixed32, float *)
 
+let to_yojson = function
+  | Varint a0 -> `List [ `String "Field.Varint"; `Intlit (Int64.to_string a0) ]
+  | Fixed_64_bit a0 ->
+      `List [ `String "Field.Fixed_64_bit"; `Intlit (Int64.to_string a0) ]
+  | Length_delimited { offset; length; data } ->
+      `List
+        [
+          `String "Field.Length_delimited";
+          `Assoc
+            [
+              ("offset", `Int offset);
+              ("length", `Int length);
+              ("data", `String data);
+            ];
+        ]
+  | Fixed_32_bit a0 ->
+      `List [ `String "Field.Fixed_32_bit"; `Intlit (Int32.to_string a0) ]
+
 let varint v = Varint v
 let fixed_32_bit v = Fixed_32_bit v
 let fixed_64_bit v = Fixed_64_bit v
