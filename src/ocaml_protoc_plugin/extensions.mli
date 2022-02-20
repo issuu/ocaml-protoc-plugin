@@ -1,4 +1,16 @@
 type t = (int * Field.t) list
+val to_yojson :
+  t ->
+  [> `List of
+     [> `List of
+        [> `Int of int
+        | `List of
+          [> `Assoc of (string * [> `Int of int | `String of string ]) list
+          | `Intlit of string
+          | `String of string ]
+          list ]
+        list ]
+     list ]
 val default : t
 val pp : Format.formatter -> t -> unit
 val show : t -> string
