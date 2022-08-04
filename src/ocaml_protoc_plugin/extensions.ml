@@ -1,5 +1,10 @@
 open StdLabels
 type t = (int * Field.t) list
+
+let to_yojson l =
+  `List (List.map ~f:(fun (k, v) -> `List [ `Int k; Field.to_yojson v ]) l)
+let yojson_of_t = to_yojson
+
 let default = []
 let pp_item fmt (index, field) = Format.fprintf fmt "(%d, %a)" index Field.pp field
 let pp : Format.formatter -> t -> unit = fun fmt -> Format.pp_print_list pp_item fmt
