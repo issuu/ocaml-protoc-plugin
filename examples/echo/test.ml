@@ -9,7 +9,7 @@ let mk_timestamp () =
 
 
 let mk_request () =
-  Echo.Request.{ timestamp = `Ts (mk_timestamp ()); what = `Type Echo.Request.Who.World }
+  Echo.Request.{ timestamp = `Ts (mk_timestamp ()); what = `Type Echo.Request.Who.World; _how = `not_set }
 
 let mk_reply Echo.Request.{ timestamp; what } =
   let at =

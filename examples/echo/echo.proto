@@ -14,6 +14,7 @@ message Request {
     who type = 10;
     string someone = 11;
   }
+  optional string how = 20;
 }
 
 message Reply {
