@@ -30,7 +30,7 @@ let dump_protoc name data =
   Printf.printf "%!";
   let res = Sys.command
       (Printf.sprintf
-         "protoc --decode=%s %s < %s"
+         "protoc --experimental_allow_proto3_optional --decode=%s %s < %s"
          type_name
          protobuf_file
          filename)

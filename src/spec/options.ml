@@ -6,7 +6,7 @@
 (************************************************)
 (*
   Source: options.proto
-  Syntax: proto3 
+  Syntax: proto3
   Parameters:
     debug=false
     annot=''

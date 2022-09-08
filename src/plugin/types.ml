@@ -324,7 +324,7 @@ let c_of_field ~params ~syntax ~scope field =
   let name = Option.value_exn field.name in
   match syntax, field with
   (* This function cannot handle oneof types *)
-  | _, { oneof_index = Some _; _ } -> failwith "Cannot handle oneofs"
+  | _, { oneof_index = Some _; proto3_optional = Some false | None; _ } -> failwith "Cannot handle oneofs"
   (* Optional messages cannot have a default *)
   | _, { type' = Some TYPE_MESSAGE; default_value = Some _; _ } ->
     failwith "Message types cannot have a default value"
@@ -384,8 +384,14 @@ let c_of_field ~params ~syntax ~scope field =
     Basic_opt (number, spec)
     |> c_of_compound name
 
-  (* Proto3 optional fields *)
-  | `Proto3, { label = Some Label.LABEL_OPTIONAL; type' = Some type'; type_name; _ } ->
+  (* Proto3 explicitly optional field are mapped as proto2 optional fields *)
+  | _, { label = Some Label.LABEL_OPTIONAL; type' = Some type'; type_name; proto3_optional = Some true; _ } ->
+    let Espec spec = spec_of_type ~params ~scope type_name None type' in
+    Basic_opt (number, spec)
+    |> c_of_compound name
+
+  (* Proto3 implicitly optional field *)
+  | `Proto3, { label = Some Label.LABEL_OPTIONAL; type' = Some type'; type_name; _} ->
     let Espec spec = spec_of_type ~params ~scope type_name None type' in
     Basic (number, spec, Proto3)
     |> c_of_compound name
@@ -504,6 +510,7 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
   let ts =
     split_oneof_decl fields oneof_decls
     |> List.map ~f:(function
+        | `Oneof (_, [ FieldDescriptorProto.{ proto3_optional = Some true; _ } as field] )
         | `Field field -> c_of_field ~params ~syntax ~scope field
         | `Oneof (decl, fields) -> c_of_oneof ~params ~syntax ~scope decl fields
       )

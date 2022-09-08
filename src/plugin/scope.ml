@@ -85,7 +85,9 @@ module Type_tree = struct
       let field_name FieldDescriptorProto.{ name; _} =
         Option.value_exn ~message:"Field names cannot be null" name
       in
-      let (plain_fields, oneof_fields) = List.partition ~f:(fun FieldDescriptorProto.{ oneof_index; _ } -> oneof_index = None) fields in
+      let (plain_fields, oneof_fields) = List.partition ~f:(function FieldDescriptorProto.{ proto3_optional = Some true; _ } -> true
+                                                                   | { oneof_index = None; _ } -> true
+                                                                   | _ -> false) fields in
       let plain_fields =
         let acc = List.map ~f:field_name plain_fields in
         List.fold_left ~init:acc ~f:(fun acc OneofDescriptorProto.{ name; _ } ->
