@@ -9,9 +9,9 @@ let mk_timestamp () =
 
 
 let mk_request () =
-  Echo.Request.{ timestamp = `Ts (mk_timestamp ()); what = `Type Echo.Request.Who.World; _how = `not_set }
+  Echo.Request.{ timestamp = `Ts (mk_timestamp ()); what = `Type Echo.Request.Who.World }
 
-let mk_reply Echo.Request.{ timestamp; what; _how } =
+let mk_reply Echo.Request.{ timestamp; what } =
   let at =
     match timestamp with
       | `Ts {seconds; nanos = _} ->
@@ -22,12 +22,11 @@ let mk_reply Echo.Request.{ timestamp; what; _how } =
           "whenever"
   in
 
-  match _how, what with
-    | `How how, _ -> Printf.sprintf "%s is how" how
-    | `not_set, `Someone person -> Printf.sprintf "%s Hello there, %s" at person
-    | `not_set,`Type Echo.Request.Who.Mum -> Printf.sprintf "%s Hi Mom" at
-    | `not_set,`Type Echo.Request.Who.World -> Printf.sprintf "%s Hello World" at
-    | `not_set,`not_set -> Printf.sprintf "Hello Unknown"
+  match what with
+    | `Someone person -> Printf.sprintf "%s Hello there, %s" at person
+    | `Type Echo.Request.Who.Mum -> Printf.sprintf "%s Hi Mom" at
+    | `Type Echo.Request.Who.World -> Printf.sprintf "%s Hello World" at
+    | `not_set -> Printf.sprintf "Hello Unknown"
 
 let handle_request proto_request =
   let (decode, encode) = Ocaml_protoc_plugin.Service.make_service_functions Echo.Echo.call in
