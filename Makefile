@@ -26,21 +26,18 @@ uninstall: build ## uninstall
 
 src/spec/descriptor.ml: build
 	protoc "--plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe" \
-	  --experimental_allow_proto3_optional \
 	  -I /usr/include \
 	  --ocaml_out=src/spec/. \
 	  $(GOOGLE_INCLUDE)/descriptor.proto
 
 src/spec/plugin.ml: build
 	protoc "--plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe" \
-	  --experimental_allow_proto3_optional \
 	  -I /usr/include \
 	  --ocaml_out=src/spec/. \
 	  $(GOOGLE_INCLUDE)/compiler/plugin.proto
 
 src/spec/options.ml: build
 	protoc "--plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe" \
-	  --experimental_allow_proto3_optional \
 	  -I src/spec -I /usr/include \
 	  --ocaml_out=src/spec/. \
 	  src/spec/options.proto

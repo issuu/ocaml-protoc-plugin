@@ -1,0 +1,10 @@
+(rule
+ (target support_proto3_optional.conf)
+ (action (with-stdout-to %{target} (run ./support_proto3_optional.exe)))
+  )
+
+
+(executable
+ (name support_proto3_optional)
+ (libraries dune-configurator)
+)
