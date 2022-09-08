@@ -1,5 +1,6 @@
-## 4.2.1: Unreleased
+## 4.3.0: Unreleased
 - [x] Use pkg-config to locate google well known types (thanks @vprevosto)
+- [x] Support proto3 optional fields
 
 ## 4.2.0: 2021-01-31
 - [x] Do not serialize field values when the same as the default

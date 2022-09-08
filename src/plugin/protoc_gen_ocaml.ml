@@ -62,6 +62,6 @@ let () =
     Plugin.CodeGeneratorResponse.File.make ~name ~content:(Code.contents code) ()
   in
   let response : Plugin.CodeGeneratorResponse.t =
-    Plugin.CodeGeneratorResponse.make ~file:(List.map ~f:response_of_output outputs) ()
+    Plugin.CodeGeneratorResponse.make ~supported_features:1 ~file:(List.map ~f:response_of_output outputs) ()
   in
   write response
