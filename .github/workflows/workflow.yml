@@ -12,7 +12,7 @@ jobs:
         os:
           - ubuntu-latest
         ocaml-version:
-          - 4.11.1
+          - 4.14.0
           - 4.08.0
 
     runs-on: ${{ matrix.os }}
@@ -21,10 +21,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Use OCaml ${{ matrix.ocaml-version }}
-        uses: avsm/setup-ocaml@v1
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: avsm/setup-ocaml@v2
         with:
-          ocaml-version: ${{ matrix.ocaml-version }}
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
 
       - run: opam pin . --no-action
       - run: opam depext conf-protoc --yes --with-doc --with-test

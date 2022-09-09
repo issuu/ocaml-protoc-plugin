@@ -1,6 +1,5 @@
 # Ocaml protoc plugin
-
-[![BuildStatus](https://travis-ci.org/issuu/ocaml-protoc-plugin.svg?branch=master)](https://travis-ci.org/issuu/ocaml-protoc-plugin)
+[![Main workflow](https://github.com/issuu/ocaml-protoc-plugin/actions/workflows/workflow.yml/badge.svg)](https://github.com/issuu/ocaml-protoc-plugin/actions/workflows/workflow.yml)
 
 The goal of Ocaml protoc plugin is to create an up to date plugin for
 the google protobuf compiler (`protoc`) to generate Ocaml types and
