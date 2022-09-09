@@ -6,7 +6,7 @@
 (************************************************)
 (*
   Source: google/protobuf/compiler/plugin.proto
-  Syntax: proto2 
+  Syntax: proto2
   Parameters:
     debug=false
     annot=''

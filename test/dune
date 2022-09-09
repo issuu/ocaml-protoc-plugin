@@ -1,14 +1,34 @@
+
+(rule
+ (enabled_if %{read:config/support_proto3_optional.conf})
+ (alias   runtest)
+ (action (echo Hi)))
+
+(rule
+ (enabled_if %{read:config/support_proto3_optional.conf})
+ (action (copy proto3_optional_test_opt.ml proto3_optional_test.ml)))
+
+;; Create an empty test file if proto3 optional fields is not supported by the system's protoc compiler
+(rule
+ (target proto3_optional_test.ml)
+ (enabled_if (not %{read:config/support_proto3_optional.conf}))
+ (action (with-stdout-to %{target} (echo ""))))
+
+
+;; exclude proto3_optional_test.ml based on the support
 (library
  (name test)
  (enabled_if (and (<> %{architecture} x86_32) (<> %{architecture} arm32)))
- (libraries ocaml_protoc_plugin google_types )
+ (libraries ocaml_protoc_plugin google_types)
  (inline_tests)
+ (modules :standard \ proto3_optional_test_opt)
  (preprocess
   (pps ppx_expect ppx_deriving.show ppx_deriving.eq)))
 
+
 (rule
- (targets google_include)
- (action (with-stdout-to %{targets}
+ (target google_include)
+ (action (with-stdout-to %{target}
           (system "pkg-config protobuf --variable=includedir"))))
 
 (rule
@@ -26,8 +46,7 @@
     include.proto included.proto included2.proto service.proto
     recursive.proto protocol.proto name_clash.proto name_clash_mangle.proto
     proto2.proto packed.proto mangle_names.proto extensions.proto options.proto
-    name_clash2.proto empty.proto
-  )
+    name_clash2.proto empty.proto)
  )
  (action
   (run protoc -I %{read-lines:google_include} -I .
@@ -51,5 +70,18 @@
   (:proto singleton_record.proto oneof2.proto))
  (action
   (run protoc -I %{read-lines:google_include} -I .
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=open=Google_types;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+
+(rule
+ (enabled_if %{read:config/support_proto3_optional.conf})
+ (target proto3_optional.ml)
+ (deps
+  (:plugin ../src/plugin/protoc_gen_ocaml.exe)
+  (:proto proto3_optional.proto)
+ )
+ (action
+  (run protoc -I %{read-lines:google_include} -I .
+       "--experimental_allow_proto3_optional"
        "--plugin=protoc-gen-ocaml=%{plugin}"
        "--ocaml_out=open=Google_types;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))

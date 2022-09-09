@@ -22,7 +22,7 @@ uninstall: build ## uninstall
 	@dune uninstall
 
 %: %.proto
-	protoc -I $(dir $<) $< -o/dev/stdout | protoc --decode google.protobuf.FileDescriptorSet $(GOOGLE_INCLUDE)/descriptor.proto
+	protoc --experimental_allow_proto3_optional -I $(dir $<) $< -o/dev/stdout | protoc --experimental_allow_proto3_optional --decode google.protobuf.FileDescriptorSet $(GOOGLE_INCLUDE)/descriptor.proto
 
 src/spec/descriptor.ml: build
 	protoc "--plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe" \

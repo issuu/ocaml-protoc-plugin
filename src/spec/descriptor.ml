@@ -6,7 +6,7 @@
 (************************************************)
 (*
   Source: google/protobuf/descriptor.proto
-  Syntax: proto2 
+  Syntax: proto2
   Parameters:
     debug=false
     annot=''

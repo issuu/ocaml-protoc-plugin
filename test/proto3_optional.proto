@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package proto3_optional;
+
+message Message {
+    optional int32 payload = 1;
+}
