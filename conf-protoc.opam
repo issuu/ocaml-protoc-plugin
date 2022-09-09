@@ -14,7 +14,6 @@ depexts: [
   ["protobuf-devel" "protobuf-compiler"]    {os-distribution = "centos"}
   ["protobuf-devel" "protobuf-compiler"]    {os-distribution = "fedora"}
   ["protobuf-devel" "protobuf-compiler"]    {os-distribution = "rhel"}
-  ["protobuf-devel" "protobuf-compiler"]    {os-distribution = "ol"}
   ["protobuf" "protobuf-dev"]               {os-family = "alpine"}
   ["protobuf"]                              {os-family = "arch"}
   ["protobuf-devel"]                        {os-family = "suse"}

@@ -1,4 +1,6 @@
-## 4.3.0: Unreleased
+## 4.4.0: Unreleased
+
+## 4.3.0: 2022-09-09
 - [x] Use pkg-config to locate google well known types (thanks @vprevosto)
 - [x] Support proto3 optional fields
 - [x] Map proto3 optional fields into option types
