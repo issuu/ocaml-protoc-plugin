@@ -73,14 +73,14 @@ let read_length_delimited t =
 let read_fixed32 t =
   let size = 4 in
   validate_capacity t size >>| fun () ->
-  let v = LittleEndian.get_int32 t.data t.offset in
+  let v = Bytes.get_int32_le (Bytes.unsafe_of_string t.data) t.offset in
   t.offset <- t.offset + size;
   (Fixed_32_bit v)
 
 let read_fixed64 t =
   let size = 8 in
   validate_capacity t size >>| fun () ->
-  let v = LittleEndian.get_int64 t.data t.offset in
+  let v = Bytes.get_int64_le (Bytes.unsafe_of_string t.data) t.offset in
   t.offset <- t.offset + size;
   (Fixed_64_bit v)
 

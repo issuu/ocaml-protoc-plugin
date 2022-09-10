@@ -58,11 +58,11 @@ let write_varint buffer ~offset v =
   inner ~offset v
 
 let write_fixed32 buffer ~offset v =
-  LittleEndian.set_int32 buffer offset v;
+  Bytes.set_int32_le buffer offset v;
   offset + 4
 
 let write_fixed64 buffer ~offset v =
-  LittleEndian.set_int64 buffer offset v;
+  Bytes.set_int64_le buffer offset v;
   offset + 8
 
 let write_length_delimited buffer ~offset ~src ~src_pos ~len =
