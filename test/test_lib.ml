@@ -15,7 +15,7 @@ let hexlify data =
   |> String.concat ~sep:"-"
   |> Caml.Printf.printf "Buffer: '%s'\n"
 
-let dump_protoc name data =
+let dump_protoc ?(protoc_args=[]) name data =
   let protobuf_file, type_name =
     match String.split_on_char ~sep:'.' name with
     | protobuf_name :: type_name ->
@@ -30,7 +30,8 @@ let dump_protoc name data =
   Printf.printf "%!";
   let res = Sys.command
       (Printf.sprintf
-         "protoc --decode=%s %s < %s"
+         "protoc %s --decode=%s %s < %s"
+         (String.concat ~sep:" " protoc_args)
          type_name
          protobuf_file
          filename)
@@ -42,7 +43,7 @@ let dump_protoc name data =
 
 
 (** Create a common function for testing. *)
-let test_encode (type t) ?dump ?(protoc=true) (module M : T with type t = t) ?(validate : t option) (expect : t) =
+let test_encode (type t) ?dump ?(protoc=true) ?protoc_args (module M : T with type t = t) ?(validate : t option) (expect : t) =
   let () = match validate with
     | Some v when v <> expect -> Printf.printf "Validate match failed\n"
     | _ -> ()
@@ -54,7 +55,7 @@ let test_encode (type t) ?dump ?(protoc=true) (module M : T with type t = t) ?(v
     | None -> ()
   in
   let () = match protoc with
-    | true -> dump_protoc (M.name' ()) data
+    | true -> dump_protoc ?protoc_args (M.name' ()) data
     | false -> ()
   in
   (* Decode the message *)

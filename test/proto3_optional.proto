@@ -5,3 +5,8 @@ package proto3_optional;
 message Message {
     optional int32 payload = 1;
 }
+message Message2 {
+    optional int32 payload = 1;
+    optional int32 payload2 = 2;
+    optional int32 payload3 = 3;
+}
