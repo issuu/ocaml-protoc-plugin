@@ -1,4 +1,5 @@
-## 4.4.0: Unreleased
+## 4.3.1: Unreleased
+- [x] Fix serialization/deserialization on big endian architectures
 
 ## 4.3.0: 2022-09-09
 - [x] Use pkg-config to locate google well known types (thanks @vprevosto)
