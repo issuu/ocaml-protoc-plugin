@@ -16,6 +16,5 @@ module Extensions = Extensions
 let test () =
   Writer.Test.test ();
   Serialize.Test.test ();
-  LittleEndian.Test.test ();
   ()
 (**/**)
