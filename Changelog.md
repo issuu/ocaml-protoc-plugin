@@ -1,5 +1,8 @@
-## 4.3.1: Unreleased
+## 4.3.1: 2022-09-12
 - [x] Fix serialization/deserialization on big endian architectures
+- [x] Update tests for proto3 optional fields
+- [x] Remove dependency on dune-configurator
+
 
 ## 4.3.0: 2022-09-09
 - [x] Use pkg-config to locate google well known types (thanks @vprevosto)
