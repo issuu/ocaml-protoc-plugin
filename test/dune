@@ -1,17 +1,19 @@
 
-(rule
- (enabled_if %{read:config/support_proto3_optional.conf})
- (alias   runtest)
- (action (echo Hi)))
+;; Determine if the compiler supports the --experimental_allow_proto3_optional flag.
+;; The output file will be non-empty if the flag is supported
+(subdir config
+ (rule
+ (target support_proto3_optional.conf)
+ (action (with-accepted-exit-codes (or 0 1) (ignore-stderr (with-stdout-to %{target} (run protoc --experimental_allow_proto3_optional --version)))))))
 
 (rule
- (enabled_if %{read:config/support_proto3_optional.conf})
+ (enabled_if (<> %{read:config/support_proto3_optional.conf} ""))
  (action (copy proto3_optional_test_opt.ml proto3_optional_test.ml)))
 
 ;; Create an empty test file if proto3 optional fields is not supported by the system's protoc compiler
 (rule
  (target proto3_optional_test.ml)
- (enabled_if (not %{read:config/support_proto3_optional.conf}))
+ (enabled_if (= %{read:config/support_proto3_optional.conf} ""))
  (action (with-stdout-to %{target} (echo ""))))
 
 
@@ -74,7 +76,7 @@
        "--ocaml_out=open=Google_types;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
- (enabled_if %{read:config/support_proto3_optional.conf})
+ (enabled_if (<> %{read:config/support_proto3_optional.conf} ""))
  (target proto3_optional.ml)
  (deps
   (:plugin ../src/plugin/protoc_gen_ocaml.exe)
