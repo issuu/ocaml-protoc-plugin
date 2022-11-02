@@ -19,9 +19,3 @@ let make_service_functions (type req) (type rep)
     ((module Request : Message with type t = req),
     (module Response : Message with type t = rep)) =
   Request.from_proto, Response.to_proto
-
-let make_service_functions' (type req) (type rep)
-    (module R : Rpc with type Request.t = req and type Response.t = rep) =
-  make_service_functions ((module R.Request),
-    (module R.Response))
-
