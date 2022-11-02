@@ -7,7 +7,7 @@ end
 module type Rpc = sig
   module Request : Message
   module Response : Message
-  val name' : unit -> string
+  val name : string
 end
 
 let make_client_functions (type req) (type rep)
