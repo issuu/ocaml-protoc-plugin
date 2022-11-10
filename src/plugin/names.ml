@@ -62,3 +62,18 @@ let module_name ?(mangle_f=(fun x -> x)) name =
 
 let poly_constructor_name ?(mangle_f=(fun x -> x)) name =
   "`" ^ (mangle_f name |> String.capitalize_ascii)
+
+(** Local map with rpc name and ocaml variable name  *)
+module Rpc = struct
+  type t = (string, unit) Hashtbl.t
+  let init () : t = Hashtbl.create 2
+  let get_unique_name t preferred_name = 
+    let rec inner name = 
+      match Hashtbl.mem t name with
+      | false -> name
+      | true -> inner (name ^ "'")
+   in 
+   let name = inner preferred_name in
+   Hashtbl.add t name ();
+   name
+end

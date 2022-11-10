@@ -12,3 +12,4 @@ service Test {
   rpc CALL (Request) returns (Response);
   rpc cALL (Request) returns (Response);
 }
+

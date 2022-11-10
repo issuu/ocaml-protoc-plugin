@@ -24,8 +24,8 @@ val get_name_exn : t -> string option -> string
 (** Get the type of the curren scope *)
 val get_current_scope : t -> string
 
-(**  Get the name of the given scpoe *)
-val get_current_proto_path : t -> string
+(**  Get the path of the given scpoe *)
+val get_current_proto_path : t -> string option
 
 (** Tell if the type pointed to by the current scope is part of a cycle. *)
 val is_cyclic: t -> bool
