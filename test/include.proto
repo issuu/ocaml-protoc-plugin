@@ -5,6 +5,7 @@ package include;
 import public "enum.proto";
 import public "package.proto";
 import public "included.proto";
+import public "included3-dash.proto";
 
 message I {
   enum_test.Message.E enum = 1;
@@ -21,4 +22,8 @@ message X {
 
 message Z {
   N n = 1;
+}
+
+message Y {
+  D d = 1;
 }

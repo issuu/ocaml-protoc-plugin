@@ -1,3 +1,5 @@
+- [x] Support importing from proto files with `-` in their name.
+
 ## 4.3.1: 2022-09-12
 - [x] Fix serialization/deserialization on big endian architectures
 - [x] Update tests for proto3 optional fields

@@ -29,3 +29,12 @@ let%expect_test _ =
     n {
       e: B
     } |}]
+
+let%expect_test _ =
+  let module T = Include.Y in
+  let t = Some 42 in
+  Test_lib.test_encode (module T) t;
+  [%expect {|
+    d {
+      i: 42
+    } |}]
