@@ -22,7 +22,10 @@ type element = { module_name: string; ocaml_name: string; cyclic: bool }
 let import_module_name = "Imported'modules"
 
 let module_name_of_proto file =
-  Filename.chop_extension file |> Filename.basename |> String.capitalize_ascii
+  Filename.chop_extension file
+  |> Filename.basename
+  |> String.capitalize_ascii
+  |> String.map ~f:(function '-' -> '_' | c -> c)
 
 module Type_tree = struct
   type t = { name: string; types: t list; depends: string list; fields: string list * string list list; enum_names: string list; service_names: string list }

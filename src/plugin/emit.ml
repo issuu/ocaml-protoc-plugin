@@ -227,7 +227,7 @@ let parse_proto_file ~params scope
                           enum_type = enum_types; service = services; extension;
                           options = _; source_code_info = _; syntax; }
   =
-  let name = Option.value_exn ~message:"All files must have a name" name in
+  let name = Option.value_exn ~message:"All files must have a name" name |> String.map ~f:(function '-' -> '_' | c -> c) in
   let syntax = match syntax with
     | None | Some "proto2" -> `Proto2
     | Some "proto3" -> `Proto3

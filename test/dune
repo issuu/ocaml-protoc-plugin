@@ -37,7 +37,7 @@
  (targets
    basic.ml primitive_types.ml int_types.ml repeated.ml enum.ml
    message.ml oneof.ml map.ml package.ml include.ml included.ml
-   included2.ml service.ml recursive.ml protocol.ml name_clash.ml
+   included2.ml included3_dash.ml service.ml recursive.ml protocol.ml name_clash.ml
    name_clash_mangle.ml proto2.ml packed.ml mangle_names.ml extensions.ml
    options.ml name_clash2.ml empty.ml)
  (deps
@@ -45,7 +45,7 @@
   (:proto
     basic.proto primitive_types.proto int_types.proto repeated.proto
     enum.proto message.proto oneof.proto map.proto package.proto
-    include.proto included.proto included2.proto service.proto
+    include.proto included.proto included2.proto included3-dash.proto service.proto
     recursive.proto protocol.proto name_clash.proto name_clash_mangle.proto
     proto2.proto packed.proto mangle_names.proto extensions.proto options.proto
     name_clash2.proto empty.proto)

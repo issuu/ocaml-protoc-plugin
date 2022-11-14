@@ -378,4 +378,3 @@ let read_person binary_message =
 More examples can be found under
 [examples](https://github.com/issuu/ocaml-protoc-plugin/tree/master/examples)
 
-<!--  LocalWords:  protobuf protoc Ocaml -->
