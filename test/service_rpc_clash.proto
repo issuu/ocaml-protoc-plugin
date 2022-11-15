@@ -11,5 +11,7 @@ service Test {
   rpc call (Request) returns (Response);
   rpc CALL (Request) returns (Response);
   rpc cALL (Request) returns (Response);
+  rpc Method (Request) returns (Response);
+  rpc functor (Request) returns (Response);
+  rpc Functor (Request) returns (Response);
 }
-

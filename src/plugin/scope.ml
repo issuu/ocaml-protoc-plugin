@@ -15,6 +15,24 @@ module StringMap = struct
 end
 module StringSet = Set.Make(String)
 
+(** Module to avoid name slashes in a local scope *)
+module Local = struct
+  type t = (string, unit) Hashtbl.t
+  let init () : t = Hashtbl.create 2
+  let get_unique_name t preferred_name =
+    let rec inner name =
+      match Hashtbl.mem t name with
+      | true -> inner (name ^ "'")
+      | false when Names.is_reserved name -> inner (name ^ "'")
+      | false -> name
+
+   in
+   let name = inner preferred_name in
+   Hashtbl.add t ~key:name ~data:();
+   name
+end
+
+
 open Spec.Descriptor.Google.Protobuf
 
 type element = { module_name: string; ocaml_name: string; cyclic: bool }
@@ -234,7 +252,6 @@ module Type_tree = struct
           |> add_names ~path ~ocaml_name map
         in
 
-        (* Prevent uncapitalizing to make correct rpc name paths *)
         let map =
           create_name_map
             ~standard_f:(Names.field_name ~mangle_f:(fun x -> x))
@@ -342,10 +359,10 @@ let get_current_scope t =
   let { module_name; ocaml_name = _; _ } = StringMap.find t.proto_path t.type_db in
   (String.lowercase_ascii module_name) ^ t.proto_path
 
-let get_current_proto_path { proto_path; _ } =
+let get_rpc_path { proto_path; _ } =
   match String.split_on_char ~sep:'.'  proto_path with
-  | _ :: path -> Some (String.concat ~sep:"." path)
-  | [] -> None
+  | _ :: path -> "/" ^ String.concat ~sep:"." path
+  | [] -> ""
 
 let is_cyclic t =
   let { cyclic; _ } = StringMap.find t.proto_path t.type_db in
