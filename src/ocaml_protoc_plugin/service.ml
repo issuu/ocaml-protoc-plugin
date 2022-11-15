@@ -4,12 +4,18 @@ module type Message = sig
   val to_proto: t -> Writer.t
 end
 
+module type Rpc = sig
+  module Request : Message
+  module Response : Message
+  val name : string
+end
+
 let make_client_functions (type req) (type rep)
     ((module Request : Message with type t = req),
-     (module Reply : Message with type t = rep)) =
-  Request.to_proto, Reply.from_proto
+     (module Response : Message with type t = rep)) =
+  Request.to_proto, Response.from_proto
 
 let make_service_functions (type req) (type rep)
     ((module Request : Message with type t = req),
-    (module Reply : Message with type t = rep)) =
-  Request.from_proto, Reply.to_proto
+    (module Response : Message with type t = rep)) =
+  Request.from_proto, Response.to_proto

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package ServiceRpcClash;
+
+message Request { }
+
+message Response { }
+
+service Test {
+  rpc Call (Request) returns (Response);
+  rpc call (Request) returns (Response);
+  rpc CALL (Request) returns (Response);
+  rpc cALL (Request) returns (Response);
+}
+

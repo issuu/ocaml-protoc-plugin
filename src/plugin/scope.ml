@@ -234,6 +234,7 @@ module Type_tree = struct
           |> add_names ~path ~ocaml_name map
         in
 
+        (* Prevent uncapitalizing to make correct rpc name paths *)
         let map =
           create_name_map
             ~standard_f:(Names.field_name ~mangle_f:(fun x -> x))
@@ -340,6 +341,11 @@ let get_name_exn t name =
 let get_current_scope t =
   let { module_name; ocaml_name = _; _ } = StringMap.find t.proto_path t.type_db in
   (String.lowercase_ascii module_name) ^ t.proto_path
+
+let get_current_proto_path { proto_path; _ } =
+  match String.split_on_char ~sep:'.'  proto_path with
+  | _ :: path -> Some (String.concat ~sep:"." path)
+  | [] -> None
 
 let is_cyclic t =
   let { cyclic; _ } = StringMap.find t.proto_path t.type_db in
