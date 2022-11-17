@@ -1,3 +1,5 @@
+- [x] Emit modules for service endpoints with request/reply and gRPC
+      endpoint name (thanks @Nymphium)
 - [x] Support importing from proto files with `-` in their name.
 
 ## 4.3.1: 2022-09-12
