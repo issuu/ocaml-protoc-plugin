@@ -15,7 +15,7 @@ module StringMap = struct
 end
 module StringSet = Set.Make(String)
 
-(** Module to avoid name slashes in a local scope *)
+(** Module to avoid name clashes in a local scope *)
 module Local = struct
   type t = (string, unit) Hashtbl.t
   let init () : t = Hashtbl.create 2
