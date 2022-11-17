@@ -58,16 +58,18 @@ let emit_service_type scope ServiceDescriptorProto.{ name; method' = methods; _ 
   let emit_method t local_scope scope MethodDescriptorProto.{ name; input_type; output_type; _} =
     let name = Option.value_exn name in
     let uncapitalized_name = String.uncapitalize_ascii name |> Scope.Local.get_unique_name local_scope in
-    (* To keep symmetry, only ensure that lowercased names are unique so that the upper case names are aswell.
-       We should remove this mapping if/when we deprecate the old API *)
+    (* To keep symmetry, only ensure that lowercased names are unique
+       so that the upper case names are aswell.  We should remove this
+       mapping if/when we deprecate the old API *)
     let capitalized_name = String.capitalize_ascii uncapitalized_name in
-    let service_name = Scope.get_rpc_path scope in
+
+    let service_name = Scope.get_proto_path scope in
     let input = Scope.get_scoped_name scope input_type in
     let input_t = Scope.get_scoped_name scope ~postfix:"t" input_type in
     let output = Scope.get_scoped_name scope output_type in
     let output_t = Scope.get_scoped_name scope ~postfix:"t" output_type  in
     Code.emit t `Begin "module %s = struct" capitalized_name;
-    Code.emit t `None "let name = \"%s/%s\"" service_name name;
+    Code.emit t `None "let name = \"/%s/%s\"" service_name name;
     Code.emit t `None "module Request = %s" input;
     Code.emit t `None "module Response = %s" output;
     Code.emit t `End "end";
