@@ -43,16 +43,10 @@ let to_snake_case ident =
   |> String.lowercase_ascii
   |> String.capitalize_ascii
 
-let field_name ?(uncapitalize=true) ?(mangle_f=(fun x -> x)) field_name =
-  let name = 
-    let name =  mangle_f field_name in
-    match uncapitalize with 
-    | true -> String.uncapitalize_ascii name
-    | false -> name 
-  in
-  match is_reserved name with
-  | true -> name ^ "'"
-  | false -> name 
+let field_name ?(mangle_f=(fun x -> x)) field_name =
+  match String.uncapitalize_ascii (mangle_f field_name) with
+  | name when is_reserved name -> name ^ "'"
+  | name -> name
 
 let module_name ?(mangle_f=(fun x -> x)) name =
   let name = mangle_f name in
@@ -62,18 +56,3 @@ let module_name ?(mangle_f=(fun x -> x)) name =
 
 let poly_constructor_name ?(mangle_f=(fun x -> x)) name =
   "`" ^ (mangle_f name |> String.capitalize_ascii)
-
-(** Local map with rpc name and ocaml variable name  *)
-module Rpc = struct
-  type t = (string, unit) Hashtbl.t
-  let init () : t = Hashtbl.create 2
-  let get_unique_name t preferred_name = 
-    let rec inner name = 
-      match Hashtbl.mem t name with
-      | false -> name
-      | true -> inner (name ^ "'")
-   in 
-   let name = inner preferred_name in
-   Hashtbl.add t name ();
-   name
-end
