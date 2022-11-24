@@ -2,6 +2,8 @@ type t = (int * Field.t) list
 
 val to_yojson : t -> Yojson.t
 val yojson_of_t : t -> Yojson.t
+val of_yojson : Yojson.t -> t
+val t_of_yojson : Yojson.t -> t
 
 val default : t
 val pp : Format.formatter -> t -> unit

@@ -28,6 +28,27 @@ let to_yojson = function
 
 let yojson_of_t = to_yojson
 
+let of_yojson = function
+  | `List [ `String "Field.Varint"; `Intlit a0 ] -> Varint (Int64.of_string a0)
+  | `List [ `String "Field.Fixed_64_bit"; `Intlit a0 ] ->
+      Fixed_64_bit (Int64.of_string a0)
+  | `List
+      [
+        `String "Field.Length_delimited";
+        `Assoc
+          [
+            ("offset", `Int offset);
+            ("length", `Int length);
+            ("data", `String data);
+          ];
+      ] ->
+      Length_delimited { offset; length; data }
+  | `List [ `String "Field.Fixed_32_bit"; `Intlit a0 ] ->
+      Fixed_32_bit (Int32.of_string a0)
+  | _ -> failwith "field is malformed"
+
+let t_of_yojson = of_yojson
+
 let varint v = Varint v
 let fixed_32_bit v = Fixed_32_bit v
 let fixed_64_bit v = Fixed_64_bit v

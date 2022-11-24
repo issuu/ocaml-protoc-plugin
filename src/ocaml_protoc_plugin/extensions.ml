@@ -5,6 +5,17 @@ let to_yojson l =
   `List (List.map ~f:(fun (k, v) -> `List [ `Int k; Field.to_yojson v ]) l)
 let yojson_of_t = to_yojson
 
+let of_yojson = function
+  | `List l ->
+      List.map
+        ~f:(function
+          | `List [ `Int k; v ] -> (k, Field.of_yojson v)
+          | _ -> failwith "extension is malformed")
+        l
+  | _ -> failwith "extension should be a list"
+
+let t_of_yojson = of_yojson
+
 let default = []
 let pp_item fmt (index, field) = Format.fprintf fmt "(%d, %a)" index Field.pp field
 let pp : Format.formatter -> t -> unit = fun fmt -> Format.pp_print_list pp_item fmt
