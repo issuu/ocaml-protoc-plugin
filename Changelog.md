@@ -1,3 +1,4 @@
+## 4.4.0: 2023-03-13
 - [x] Emit modules for service endpoints with request/reply and gRPC
       endpoint name (thanks @Nymphium)
 - [x] Support importing from proto files with `-` in their name.
