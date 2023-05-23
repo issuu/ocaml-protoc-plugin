@@ -359,10 +359,11 @@ let get_current_scope t =
   let { module_name; ocaml_name = _; _ } = StringMap.find t.proto_path t.type_db in
   (String.lowercase_ascii module_name) ^ t.proto_path
 
-let get_proto_path { proto_path; _ } =
+let get_package_name { proto_path; _ } =
   match String.split_on_char ~sep:'.'  proto_path with
-  | _ :: path -> String.concat ~sep:"." path
-  | [] -> failwith "proto path must be called within a service scope"
+  | [ _module; package; _service ] -> Some package
+  | [ _module; _service ] -> None
+  | _ -> failwith "proto path must be called within a service scope"
 
 let is_cyclic t =
   let { cyclic; _ } = StringMap.find t.proto_path t.type_db in
