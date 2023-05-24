@@ -263,8 +263,8 @@ let parse_proto_file ~params scope
   in
   let message_type =
     DescriptorProto.{name = None; nested_type=message_types; enum_type = enum_types;
-                                field = []; extension; extension_range = []; oneof_decl = [];
-                                options = None; reserved_range = []; reserved_name = []; }
+                     field = []; extension; extension_range = []; oneof_decl = [];
+                     options = None; reserved_range = []; reserved_name = []; }
   in
   let implementation = Code.init () in
 
