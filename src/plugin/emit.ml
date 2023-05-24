@@ -63,20 +63,21 @@ let emit_service_type scope ServiceDescriptorProto.{ name; method' = methods; _ 
        mapping if/when we deprecate the old API *)
     let capitalized_name = String.capitalize_ascii uncapitalized_name in
 
-    let package_name = Scope.get_package_name scope in
-    let service_path =
-      let package = Option.value_map ~default:"" ~f:(fun v -> v ^ ".") package_name in
-      package ^ service_name
+    let package_name_opt = Scope.get_package_name scope in
+    let package_name =
+      match package_name_opt with
+        | None -> ""
+        | Some p -> p ^ "."
     in
     let input = Scope.get_scoped_name scope input_type in
     let input_t = Scope.get_scoped_name scope ~postfix:"t" input_type in
     let output = Scope.get_scoped_name scope output_type in
     let output_t = Scope.get_scoped_name scope ~postfix:"t" output_type in
     Code.emit t `Begin "module %s = struct" capitalized_name;
-    Code.emit t `None "let package_name = %s" (Option.value_map ~default:"None" ~f:(fun n -> sprintf "Some \"%s\"" n) package_name);
+    Code.emit t `None "let package_name = %s" (Option.value_map ~default:"None" ~f:(fun n -> sprintf "Some \"%s\"" n) package_name_opt);
     Code.emit t `None "let service_name = \"%s\"" service_name;
     Code.emit t `None "let method_name = \"%s\"" name;
-    Code.emit t `None "let name = \"/%s/%s\"" service_path name;
+    Code.emit t `None "let name = \"/%s%s/%s\"" package_name service_name name;
     Code.emit t `None "module Request = %s" input;
     Code.emit t `None "module Response = %s" output;
     Code.emit t `End "end";
