@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package service;
+package service.p1.p2.p3;
 
 message Request {
   uint64 i = 1;

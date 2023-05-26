@@ -55,7 +55,7 @@ let emit_enum_type ~scope ~params
   {module_name; signature; implementation}
 
 let emit_service_type scope ServiceDescriptorProto.{ name; method' = methods; _ } =
-  let emit_method t local_scope scope MethodDescriptorProto.{ name; input_type; output_type; _} =
+  let emit_method t local_scope scope service_name MethodDescriptorProto.{ name; input_type; output_type; _} =
     let name = Option.value_exn name in
     let uncapitalized_name = String.uncapitalize_ascii name |> Scope.Local.get_unique_name local_scope in
     (* To keep symmetry, only ensure that lowercased names are unique
@@ -63,13 +63,21 @@ let emit_service_type scope ServiceDescriptorProto.{ name; method' = methods; _ 
        mapping if/when we deprecate the old API *)
     let capitalized_name = String.capitalize_ascii uncapitalized_name in
 
-    let service_name = Scope.get_proto_path scope in
+    let package_name_opt = Scope.get_package_name scope in
+    let package_name =
+      match package_name_opt with
+        | None -> ""
+        | Some p -> p ^ "."
+    in
     let input = Scope.get_scoped_name scope input_type in
     let input_t = Scope.get_scoped_name scope ~postfix:"t" input_type in
     let output = Scope.get_scoped_name scope output_type in
-    let output_t = Scope.get_scoped_name scope ~postfix:"t" output_type  in
+    let output_t = Scope.get_scoped_name scope ~postfix:"t" output_type in
     Code.emit t `Begin "module %s = struct" capitalized_name;
-    Code.emit t `None "let name = \"/%s/%s\"" service_name name;
+    Code.emit t `None "let package_name = %s" (Option.value_map ~default:"None" ~f:(fun n -> sprintf "Some \"%s\"" n) package_name_opt);
+    Code.emit t `None "let service_name = \"%s\"" service_name;
+    Code.emit t `None "let method_name = \"%s\"" name;
+    Code.emit t `None "let name = \"/%s%s/%s\"" package_name service_name name;
     Code.emit t `None "module Request = %s" input;
     Code.emit t `None "module Response = %s" output;
     Code.emit t `End "end";
@@ -88,7 +96,7 @@ let emit_service_type scope ServiceDescriptorProto.{ name; method' = methods; _ 
   Code.emit t `Begin "module %s = struct" (Scope.get_name scope name);
   let local_scope = Scope.Local.init () in
 
-  List.iter ~f:(emit_method t local_scope (Scope.push scope name)) methods;
+  List.iter ~f:(emit_method t local_scope (Scope.push scope name) name) methods;
   Code.emit t `End "end";
   t
 
@@ -256,8 +264,8 @@ let parse_proto_file ~params scope
   in
   let message_type =
     DescriptorProto.{name = None; nested_type=message_types; enum_type = enum_types;
-                                field = []; extension; extension_range = []; oneof_decl = [];
-                                options = None; reserved_range = []; reserved_name = []; }
+                     field = []; extension; extension_range = []; oneof_decl = [];
+                     options = None; reserved_range = []; reserved_name = []; }
   in
   let implementation = Code.init () in
 
