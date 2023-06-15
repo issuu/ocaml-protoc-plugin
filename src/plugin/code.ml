@@ -14,9 +14,19 @@ let decr t =
   | false -> failwith "Cannot decr indentation level at this point"
 
 let emit t indent fmt =
+  let trim_end s =
+    (* Find the length of the string without trailing spaces *)
+    let rec inner = function
+      | 0 -> 0
+      | n when s.[n - 1] = ' ' -> inner (n - 1)
+      | n -> n
+    in
+    String.sub ~pos:0 ~len:(inner (String.length s)) s
+  in
+
   let prepend s =
     String.split_on_char ~sep:'\n' s
-    |> List.iter ~f:(fun s -> t.code <- (t.indent ^ s) :: t.code)
+    |> List.iter ~f:(fun s -> t.code <- (t.indent ^ (trim_end s)) :: t.code)
   in
   let emit s =
     match indent with
