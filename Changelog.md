@@ -1,3 +1,7 @@
+## Future
+- [x] Update internal google protobuf files from v21.12
+- [x] Remove trailing spaces in generated output
+
 ## 4.5.0: 2023-06-16
 - [x] Add more fields in generated service structs to make it easier
       to extract service endpoint names for gRPC (#50)
