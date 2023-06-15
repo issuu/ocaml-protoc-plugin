@@ -1,3 +1,8 @@
+## 4.5.0: 2023-06-16
+- [x] Add more fields in generated service structs to make it easier
+      to extract service endpoint names for gRPC (#50)
+- [x] Remove buckescript packaging support (#45)
+
 ## 4.4.0: 2023-03-13
 - [x] Emit modules for service endpoints with request/reply and gRPC
       endpoint name (thanks @Nymphium)
