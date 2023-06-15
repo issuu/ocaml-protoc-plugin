@@ -13,7 +13,7 @@ let hexlify data =
   List.rev !acc
   |> List.map ~f:(Printf.sprintf "%02x")
   |> String.concat ~sep:"-"
-  |> Caml.Printf.printf "Buffer: '%s'\n"
+  |> Printf.printf "Buffer: '%s'\n"
 
 let dump_protoc ?(protoc_args=[]) name data =
   let protobuf_file, type_name =

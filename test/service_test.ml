@@ -26,10 +26,10 @@ let call i =
   |> (function Ok r -> r | Error _ -> failwith "Error")
 
 let%expect_test _ =
-  Caml.Printf.printf "name: \"%s\"\n" S.String_of_int.Call.name;
-  Caml.Printf.printf "package_name: \"%s\"\n" @@ Option.value ~default:"<none>" S.String_of_int.Call.package_name;
-  Caml.Printf.printf "service_name: \"%s\"\n" S.String_of_int.Call.service_name;
-  Caml.Printf.printf "method_name: \"%s\"\n" S.String_of_int.Call.method_name;
+  Printf.printf "name: \"%s\"\n" S.String_of_int.Call.name;
+  Printf.printf "package_name: \"%s\"\n" @@ Option.value ~default:"<none>" S.String_of_int.Call.package_name;
+  Printf.printf "service_name: \"%s\"\n" S.String_of_int.Call.service_name;
+  Printf.printf "method_name: \"%s\"\n" S.String_of_int.Call.method_name;
   [%expect {|
     name: "/service.p1.p2.p3.String_of_int/Call"
     package_name: "service.p1.p2.p3"
@@ -37,11 +37,11 @@ let%expect_test _ =
     method_name: "Call" |}]
 
 let%expect_test _ =
-  Caml.Printf.printf "%d -> \"%s\"\n" 0 (call 0);
-  Caml.Printf.printf "%d -> \"%s\"\n" 5 (call 5);
-  Caml.Printf.printf "%d -> \"%s\"\n" 50 (call 50);
-  Caml.Printf.printf "%d -> \"%s\"\n" (-5) (call (-5));
-  Caml.Printf.printf "%d -> \"%s\"\n" (-100) (call (-100));
+  Printf.printf "%d -> \"%s\"\n" 0 (call 0);
+  Printf.printf "%d -> \"%s\"\n" 5 (call 5);
+  Printf.printf "%d -> \"%s\"\n" 50 (call 50);
+  Printf.printf "%d -> \"%s\"\n" (-5) (call (-5));
+  Printf.printf "%d -> \"%s\"\n" (-100) (call (-100));
   ();
   [%expect {|
     0 -> "0"
