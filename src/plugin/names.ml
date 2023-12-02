@@ -24,7 +24,7 @@ let to_snake_case ident =
   in
   let char_case = function
     | 'a' .. 'z' -> `Lower
-    | 'A' .. 'Z' -> `upper
+    | 'A' .. 'Z' -> `Upper
     | _ -> `Neither
   in
   let is_lower c = char_case c = `Lower in
