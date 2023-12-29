@@ -1,7 +1,11 @@
 open StdLabels
 open MoreLabels
 
+let failwith_f fmt =
+  Printf.ksprintf (fun s -> failwith s) fmt
+
 let dump_tree = false
+let dump_ocaml_names = false
 
 module StringMap = struct
   include Map.Make(String)
@@ -10,10 +14,11 @@ module StringMap = struct
   let add_uniq ~key ~data map =
     update ~key ~f:(function
       | None -> Some data
-      | Some _ -> failwith (Printf.sprintf "Key %s already exists" key)
+      | Some _ -> failwith_f "Key %s already exists" key
     ) map
 end
 module StringSet = Set.Make(String)
+
 
 (** Module to avoid name clashes in a local scope *)
 module Local = struct
@@ -303,6 +308,7 @@ type t = { module_name: string;
            package_depth: int;
            proto_path: string;
            type_db: element StringMap.t;
+           ocaml_names: StringSet.t;
          }
 
 let dump_type_map type_map =
@@ -314,8 +320,18 @@ let dump_type_map type_map =
 
 let init files =
   let type_db = Type_tree.create_db files in
+  let ocaml_names =
+    StringMap.fold ~init:StringSet.empty
+      ~f:(fun ~key:_ ~data:{ocaml_name; _} acc ->
+      StringSet.add ocaml_name acc
+    ) type_db
+  in
   if dump_tree then dump_type_map type_db;
-  { module_name = ""; proto_path = ""; package_depth = 0; type_db; }
+  if dump_ocaml_names then
+    StringSet.iter ~f:(Printf.eprintf "%s\n") ocaml_names;
+
+
+  { module_name = ""; proto_path = ""; package_depth = 0; type_db; ocaml_names}
 
 let for_descriptor t FileDescriptorProto.{ name; package; _ } =
   let name = Option.value_exn ~message:"All file descriptors must have a name" name in
@@ -325,25 +341,87 @@ let for_descriptor t FileDescriptorProto.{ name; package; _ } =
 
 let push: t -> string -> t = fun t name -> { t with proto_path = t.proto_path ^ "." ^ name }
 
-let rec drop n = function
-  | [] -> []
-  | _ :: xs when n > 0 -> drop (n - 1) xs
-  | xs -> xs
-
 let get_scoped_name ?postfix t name =
-  let name = Option.value_exn ~message:"Does not contain a name" name in
-
-  let { ocaml_name; module_name; _ } = StringMap.find name t.type_db in
-  let type_name = match String.equal module_name t.module_name with
-    | true ->
-      ocaml_name
-      |> String.split_on_char ~sep:'.'
-      |> drop t.package_depth
-      |> String.concat ~sep:"."
-    | false -> Printf.sprintf "%s.%s.%s" import_module_name module_name ocaml_name
+  (* Take the first n elements from the list *)
+  let take n l =
+    let rec inner = function
+      | (0, _) -> []
+      | (_, []) -> []
+      | (n, x :: xs) -> x :: inner (n - 1, xs)
+    in
+    inner (n, l)
   in
-  (* Strip away the package depth *)
-  Option.value_map ~default:type_name ~f:(fun postfix -> type_name ^ "." ^ postfix) postfix
+
+  (* Resolve name in the current context and return the fully qualified module name,
+     iff exists *)
+  let resolve t name =
+    let rec lookup name = function
+      | path ->
+        begin
+          let path_str = String.concat ~sep:"." (name :: path |> List.rev) in
+          match StringSet.mem path_str t.ocaml_names with
+          | false -> begin
+              match path with
+              | [] -> None
+              | _ :: ps -> lookup name ps
+            end
+          | true -> Some path_str
+        end
+    in
+    let { ocaml_name = ocaml_path; _ } =
+      StringMap.find t.proto_path t.type_db
+    in
+    let path = match String.equal "" ocaml_path with
+      | false -> String.split_on_char ~sep:'.' ocaml_path |> List.rev
+      | true -> []
+    in
+    lookup name path
+  in
+
+  let name = Option.value_exn ~message:"Does not contain a name" name in
+  let { ocaml_name; module_name; _ } = StringMap.find name t.type_db in
+
+  (* Lookup a fully qualified name in the current scope.
+     Returns the shortest name for the type in the current scope *)
+  let rec lookup postfix_length = function
+    | p :: ps ->
+      begin
+        let expect = String.concat ~sep:"." (List.rev (p :: ps)) in
+        let resolve_res = resolve t p in
+        match resolve_res with
+        | Some path when String.equal path expect ->
+          let how_many = postfix_length in
+          let ocaml_name =
+            String.split_on_char ~sep:'.' ocaml_name
+            |> List.rev
+            |> take how_many
+            |> List.rev
+            |> String.concat ~sep:"."
+          in
+          ocaml_name
+        | _ ->
+          lookup (postfix_length + 1) ps
+      end
+    | [] ->
+      failwith_f "Unable to reference '%s'. This is due to a limitation in the Ocaml mappings. To work around this limitation make sure to use a unique package name" name
+  in
+  let type_name =
+    match String.equal module_name t.module_name with
+    | true ->
+      let names =
+        String.split_on_char ~sep:'.' ocaml_name
+        |> List.rev
+      in
+      lookup 1 names
+    | false ->
+      Printf.sprintf "%s.%s.%s" import_module_name module_name ocaml_name
+  in
+
+  match postfix, type_name with
+  | Some postfix, "" -> postfix
+  | None, "" -> failwith "Empty type cannot be referenced"
+  | None, type_name -> type_name
+  | Some postfix, type_name -> Printf.sprintf "%s.%s" type_name postfix
 
 let get_name t name =
   let path = t.proto_path ^ "." ^ name in

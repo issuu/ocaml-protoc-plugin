@@ -337,10 +337,8 @@ let parse_proto_file ~params scope
   let _signature', implementation' =
     wrap_packages ~params ~syntax ~options scope message_type services (Option.value_map ~default:[] ~f:(String.split_on_char ~sep:'.') package)
   in
+
   Code.append implementation implementation';
 
-  let out_name =
-    Filename.remove_extension name
-    |> sprintf "%s.ml"
-  in
-  out_name, implementation
+  let base_name = Filename.remove_extension name in
+  (base_name ^ ".ml"), implementation
