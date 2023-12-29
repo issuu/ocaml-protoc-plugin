@@ -38,3 +38,6 @@ val is_cyclic: t -> bool
 
 (** Test is the options specify name mangling *)
 val has_mangle_option: Spec.Descriptor.Google.Protobuf.FileOptions.t option -> bool
+
+(** Get stringified version of the current proto path *)
+val get_proto_path: t -> string
