@@ -29,6 +29,7 @@ module rec Options : sig
   val make : ?mangle_names:bool -> unit -> t
   val to_proto: t -> Runtime'.Writer.t
   val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
+  val from_proto_exn: Runtime'.Reader.t -> t
 end = struct 
   let name' () = "options.Options"
   type t = bool
@@ -43,20 +44,23 @@ end = struct
     let serialize = Runtime'.Serialize.serialize [] (spec) in
     fun t -> apply ~f:serialize t
   
-  let from_proto =
+  let from_proto_exn =
     let constructor = fun _extensions mangle_names -> mangle_names in
     let spec = Runtime'.Deserialize.C.( basic (1, bool, proto3) ^:: nil ) in
     let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
-    fun writer -> deserialize writer |> Runtime'.Result.open_error
+    fun writer -> deserialize writer
+    let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)
   
 end
 and Ocaml_options : sig
   type t = Options.t option 
+  val get_exn: Imported'modules.Descriptor.Google.Protobuf.FileOptions.t -> Options.t option
   val get: Imported'modules.Descriptor.Google.Protobuf.FileOptions.t -> (Options.t option, [> Runtime'.Result.error]) result
   val set: Imported'modules.Descriptor.Google.Protobuf.FileOptions.t -> Options.t option -> Imported'modules.Descriptor.Google.Protobuf.FileOptions.t
 end = struct 
   type t = Options.t option 
-  let get extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( basic_opt (1074, (message (fun t -> Options.from_proto t))) ^:: nil ) (extendee.Imported'modules.Descriptor.Google.Protobuf.FileOptions.extensions') |> Runtime'.Result.open_error
+  let get_exn extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( basic_opt (1074, (message (fun t -> Options.from_proto_exn t))) ^:: nil ) (extendee.Imported'modules.Descriptor.Google.Protobuf.FileOptions.extensions')
+  let get extendee = Runtime'.Result.catch (fun () -> get_exn extendee)
   let set extendee t =
     let extensions' = Runtime'.Extensions.set (Runtime'.Serialize.C.( basic_opt (1074, (message (fun t -> Options.to_proto t))) ^:: nil )) (extendee.Imported'modules.Descriptor.Google.Protobuf.FileOptions.extensions') t in
     { extendee with Imported'modules.Descriptor.Google.Protobuf.FileOptions.extensions' = extensions' }

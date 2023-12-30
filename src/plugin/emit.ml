@@ -31,27 +31,29 @@ let emit_enum_type ~scope ~params
   Code.append signature t;
   Code.append implementation t;
   Code.emit signature `None "val to_int: t -> int";
-  Code.emit signature `None "val from_int: int -> (t, [> Runtime'.Result.error]) result";
+  Code.emit signature `None "val from_int: int -> t Runtime'.Result.t";
+  Code.emit signature `None "val from_int_exn: int -> t";
 
   Code.emit implementation `Begin "let to_int = function";
   List.iter ~f:(fun EnumValueDescriptorProto.{name; number; _} ->
     Code.emit implementation `None "| %s -> %d" (Scope.get_name_exn scope name) (Option.value_exn number)
   ) values;
   Code.emit implementation `End "";
-
-  Code.emit implementation `Begin "let from_int = function";
+  Code.emit implementation `Begin "let from_int_exn = function";
   let _ =
     List.fold_left ~init:IntSet.empty ~f:(fun seen EnumValueDescriptorProto.{name; number; _} ->
         let idx = (Option.value_exn ~message:"All enum descriptions must have a value" number) in
         match IntSet.mem idx seen with
         | true -> seen
         | false ->
-          Code.emit implementation `None "| %d -> Ok %s" idx (Scope.get_name_exn scope name);
+          Code.emit implementation `None "| %d -> %s" idx (Scope.get_name_exn scope name);
           IntSet.add idx seen
       ) values
   in
-  Code.emit implementation `None "| n -> Error (`Unknown_enum_value n)";
+  Code.emit implementation `None "| n -> Runtime'.Result.raise (`Unknown_enum_value n)";
   Code.emit implementation `End "";
+  Code.emit implementation `Begin "let from_int e = Runtime'.Result.catch (fun () -> from_int_exn e)";
+
   {module_name; signature; implementation}
 
 let emit_service_type ~options scope ServiceDescriptorProto.{ name; method' = methods; _ } =
@@ -131,11 +133,13 @@ let emit_extension ~scope ~params field =
   Code.append implementation signature;
 
   Code.emit signature `None "type t = %s %s" t.type' params.annot;
+  Code.emit signature `None "val get_exn: %s -> %s" extendee_type t.type';
   Code.emit signature `None "val get: %s -> (%s, [> Runtime'.Result.error]) result" extendee_type t.type';
   Code.emit signature `None "val set: %s -> %s -> %s" extendee_type t.type' extendee_type;
 
   Code.emit implementation `None "type t = %s %s" t.type' params.annot;
-  Code.emit implementation `None "let get extendee = Runtime'.Extensions.get %s (extendee.%s) |> Runtime'.Result.open_error" t.deserialize_spec extendee_field ;
+  Code.emit implementation `None "let get_exn extendee = Runtime'.Extensions.get %s (extendee.%s)" t.deserialize_spec extendee_field ;
+  Code.emit implementation `None "let get extendee = Runtime'.Result.catch (fun () -> get_exn extendee)";
   Code.emit implementation `Begin "let set extendee t =";
   Code.emit implementation `None "let extensions' = Runtime'.Extensions.set (%s) (extendee.%s) t in" t.serialize_spec extendee_field;
   Code.emit implementation `None "{ extendee with %s = extensions' }" extendee_field;
@@ -223,6 +227,7 @@ let rec emit_message ~params ~syntax scope
       Code.emit signature `None "val make : %s" default_constructor_sig;
       Code.emit signature `None "val to_proto: t -> Runtime'.Writer.t";
       Code.emit signature `None "val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result";
+      Code.emit signature `None "val from_proto_exn: Runtime'.Reader.t -> t";
 
       Code.emit implementation `None "let name' () = \"%s\"" (Scope.get_current_scope scope);
       Code.emit implementation `None "type t = %s%s" type' params.annot;
@@ -237,11 +242,13 @@ let rec emit_message ~params ~syntax scope
       Code.emit implementation `None "fun t -> apply ~f:serialize t";
       Code.emit implementation `End "";
 
-      Code.emit implementation `Begin "let from_proto =";
+      Code.emit implementation `Begin "let from_proto_exn =";
       Code.emit implementation `None "let constructor = %s in" constructor;
       Code.emit implementation `None "let spec = %s in" deserialize_spec;
       Code.emit implementation `None "let deserialize = Runtime'.Deserialize.deserialize %s spec constructor in" extension_ranges;
-      Code.emit implementation `None "fun writer -> deserialize writer |> Runtime'.Result.open_error";
+      Code.emit implementation `None "fun writer -> deserialize writer";
+
+      Code.emit implementation `None "let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)";
       Code.emit implementation `End "";
     | None -> ()
   in

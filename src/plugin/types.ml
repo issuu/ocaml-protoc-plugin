@@ -145,7 +145,7 @@ let default_of_spec: type a. a spec -> string = fun spec -> match spec with
   | Bool -> string_of_default spec false
   | String -> string_of_default spec ""
   | Bytes -> string_of_default spec (Bytes.of_string "")
-  | Enum (_ , s, _,  _) -> sprintf {|(%s 0 |> Runtime'.Result.get ~msg:"Code gen error")|} s
+  | Enum (_ , s, _,  _) -> sprintf {|(%s 0)|} s
   | Message _ -> failwith "Messages defaults are not relevant"
 
 let string_of_spec: type a. [`Deserialize | `Serialize] -> a spec -> string = fun dir spec ->
@@ -221,13 +221,13 @@ let type_of_spec: type a. a spec -> string = function
 
 let spec_of_message ~scope type_name =
   let type' = Scope.get_scoped_name ~postfix:"t" scope type_name in
-  let deserialize_func = Scope.get_scoped_name ~postfix:"from_proto" scope type_name in
+  let deserialize_func = Scope.get_scoped_name ~postfix:"from_proto_exn" scope type_name in
   let serialize_func = Scope.get_scoped_name ~postfix:"to_proto" scope type_name in
   Message (type', deserialize_func, serialize_func, None)
 
 let spec_of_enum ~scope type_name default =
   let type' = Scope.get_scoped_name ~postfix:"t" scope type_name in
-  let deserialize_func = Scope.get_scoped_name ~postfix:"from_int" scope type_name in
+  let deserialize_func = Scope.get_scoped_name ~postfix:"from_int_exn" scope type_name in
   let serialize_func = Scope.get_scoped_name ~postfix:"to_int" scope type_name in
   let default = Option.map ~f:(fun default -> Scope.get_scoped_name ~postfix:default scope type_name) default in
   Enum (type', deserialize_func, serialize_func, default)

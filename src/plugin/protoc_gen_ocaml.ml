@@ -53,8 +53,6 @@ let parse_request Plugin.CodeGeneratorRequest.{file_to_generate = files_to_gener
    | false -> ());
   result
 
-
-
 let () =
   let request = read () in
   let outputs = parse_request request in

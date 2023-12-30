@@ -2,7 +2,6 @@
 
 open StdLabels
 open Field
-open Result
 
 type t = {
   mutable offset : int;
@@ -22,15 +21,15 @@ let create ?(offset = 0) ?length data =
 (** Return an error if there is not enough data in input *)
 let validate_capacity t count =
   match t.offset + count <= t.end_offset with
-  | true -> return ()
+  | true -> ()
   | false ->
-    Result.fail `Premature_end_of_input
+    Result.raise `Premature_end_of_input
 
 (** Test if there is more data in the buffer to be read *)
 let has_more t = t.offset < t.end_offset
 
 let read_byte t =
-  validate_capacity t 1 >>| fun () ->
+  validate_capacity t 1 |> fun () ->
     let v = t.data.[t.offset] in
     t.offset <- t.offset + 1;
     (Char.code v)
@@ -38,33 +37,33 @@ let read_byte t =
 let read_raw_varint t =
   let open Infix.Int64 in
   let rec inner acc =
-    read_byte t >>= fun v ->
+    read_byte t |> fun v ->
       let v = Int64.of_int v in
       let acc = (v land 0x7FL) :: acc in
       match v > 127L with
       | true ->
         (* Still More data *)
         inner acc
-      | false -> Result.return acc
+      | false -> acc
   in
-  inner [] >>|
+  inner [] |>
   List.fold_left ~init:0L ~f:(fun acc c -> (acc lsl 7) + c)
 
-let read_varint t = read_raw_varint t >>| fun v -> Varint v
+let read_varint t = read_raw_varint t |> fun v -> Varint v
 
-let read_field_header : t -> (int * int) Result.t =
+let read_field_header : t -> int * int =
   fun t ->
   let open Infix.Int64 in
-  read_raw_varint t >>| fun v ->
+  read_raw_varint t |> fun v ->
     let tpe = v land 0x7L |> Int64.to_int in
     let field_number = v / 8L |> Int64.to_int in
     (tpe, field_number)
 
 
 let read_length_delimited t =
-  read_raw_varint t >>= fun length ->
+  read_raw_varint t |> fun length ->
     let length = Int64.to_int length in
-    validate_capacity t length >>| fun () ->
+    validate_capacity t length |> fun () ->
       let v = Length_delimited {offset = t.offset; length; data = t.data} in
       t.offset <- t.offset + length;
       v
@@ -72,34 +71,34 @@ let read_length_delimited t =
 (* Implement little endian ourselves *)
 let read_fixed32 t =
   let size = 4 in
-  validate_capacity t size >>| fun () ->
+  validate_capacity t size |> fun () ->
   let v = Bytes.get_int32_le (Bytes.unsafe_of_string t.data) t.offset in
   t.offset <- t.offset + size;
   (Fixed_32_bit v)
 
 let read_fixed64 t =
   let size = 8 in
-  validate_capacity t size >>| fun () ->
+  validate_capacity t size |> fun () ->
   let v = Bytes.get_int64_le (Bytes.unsafe_of_string t.data) t.offset in
   t.offset <- t.offset + size;
   (Fixed_64_bit v)
 
-let read_field : t -> (int * Field.t) Result.t =
+let read_field : t -> int * Field.t =
  fun t ->
-  read_field_header t >>= (fun (field_type, field_number) ->
+  read_field_header t |> (fun (field_type, field_number) ->
     (match field_type with
     | 0 -> read_varint t
     | 1 -> read_fixed64 t
     | 2 -> read_length_delimited t
     | 5 -> read_fixed32 t
-    | n -> Result.fail (`Unknown_field_type n))
-    >>| fun field -> (field_number, field)
+    | n -> Result.raise (`Unknown_field_type n))
+    |> fun field -> (field_number, field)
   )
 
-let to_list: t -> (int * Field.t) list Result.t = fun t ->
+let to_list: t -> (int * Field.t) list = fun t ->
   let rec inner acc = match has_more t with
-    | true -> read_field t >>= fun v ->
+    | true -> read_field t |> fun v ->
       inner (v :: acc)
-    | false -> return (List.rev acc)
+    | false -> List.rev acc
   in
   inner []

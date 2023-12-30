@@ -10,18 +10,19 @@ type error =
   | `Oneof_missing
   | `Required_field_missing ]
 
+exception Error of error
 type 'a t = ('a, error) result
 
-let ( >>| ) v f = match v with Ok x -> Ok (f x) | Error err -> Error err
-let ( >>= ) v f = match v with Ok x -> f x | Error err -> Error err
-let open_error = function
-  | Ok _ as v -> v
-  | Error #error as v -> v
+let raise error = raise (Error error)
+let catch f = try Ok (f ()) with Error (#error as v) -> Error v
+
+let ( >>| ) : 'a t -> ('a -> 'b) -> 'b t = function Ok x -> fun f -> Ok (f x) | Error err -> fun _ -> Error err
+let ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t = function Ok x -> fun f -> f x | Error err -> fun _ -> Error err
 
 (* Extra functions (from Base) *)
 
 let return x = Ok x
-let fail x = Error x
+let fail : error -> 'a t = fun x -> Error x
 let get ~msg = function
   | Ok v -> v
   | Error _ -> failwith msg
@@ -67,7 +68,11 @@ let pp_error : Format.formatter -> [> error] -> unit = fun fmt -> function
       "`Required_field_missing"
 let show_error : error -> string = Format.asprintf "%a" pp_error
 
+let _ =
+  Printexc.register_printer (function Error e -> Printf.sprintf "Ocaml_protoc_plugin.Result.Error (%s)" (show_error e) |> Option.some | _ -> None)
+
 let pp pp fmt = function
   | Ok v -> Format.fprintf fmt "Ok %a" pp v
   | Error (#error as e) -> Format.fprintf fmt "Error %a" pp_error e
+
 (* let show : 'a t -> string = Format.asprintf "%a" pp *)

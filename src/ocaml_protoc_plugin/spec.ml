@@ -38,8 +38,8 @@ module Make(T : T) = struct
     | Bool : bool spec
     | String : string spec
     | Bytes : bytes spec
-    | Enum :  ('a, int -> 'a Result.t, 'a -> int) T.dir -> 'a spec
-    | Message : ('a, Reader.t -> 'a Result.t, 'a -> Writer.t) T.dir -> 'a spec
+    | Enum :  ('a, int -> 'a, 'a -> int) T.dir -> 'a spec
+    | Message : ('a, Reader.t -> 'a, 'a -> Writer.t) T.dir -> 'a spec
 
   type _ oneof =
     | Oneof_elem : int * 'b spec * ('a, ('b -> 'a), 'b) T.dir -> 'a oneof
