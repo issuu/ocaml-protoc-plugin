@@ -25,3 +25,12 @@ message camel_case_name {
   };
   uint32 xid_zero = 11;
 }
+
+message RequestOne { }
+message ResponseOne { }
+
+service StringOfInt {
+  rpc CallOne (RequestOne) returns (ResponseOne);
+  rpc Call_one (RequestOne) returns (ResponseOne);
+  rpc callOne (RequestOne) returns (ResponseOne);
+}
