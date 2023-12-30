@@ -1,5 +1,7 @@
 open StdLabels
 
+type char_type = Lower | Upper | Neither
+
 (** Taken from: https://caml.inria.fr/pub/docs/manual-ocaml/lex.html *)
 let is_reserved = function
   | "and" | "as" | "assert" | "asr" | "begin" | "class" | "constraint" | "do" | "done"
@@ -23,12 +25,12 @@ let to_snake_case ident =
     Bytes.to_string bytes
   in
   let char_case = function
-    | 'a' .. 'z' -> `Lower
-    | 'A' .. 'Z' -> `upper
-    | _ -> `Neither
+    | 'a' .. 'z' -> Lower
+    | 'A' .. 'Z' -> Upper
+    | _ -> Neither
   in
-  let is_lower c = char_case c = `Lower in
-  let is_upper c = char_case c = `Upper in
+  let is_lower c = char_case c = Lower in
+  let is_upper c = char_case c = Upper in
 
   let rec to_snake_case = function
     | c1 :: c2 :: cs when is_lower c1 && is_upper c2 ->
