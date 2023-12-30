@@ -1,0 +1,10 @@
+(rule
+ (targets bench.ml bench.mli)
+ (deps
+  (:proto ../bench.proto))
+ (action
+  (run ocaml-protoc --binary --ml_out . %{proto})))
+
+(library
+ (name        protoc)
+ (libraries   pbrt))

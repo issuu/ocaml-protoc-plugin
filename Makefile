@@ -42,7 +42,7 @@ src/spec/options.ml: build
 	  --ocaml_out=src/spec/. \
 	  src/spec/options.proto
 .PHONY: bootstrap
-bootstrap: src/spec/descriptor.ml src/spec/plugin.ml src/spec/options.ml
+bootstrap: src/spec/descriptor.ml src/spec/plugin.ml src/spec/options.ml ## Regenerate files used for generation
 
 
 
@@ -61,6 +61,11 @@ gh-pages: doc ## Publish documentation
 	git -C .gh-pages commit -m "Update documentation"
 	git -C .gh-pages push origin gh-pages -f
 	rm -rf .gh-pages
+
+.PHONY: bench
+bench: ## Run benchmark to compare with ocaml-protoc
+	dune exec bench/bench.exe
+
 
 .PHONY: help
 help: ## Show this help

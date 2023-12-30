@@ -1,0 +1,12 @@
+(rule
+ (targets bench.ml)
+ (deps
+  (:plugin ../../src/plugin/protoc_gen_ocaml.exe)
+  (:proto ../bench.proto))
+ (action
+  (run protoc -I ..
+       "--plugin=protoc-gen-ocaml=%{plugin}"
+       "--ocaml_out=." %{proto})))
+(library
+ (name        plugin)
+ (libraries   ocaml_protoc_plugin))
