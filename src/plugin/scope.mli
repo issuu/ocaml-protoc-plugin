@@ -35,3 +35,6 @@ val get_package_name : t -> string option
 
 (** Tell if the type pointed to by the current scope is part of a cycle. *)
 val is_cyclic: t -> bool
+
+(** Test is the options specify name mangling *)
+val has_mangle_option: Spec.Descriptor.Google.Protobuf.FileOptions.t option -> bool

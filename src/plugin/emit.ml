@@ -54,10 +54,14 @@ let emit_enum_type ~scope ~params
   Code.emit implementation `End "";
   {module_name; signature; implementation}
 
-let emit_service_type scope ServiceDescriptorProto.{ name; method' = methods; _ } =
+let emit_service_type ~options scope ServiceDescriptorProto.{ name; method' = methods; _ } =
   let emit_method t local_scope scope service_name MethodDescriptorProto.{ name; input_type; output_type; _} =
     let name = Option.value_exn name in
-    let uncapitalized_name = String.uncapitalize_ascii name |> Scope.Local.get_unique_name local_scope in
+    let mangle_f = match Scope.has_mangle_option options with
+      | false -> fun id -> id
+      | true -> Names.to_snake_case
+    in
+    let uncapitalized_name = mangle_f name |> String.uncapitalize_ascii |> Scope.Local.get_unique_name local_scope in
     (* To keep symmetry, only ensure that lowercased names are unique
        so that the upper case names are aswell.  We should remove this
        mapping if/when we deprecate the old API *)
@@ -233,11 +237,11 @@ let rec emit_message ~params ~syntax scope
   in
   {module_name; signature; implementation}
 
-let rec wrap_packages ~params ~syntax scope message_type services = function
+let rec wrap_packages ~params ~syntax ~options scope message_type services = function
   | [] ->
     let {module_name = _; implementation; _} = emit_message ~params ~syntax scope message_type in
     List.iter ~f:(fun service ->
-        Code.append implementation (emit_service_type scope service)
+        Code.append implementation (emit_service_type ~options scope service)
       ) services;
     implementation
 
@@ -246,7 +250,7 @@ let rec wrap_packages ~params ~syntax scope message_type services = function
     let package_name = Scope.get_name scope package in
     let scope = Scope.push scope package in
     Code.emit implementation `Begin "module %s = struct" package_name;
-    Code.append implementation (wrap_packages ~params ~syntax scope message_type services packages);
+    Code.append implementation (wrap_packages ~params ~syntax ~options scope message_type services packages);
     Code.emit implementation `End "end";
     implementation
 
@@ -254,7 +258,7 @@ let parse_proto_file ~params scope
     FileDescriptorProto.{ name; package; dependency = dependencies; public_dependency = _;
                           weak_dependency = _; message_type = message_types;
                           enum_type = enum_types; service = services; extension;
-                          options = _; source_code_info = _; syntax; }
+                          options; source_code_info = _; syntax; }
   =
   let name = Option.value_exn ~message:"All files must have a name" name |> String.map ~f:(function '-' -> '_' | c -> c) in
   let syntax = match syntax with
@@ -302,7 +306,7 @@ let parse_proto_file ~params scope
       Code.emit implementation `End "end";
       Code.emit implementation `None "(**/**)";
   in
-  wrap_packages ~params ~syntax scope message_type services (Option.value_map ~default:[] ~f:(String.split_on_char ~sep:'.') package)
+  wrap_packages ~params ~syntax ~options scope message_type services (Option.value_map ~default:[] ~f:(String.split_on_char ~sep:'.') package)
   |> Code.append implementation;
 
 
