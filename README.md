@@ -21,9 +21,9 @@ The main features include:
 | Feature           | ocaml-protoc | ocaml-pb            | ocaml-protoc-plugin |
 | -------           | ------------ | ---------------     | ------------------- |
 | Ocaml types       | Supported    | Defined runtime[^1] | Supported           |
-| Service endpoints | Ignored      | N/A                 | Supported           |
-| proto3            | Supported    | Supported           | Supported           |
-| proto2            | Supported    | Supported           | Supported           |
+| Service endpoints | Supported    | N/A                 | Supported           |
+| proto3            | Supported[^3]| Supported           | Supported           |
+| proto2            | Supported[^3]| Supported           | Supported           |
 | proto2 extends    | Ignored      | Supported           | Supported           |
 | proto2 groups     | Ignored      | ?                   | Not supported[^2]   |
 
@@ -33,6 +33,11 @@ Ocaml type definitions (all fields are option types), and repeated
 fields are not packed by default.
 
 [^2] Groups has been deprecated by google and should not be used.
+
+[^3] `ocaml_protoc` will always transmit all fields that are not
+marked optional, and does not *strictly* comply to the protobuf
+specification.
+
 
 ## Types
 Basic types are mapped trivially to Ocaml types:
@@ -377,4 +382,3 @@ let read_person binary_message =
 
 More examples can be found under
 [examples](https://github.com/issuu/ocaml-protoc-plugin/tree/master/examples)
-
