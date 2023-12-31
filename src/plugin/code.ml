@@ -14,9 +14,23 @@ let decr t =
   | false -> failwith "Cannot decr indentation level at this point"
 
 let emit t indent fmt =
+  let trim_end ~char s =
+    let len = String.length s in
+    let rcount s =
+      let rec inner = function
+        | 0 -> len
+        | n when s.[n - 1] = char -> inner (n - 1)
+        | n -> len - n
+      in
+      inner len
+    in
+    match rcount s with
+    | 0 -> s
+    | n -> String.sub ~pos:0 ~len:(String.length s - n) s
+  in
   let prepend s =
     String.split_on_char ~sep:'\n' s
-    |> List.iter ~f:(fun s -> t.code <- (t.indent ^ s) :: t.code)
+    |> List.iter ~f:(fun s -> t.code <- (trim_end ~char:' ' (t.indent ^ s)) :: t.code)
   in
   let emit s =
     match indent with
