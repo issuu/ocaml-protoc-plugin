@@ -5,13 +5,6 @@ module S = Spec.Serialize
 module C = S.C
 open S
 
-(* Take a list of fields and return a field *)
-let serialize_message : (int * Field.t) list -> string =
- fun fields ->
-  let writer = Writer.init () in
-  List.iter ~f:(fun (index, field) -> Writer.write_field writer index field) fields;
-  Writer.contents writer
-
 let unsigned_varint v = Field.Varint v
 
 let signed_varint v =

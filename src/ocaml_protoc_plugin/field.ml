@@ -7,6 +7,7 @@ type t =
       data : string;
     } (* string, bytes, embedded messages, packed repeated fields *)
   | Fixed_32_bit of Int32.t (* fixed32, sfixed32, float *)
+  | Varint_unboxed of int
 
 let varint v = Varint v
 let fixed_32_bit v = Fixed_32_bit v
@@ -18,6 +19,10 @@ let length_delimited ?(offset=0) ?length data =
 
 let pp: Format.formatter -> t -> unit = fun fmt ->
   function
+  | Varint_unboxed a0 ->
+    (Format.fprintf fmt "(@[<2>Field.Varint_unboxed@ ";
+     (Format.fprintf fmt "%d") a0;
+     Format.fprintf fmt "@])")
   | Varint a0 ->
     (Format.fprintf fmt "(@[<2>Field.Varint@ ";
      (Format.fprintf fmt "%LdL") a0;
