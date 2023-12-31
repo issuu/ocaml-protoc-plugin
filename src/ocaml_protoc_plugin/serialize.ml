@@ -6,6 +6,7 @@ module C = S.C
 open S
 
 let unsigned_varint v = Field.Varint v
+let unsigned_varint_unboxed v = Field.Varint_unboxed v
 
 let signed_varint v =
   let open! Infix.Int64 in
@@ -16,22 +17,29 @@ let signed_varint v =
   in
   Field.Varint v
 
+let signed_varint_unboxed v =
+  let v =
+    match v with
+    | v when v < 0 -> v lsl 1 lxor -1
+    | v -> v lsl 1
+  in
+  Field.Varint_unboxed v
 
 let rec field_of_spec: type a. a spec -> a -> Field.t = function
   | Double -> fun v -> Fixed_64_bit (Int64.bits_of_float v)
   | Float -> fun v -> Fixed_32_bit (Int32.bits_of_float v)
   | Int64 -> unsigned_varint
-  | Int64_int -> fun v -> unsigned_varint (Int64.of_int v)
+  | Int64_int -> unsigned_varint_unboxed
   | UInt64 -> unsigned_varint
-  | UInt64_int -> fun v -> unsigned_varint (Int64.of_int v)
+  | UInt64_int -> unsigned_varint_unboxed
   | SInt64 -> signed_varint
-  | SInt64_int -> fun v -> signed_varint (Int64.of_int v)
+  | SInt64_int -> signed_varint_unboxed
   | Int32 -> fun v -> unsigned_varint (Int64.of_int32 v)
-  | Int32_int -> fun v -> unsigned_varint (Int64.of_int v)
+  | Int32_int -> unsigned_varint_unboxed
   | UInt32 -> fun v -> unsigned_varint (Int64.of_int32 v)
-  | UInt32_int -> fun v -> unsigned_varint (Int64.of_int v)
+  | UInt32_int -> unsigned_varint_unboxed
   | SInt32 -> fun v -> signed_varint (Int64.of_int32 v)
-  | SInt32_int -> fun v -> signed_varint (Int64.of_int v)
+  | SInt32_int -> signed_varint_unboxed
 
   | Fixed64 -> fixed_64_bit
   | Fixed64_int -> fun v -> Fixed_64_bit (Int64.of_int v)
@@ -42,12 +50,12 @@ let rec field_of_spec: type a. a spec -> a -> Field.t = function
   | SFixed32 -> fixed_32_bit
   | SFixed32_int -> fun v -> Fixed_32_bit (Int32.of_int v)
 
-  | Bool -> fun v -> unsigned_varint (match v with | true -> 1L | false -> 0L)
+  | Bool -> fun v -> unsigned_varint_unboxed (match v with | true -> 1 | false -> 0)
   | String -> fun v -> Length_delimited {offset = 0; length = String.length v; data = v}
   | Bytes -> fun v -> Length_delimited {offset = 0; length = Bytes.length v; data = Bytes.to_string v}
   | Enum f ->
-    let to_field = field_of_spec UInt64 in
-    fun v -> f v |> Int64.of_int |> to_field
+    let to_field = field_of_spec UInt64_int in
+    fun v -> f v |> to_field
   | Message to_proto ->
     fun v ->
       let writer = to_proto v in
@@ -87,6 +95,7 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
       | Proto3 -> begin
           fun writer v -> match f v with
             | Varint 0L -> ()
+            | Varint_unboxed 0 -> ()
             | Fixed_64_bit 0L -> ()
             | Fixed_32_bit 0l -> ()
             | Length_delimited {length = 0; _} -> ()
@@ -126,7 +135,6 @@ let rec serialize : type a. (a, Writer.t) compound_list -> Writer.t -> a = funct
 let in_extension_ranges extension_ranges index =
   List.exists ~f:(fun (start, end') -> index >= start && index <= end') extension_ranges
 
-
 let serialize extension_ranges spec =
   let serialize = serialize spec in
   fun extensions ->
@@ -136,7 +144,6 @@ let serialize extension_ranges spec =
         | _ -> ()
       ) extensions;
     serialize writer
-
 
 let%expect_test "signed varint" =
   let test v =

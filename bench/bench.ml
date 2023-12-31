@@ -7,7 +7,12 @@ module type Protobuf = sig
   val encode : t -> string
   val decode : string -> t
 end
-let _ = Random.init 0
+let _ =
+  Random.init 0;
+  let module Gc = Stdlib.Gc in
+  Gc.full_major ();
+  let control = Gc.get () in
+  Gc.set { control with minor_heap_size=4000_1000; space_overhead=500 }
 
 module Protoc_mod : Protobuf = struct
   type t = Protoc.Bench.btree
@@ -96,11 +101,10 @@ let make_tests data_str =
   [ make_test (module Protoc_mod) data_str; make_test (module Plugin_mod) data_str ]
   |> Bechamel.Test.make_grouped ~name:"Protobuf"
 
-
 let benchmark tests =
   let open Bechamel in
   let instances = Bechamel_perf.Instance.[ cpu_clock ] in
-  let cfg = Benchmark.cfg ~limit:10000 ~stabilize:true ~compaction:true
+  let cfg = Benchmark.cfg ~limit:1000 ~stabilize:true ~compaction:true
               ~quota:(Time.second 2.5) () in
   Benchmark.all cfg instances tests
 
@@ -132,7 +136,7 @@ let print_bench_results results =
   img (window, results) |> eol |> output_image
 
 let _ =
-  let data = create_test_data ~depth:4 () in
+  let data = create_test_data ~depth:2 () in
   let data = Option.value_exn data in
   let proto_str = Plugin_mod.encode data in
   let _data = Plugin_mod.decode proto_str in
@@ -140,11 +144,8 @@ let _ =
   let data_str' = Protoc_mod.encode data_protoc in
   let data' = Plugin_mod.decode data_str' in
   let data_str' = Plugin_mod.encode data' in
-  printf "Data length: %d / %d %b\n%!" (String.length proto_str) (String.length data_str') (String.equal proto_str data_str');
-  let module Gc = Stdlib.Gc in
-  Gc.full_major ();
-  let control = Gc.get () in
-  Gc.set { control with minor_heap_size = 1024*1024*10; space_overhead=5 };
+  assert (String.equal data_str' proto_str);
+  printf "Data length: %d\n%!" (String.length proto_str);
 
   make_tests proto_str
   |> benchmark

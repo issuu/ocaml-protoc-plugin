@@ -16,7 +16,6 @@ type t = {
   mutable size: int;
 }
 
-(** Yes. But it would be nicer to just iter over them *)
 let rev_fields fields =
   let rec inner acc = function
     | Nil -> acc
@@ -29,58 +28,59 @@ let rev_fields fields =
 
 let init () = {fields = Nil; size = 0;}
 
+(** Get index of most significant bit. *)
+let varint_size v =
+  let rec inner acc = function
+    | 0 -> acc
+    | v -> inner (acc + 1) (v lsr 1)
+  in
+  match v with
+  | v when v < 0 -> 10
+  | 0 -> 1
+  | v -> (6 + inner 0 v) / 7
 
 let rec size_of_field = function
-  | Varint v -> begin
-      match v with
-      | v when v < 0L -> 10
-      | 0L -> 1
-      | v (* when v > 0L *) ->
-        let bits = int_of_float (log (Int64.to_float v) /. log 2.0) in
-        (bits / 7) + 1
-    end
-  | Varint_unboxed v -> begin
-      match v with
-      | v when v < 0 -> 10
-      | 0 -> 1
-      | v (* when v > 0L *) ->
-        let bits = int_of_float (log (Int.to_float v) /. log 2.0) in
-        (bits / 7) + 1
-    end
+  | Varint v -> varint_size (Int64.to_int v)
+  | Varint_unboxed v -> varint_size v
   | Fixed_32_bit _ -> 4
   | Fixed_64_bit _ -> 8
   | Length_delimited {length; _} -> size_of_field (Varint_unboxed length) + length
 
-
+[@@inline]
 let size t = t.size
 
 let write_varint buffer ~offset v =
   let rec inner ~offset v : int =
-    let (++) = (+) in
+    let next_offset = offset + 1 in
     let open Infix.Int64 in
-    match v land 0x7FL, v lsr 7 with
-    | v, 0L ->
-      Bytes.set buffer offset (v |> Int64.to_int |> Char.chr);
-      (offset ++ 1)
-    | v, rem ->
-      Bytes.set buffer offset (v lor 0x80L |> Int64.to_int |> Char.chr);
-      inner ~offset:(offset ++ 1) rem
+    match v lsr 7 with
+    | 0L ->
+      Bytes.set_uint8 buffer offset (Int64.to_int v);
+      next_offset
+    | rem ->
+      Bytes.set_uint8 buffer offset (Int.logor (Int64.to_int v |> Int.logand 0x7F) 0x80);
+      inner ~offset:next_offset rem
   in
   inner ~offset v
 
 let write_varint_unboxed buffer ~offset v =
+  let is_negative = v < 0 in
   let rec inner ~offset v : int =
-    let (++) = (+) in
-    match v land 0x7F, v lsr 7 with
-    | v, 0 ->
-      Bytes.set buffer offset (v |> Char.chr);
-      (offset ++ 1)
-    | v, rem ->
-      Bytes.set buffer offset (v lor 0x80 |> Char.chr);
-      inner ~offset:(offset ++ 1) rem
+    let next_offset = offset + 1 in
+    match v lsr 7 with
+    | 0 when is_negative -> (* Emulate 64 bit signed integer *)
+      Bytes.set_uint8 buffer offset (v lor 0x80);
+      Bytes.set_uint8 buffer next_offset 0x01;
+      next_offset + 1
+    | 0 ->
+      Bytes.set_uint8 buffer offset v;
+      next_offset
+    | rem ->
+      let v' = v land 0x7F lor 0x80 in
+      Bytes.set_uint8 buffer offset v';
+      inner ~offset:next_offset rem
   in
   inner ~offset v
-
 
 let write_fixed32 buffer ~offset v =
   Bytes.set_int32_le buffer offset v;

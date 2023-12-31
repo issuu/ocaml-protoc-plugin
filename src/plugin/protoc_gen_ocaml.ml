@@ -19,10 +19,7 @@ let read_all in_channel =
 let read () =
   read_all stdin
   |> Ocaml_protoc_plugin.Reader.create
-  |> Plugin.CodeGeneratorRequest.from_proto
-  |> function
-  | Ok v -> v
-  | Error _ -> failwith "Could not decode generator request"
+  |> Plugin.CodeGeneratorRequest.from_proto_exn
 
 (* Write to stdout *)
 let write response =
