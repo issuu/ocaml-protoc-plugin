@@ -23,6 +23,7 @@ let signed_varint v =
   in
   Field.Varint v
 
+
 let rec field_of_spec: type a. a spec -> a -> Field.t = function
   | Double -> fun v -> Fixed_64_bit (Int64.bits_of_float v)
   | Float -> fun v -> Fixed_32_bit (Int32.bits_of_float v)
@@ -144,13 +145,18 @@ let serialize extension_ranges spec =
     serialize writer
 
 
-module Test = struct
-  let test () =
-    let (_:bool) = signed_varint 0L = Varint 0L || failwith "signed_varint 0L" in
-    let (_:bool) = signed_varint (-1L) = Varint 1L || failwith "signed_varint -1L" in
-    let (_:bool) = signed_varint 1L = Varint 2L || failwith "signed_varint 1L" in
-    let (_:bool) = signed_varint (-2L) = Varint 3L || failwith "signed_varint -2L" in
-    let (_:bool) = signed_varint 2147483647L = Varint 4294967294L || failwith "signed_varint 2147483647L" in
-    let (_:bool) = signed_varint (-2147483648L) = Varint 4294967295L || failwith "signed_varint -2147483648L" in
+let%expect_test "signed varint" =
+  let test v =
+    let vl = Int64.of_int v in
+    Printf.printf "signed_varint %LdL = %s\n" vl (signed_varint vl |> Field.show);
     ()
-end
+  in
+  List.iter ~f:test [0; -1; 1; -2; 2; 2147483647; -2147483648];
+  [%expect {|
+    signed_varint 0L = (Field.Varint 0L)
+    signed_varint -1L = (Field.Varint 1L)
+    signed_varint 1L = (Field.Varint 2L)
+    signed_varint -2L = (Field.Varint 3L)
+    signed_varint 2L = (Field.Varint 4L)
+    signed_varint 2147483647L = (Field.Varint 4294967294L)
+    signed_varint -2147483648L = (Field.Varint 4294967295L) |}]

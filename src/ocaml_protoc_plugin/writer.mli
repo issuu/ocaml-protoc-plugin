@@ -20,7 +20,4 @@ val write_field : t -> int -> Field.t -> unit
 val add_field : t -> Field.t -> unit
 val concat_as_length_delimited : t -> src:t -> int -> unit
 val dump : t -> unit
-module Test: sig
-  val test: unit -> unit
-end
 (**/**)
