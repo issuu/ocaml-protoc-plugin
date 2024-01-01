@@ -225,6 +225,7 @@ let rec emit_message ~params ~syntax scope
       Code.emit signature `None "val name': unit -> string";
       Code.emit signature `None "type t = %s %s" type' params.annot;
       Code.emit signature `None "val make : %s" default_constructor_sig;
+      Code.emit signature `None "val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t";
       Code.emit signature `None "val to_proto: t -> Runtime'.Writer.t";
       Code.emit signature `None "val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result";
       Code.emit signature `None "val from_proto_exn: Runtime'.Reader.t -> t";
@@ -235,12 +236,15 @@ let rec emit_message ~params ~syntax scope
       Code.emit implementation `None "%s" default_constructor_impl;
       Code.emit implementation `End "";
 
-      Code.emit implementation `Begin "let to_proto =";
+      Code.emit implementation `Begin "let to_proto' =";
       Code.emit implementation `None "let apply = %s in" apply;
       Code.emit implementation `None "let spec = %s in" serialize_spec;
-      Code.emit implementation `None "let serialize = Runtime'.Serialize.serialize %s (spec) in" extension_ranges;
-      Code.emit implementation `None "fun t -> apply ~f:serialize t";
+      Code.emit implementation `None "let serialize = Runtime'.Serialize.serialize %s spec in" extension_ranges;
+      Code.emit implementation `None "fun writer t -> apply ~f:serialize writer t";
       Code.emit implementation `End "";
+      Code.emit implementation `Begin "let to_proto t = to_proto' (Runtime'.Writer.init ()) t";
+      Code.emit implementation `End "";
+
 
       Code.emit implementation `Begin "let from_proto_exn =";
       Code.emit implementation `None "let constructor = %s in" constructor;

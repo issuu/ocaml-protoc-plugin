@@ -50,14 +50,15 @@ let rec field_of_spec: type a. a spec -> a -> Field.t = function
 
   | Bool -> fun v -> varint_unboxed ~signed:false (match v with | true -> 1 | false -> 0)
   | String -> fun v -> Length_delimited {offset = 0; length = String.length v; data = v}
-  | Bytes -> fun v -> Length_delimited {offset = 0; length = Bytes.length v; data = Bytes.to_string v}
+  | Bytes -> fun v -> Length_delimited {offset = 0; length = Bytes.length v; data = Bytes.unsafe_to_string v}
   | Enum f ->
     let to_field = field_of_spec UInt64_int in
     fun v -> f v |> to_field
-  | Message to_proto ->
+  | Message to_proto -> (* Consider inlining this into write *)
     fun v ->
-      let writer = to_proto v in
-      Field.length_delimited (Writer.contents writer)
+      let writer = Writer.init () in
+      let writer = to_proto writer v in
+      length_delimited (Writer.contents writer)
 
 let is_scalar: type a. a spec -> bool = function
   | String -> false
@@ -68,8 +69,9 @@ let is_scalar: type a. a spec -> bool = function
 let rec write: type a. a compound -> Writer.t -> a -> unit = function
   | Basic (index, Message (to_proto), _) -> begin
       fun writer v ->
-      let v = to_proto v in
-      Writer.concat_as_length_delimited writer ~src:v index
+      let done_f = Writer.add_length_delimited_field_header writer index in
+      let _writer = to_proto writer v in
+      done_f ()
     end
   | Repeated (index, Message to_proto, _) ->
     let write = write (Basic (index, Message to_proto, Required)) in
@@ -79,9 +81,9 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
       fun writer -> function
       | [] -> ()
       | vs ->
-        let writer' = Writer.init () in
-        List.iter ~f:(fun v -> Writer.add_field writer' (f v)) vs;
-        Writer.concat_as_length_delimited writer ~src:writer' index
+         let done_f = Writer.add_length_delimited_field_header writer index in
+         List.iter ~f:(fun v -> Writer.add_field writer (f v)) vs;
+         done_f ()
     end
   | Repeated (index, spec, _) ->
       let f = field_of_spec spec in
@@ -134,8 +136,7 @@ let in_extension_ranges extension_ranges index =
 
 let serialize extension_ranges spec =
   let serialize = serialize spec in
-  fun extensions ->
-    let writer = Writer.init () in
+  fun extensions writer ->
     List.iter ~f:(function
         | (index, field) when in_extension_ranges extension_ranges index -> Writer.write_field writer index field
         | _ -> ()

@@ -27,6 +27,7 @@ module rec Options : sig
   val name': unit -> string
   type t = bool
   val make : ?mangle_names:bool -> unit -> t
+  val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
   val to_proto: t -> Runtime'.Writer.t
   val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
   val from_proto_exn: Runtime'.Reader.t -> t
@@ -38,11 +39,13 @@ end = struct
     let mangle_names = match mangle_names with Some v -> v | None -> false in
     mangle_names
 
-  let to_proto =
-    let apply = fun ~f:f' mangle_names -> f' [] mangle_names in
+  let to_proto' =
+    let apply = fun ~f:f' writer mangle_names -> f' [] writer mangle_names in
     let spec = Runtime'.Serialize.C.( basic (1, bool, proto3) ^:: nil ) in
-    let serialize = Runtime'.Serialize.serialize [] (spec) in
-    fun t -> apply ~f:serialize t
+    let serialize = Runtime'.Serialize.serialize [] spec in
+    fun writer t -> apply ~f:serialize writer t
+
+  let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
   let from_proto_exn =
     let constructor = fun _extensions mangle_names -> mangle_names in
@@ -62,7 +65,7 @@ end = struct
   let get_exn extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.( basic_opt (1074, (message (fun t -> Options.from_proto_exn t))) ^:: nil ) (extendee.Imported'modules.Descriptor.Google.Protobuf.FileOptions.extensions')
   let get extendee = Runtime'.Result.catch (fun () -> get_exn extendee)
   let set extendee t =
-    let extensions' = Runtime'.Extensions.set (Runtime'.Serialize.C.( basic_opt (1074, (message (fun t -> Options.to_proto t))) ^:: nil )) (extendee.Imported'modules.Descriptor.Google.Protobuf.FileOptions.extensions') t in
+    let extensions' = Runtime'.Extensions.set (Runtime'.Serialize.C.( basic_opt (1074, (message (fun t -> Options.to_proto' t))) ^:: nil )) (extendee.Imported'modules.Descriptor.Google.Protobuf.FileOptions.extensions') t in
     { extendee with Imported'modules.Descriptor.Google.Protobuf.FileOptions.extensions' = extensions' }
 
 end

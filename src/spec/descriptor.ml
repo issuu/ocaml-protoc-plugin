@@ -24,6 +24,7 @@ module Google = struct
       val name': unit -> string
       type t = FileDescriptorProto.t list
       val make : ?file:FileDescriptorProto.t list -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -35,11 +36,13 @@ module Google = struct
         let file = match file with Some v -> v | None -> [] in
         file
 
-      let to_proto =
-        let apply = fun ~f:f' file -> f' [] file in
-        let spec = Runtime'.Serialize.C.( repeated (1, (message (fun t -> FileDescriptorProto.to_proto t)), not_packed) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer file -> f' [] writer file in
+        let spec = Runtime'.Serialize.C.( repeated (1, (message (fun t -> FileDescriptorProto.to_proto' t)), not_packed) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun _extensions file -> file in
@@ -53,6 +56,7 @@ module Google = struct
       val name': unit -> string
       type t = { name: string option; package: string option; dependency: string list; public_dependency: int list; weak_dependency: int list; message_type: DescriptorProto.t list; enum_type: EnumDescriptorProto.t list; service: ServiceDescriptorProto.t list; extension: FieldDescriptorProto.t list; options: FileOptions.t option; source_code_info: SourceCodeInfo.t option; syntax: string option }
       val make : ?name:string -> ?package:string -> ?dependency:string list -> ?public_dependency:int list -> ?weak_dependency:int list -> ?message_type:DescriptorProto.t list -> ?enum_type:EnumDescriptorProto.t list -> ?service:ServiceDescriptorProto.t list -> ?extension:FieldDescriptorProto.t list -> ?options:FileOptions.t -> ?source_code_info:SourceCodeInfo.t -> ?syntax:string -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -70,11 +74,13 @@ module Google = struct
         let extension = match extension with Some v -> v | None -> [] in
         { name; package; dependency; public_dependency; weak_dependency; message_type; enum_type; service; extension; options; source_code_info; syntax }
 
-      let to_proto =
-        let apply = fun ~f:f' { name; package; dependency; public_dependency; weak_dependency; message_type; enum_type; service; extension; options; source_code_info; syntax } -> f' [] name package dependency public_dependency weak_dependency message_type enum_type service extension options source_code_info syntax in
-        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: repeated (3, string, not_packed) ^:: repeated (10, int32_int, not_packed) ^:: repeated (11, int32_int, not_packed) ^:: repeated (4, (message (fun t -> DescriptorProto.to_proto t)), not_packed) ^:: repeated (5, (message (fun t -> EnumDescriptorProto.to_proto t)), not_packed) ^:: repeated (6, (message (fun t -> ServiceDescriptorProto.to_proto t)), not_packed) ^:: repeated (7, (message (fun t -> FieldDescriptorProto.to_proto t)), not_packed) ^:: basic_opt (8, (message (fun t -> FileOptions.to_proto t))) ^:: basic_opt (9, (message (fun t -> SourceCodeInfo.to_proto t))) ^:: basic_opt (12, string) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { name; package; dependency; public_dependency; weak_dependency; message_type; enum_type; service; extension; options; source_code_info; syntax } -> f' [] writer name package dependency public_dependency weak_dependency message_type enum_type service extension options source_code_info syntax in
+        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: repeated (3, string, not_packed) ^:: repeated (10, int32_int, not_packed) ^:: repeated (11, int32_int, not_packed) ^:: repeated (4, (message (fun t -> DescriptorProto.to_proto' t)), not_packed) ^:: repeated (5, (message (fun t -> EnumDescriptorProto.to_proto' t)), not_packed) ^:: repeated (6, (message (fun t -> ServiceDescriptorProto.to_proto' t)), not_packed) ^:: repeated (7, (message (fun t -> FieldDescriptorProto.to_proto' t)), not_packed) ^:: basic_opt (8, (message (fun t -> FileOptions.to_proto' t))) ^:: basic_opt (9, (message (fun t -> SourceCodeInfo.to_proto' t))) ^:: basic_opt (12, string) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun _extensions name package dependency public_dependency weak_dependency message_type enum_type service extension options source_code_info syntax -> { name; package; dependency; public_dependency; weak_dependency; message_type; enum_type; service; extension; options; source_code_info; syntax } in
@@ -89,6 +95,7 @@ module Google = struct
         val name': unit -> string
         type t = { start: int option; end': int option; options: ExtensionRangeOptions.t option }
         val make : ?start:int -> ?end':int -> ?options:ExtensionRangeOptions.t -> unit -> t
+        val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
         val to_proto: t -> Runtime'.Writer.t
         val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         val from_proto_exn: Runtime'.Reader.t -> t
@@ -97,6 +104,7 @@ module Google = struct
         val name': unit -> string
         type t = { start: int option; end': int option }
         val make : ?start:int -> ?end':int -> unit -> t
+        val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
         val to_proto: t -> Runtime'.Writer.t
         val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         val from_proto_exn: Runtime'.Reader.t -> t
@@ -104,6 +112,7 @@ module Google = struct
       val name': unit -> string
       type t = { name: string option; field: FieldDescriptorProto.t list; extension: FieldDescriptorProto.t list; nested_type: DescriptorProto.t list; enum_type: EnumDescriptorProto.t list; extension_range: DescriptorProto.ExtensionRange.t list; oneof_decl: OneofDescriptorProto.t list; options: MessageOptions.t option; reserved_range: DescriptorProto.ReservedRange.t list; reserved_name: string list }
       val make : ?name:string -> ?field:FieldDescriptorProto.t list -> ?extension:FieldDescriptorProto.t list -> ?nested_type:DescriptorProto.t list -> ?enum_type:EnumDescriptorProto.t list -> ?extension_range:DescriptorProto.ExtensionRange.t list -> ?oneof_decl:OneofDescriptorProto.t list -> ?options:MessageOptions.t -> ?reserved_range:DescriptorProto.ReservedRange.t list -> ?reserved_name:string list -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -112,6 +121,7 @@ module Google = struct
         val name': unit -> string
         type t = { start: int option; end': int option; options: ExtensionRangeOptions.t option }
         val make : ?start:int -> ?end':int -> ?options:ExtensionRangeOptions.t -> unit -> t
+        val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
         val to_proto: t -> Runtime'.Writer.t
         val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         val from_proto_exn: Runtime'.Reader.t -> t
@@ -123,11 +133,13 @@ module Google = struct
 
           { start; end'; options }
 
-        let to_proto =
-          let apply = fun ~f:f' { start; end'; options } -> f' [] start end' options in
-          let spec = Runtime'.Serialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: basic_opt (3, (message (fun t -> ExtensionRangeOptions.to_proto t))) ^:: nil ) in
-          let serialize = Runtime'.Serialize.serialize [] (spec) in
-          fun t -> apply ~f:serialize t
+        let to_proto' =
+          let apply = fun ~f:f' writer { start; end'; options } -> f' [] writer start end' options in
+          let spec = Runtime'.Serialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: basic_opt (3, (message (fun t -> ExtensionRangeOptions.to_proto' t))) ^:: nil ) in
+          let serialize = Runtime'.Serialize.serialize [] spec in
+          fun writer t -> apply ~f:serialize writer t
+
+        let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
         let from_proto_exn =
           let constructor = fun _extensions start end' options -> { start; end'; options } in
@@ -141,6 +153,7 @@ module Google = struct
         val name': unit -> string
         type t = { start: int option; end': int option }
         val make : ?start:int -> ?end':int -> unit -> t
+        val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
         val to_proto: t -> Runtime'.Writer.t
         val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         val from_proto_exn: Runtime'.Reader.t -> t
@@ -152,11 +165,13 @@ module Google = struct
 
           { start; end' }
 
-        let to_proto =
-          let apply = fun ~f:f' { start; end' } -> f' [] start end' in
+        let to_proto' =
+          let apply = fun ~f:f' writer { start; end' } -> f' [] writer start end' in
           let spec = Runtime'.Serialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: nil ) in
-          let serialize = Runtime'.Serialize.serialize [] (spec) in
-          fun t -> apply ~f:serialize t
+          let serialize = Runtime'.Serialize.serialize [] spec in
+          fun writer t -> apply ~f:serialize writer t
+
+        let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
         let from_proto_exn =
           let constructor = fun _extensions start end' -> { start; end' } in
@@ -180,11 +195,13 @@ module Google = struct
         let reserved_name = match reserved_name with Some v -> v | None -> [] in
         { name; field; extension; nested_type; enum_type; extension_range; oneof_decl; options; reserved_range; reserved_name }
 
-      let to_proto =
-        let apply = fun ~f:f' { name; field; extension; nested_type; enum_type; extension_range; oneof_decl; options; reserved_range; reserved_name } -> f' [] name field extension nested_type enum_type extension_range oneof_decl options reserved_range reserved_name in
-        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: repeated (2, (message (fun t -> FieldDescriptorProto.to_proto t)), not_packed) ^:: repeated (6, (message (fun t -> FieldDescriptorProto.to_proto t)), not_packed) ^:: repeated (3, (message (fun t -> DescriptorProto.to_proto t)), not_packed) ^:: repeated (4, (message (fun t -> EnumDescriptorProto.to_proto t)), not_packed) ^:: repeated (5, (message (fun t -> DescriptorProto.ExtensionRange.to_proto t)), not_packed) ^:: repeated (8, (message (fun t -> OneofDescriptorProto.to_proto t)), not_packed) ^:: basic_opt (7, (message (fun t -> MessageOptions.to_proto t))) ^:: repeated (9, (message (fun t -> DescriptorProto.ReservedRange.to_proto t)), not_packed) ^:: repeated (10, string, not_packed) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { name; field; extension; nested_type; enum_type; extension_range; oneof_decl; options; reserved_range; reserved_name } -> f' [] writer name field extension nested_type enum_type extension_range oneof_decl options reserved_range reserved_name in
+        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: repeated (2, (message (fun t -> FieldDescriptorProto.to_proto' t)), not_packed) ^:: repeated (6, (message (fun t -> FieldDescriptorProto.to_proto' t)), not_packed) ^:: repeated (3, (message (fun t -> DescriptorProto.to_proto' t)), not_packed) ^:: repeated (4, (message (fun t -> EnumDescriptorProto.to_proto' t)), not_packed) ^:: repeated (5, (message (fun t -> DescriptorProto.ExtensionRange.to_proto' t)), not_packed) ^:: repeated (8, (message (fun t -> OneofDescriptorProto.to_proto' t)), not_packed) ^:: basic_opt (7, (message (fun t -> MessageOptions.to_proto' t))) ^:: repeated (9, (message (fun t -> DescriptorProto.ReservedRange.to_proto' t)), not_packed) ^:: repeated (10, string, not_packed) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun _extensions name field extension nested_type enum_type extension_range oneof_decl options reserved_range reserved_name -> { name; field; extension; nested_type; enum_type; extension_range; oneof_decl; options; reserved_range; reserved_name } in
@@ -198,6 +215,7 @@ module Google = struct
       val name': unit -> string
       type t = { uninterpreted_option: UninterpretedOption.t list; extensions': Runtime'.Extensions.t }
       val make : ?uninterpreted_option:UninterpretedOption.t list -> ?extensions':Runtime'.Extensions.t -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -209,11 +227,13 @@ module Google = struct
         let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
         { uninterpreted_option; extensions' }
 
-      let to_proto =
-        let apply = fun ~f:f' { uninterpreted_option; extensions' } -> f' extensions' uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( repeated (999, (message (fun t -> UninterpretedOption.to_proto t)), not_packed) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { uninterpreted_option; extensions' } -> f' extensions' writer uninterpreted_option in
+        let spec = Runtime'.Serialize.C.( repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun extensions' uninterpreted_option -> { uninterpreted_option; extensions' } in
@@ -239,6 +259,7 @@ module Google = struct
       val name': unit -> string
       type t = { name: string option; number: int option; label: FieldDescriptorProto.Label.t option; type': FieldDescriptorProto.Type.t option; type_name: string option; extendee: string option; default_value: string option; oneof_index: int option; json_name: string option; options: FieldOptions.t option; proto3_optional: bool option }
       val make : ?name:string -> ?number:int -> ?label:FieldDescriptorProto.Label.t -> ?type':FieldDescriptorProto.Type.t -> ?type_name:string -> ?extendee:string -> ?default_value:string -> ?oneof_index:int -> ?json_name:string -> ?options:FieldOptions.t -> ?proto3_optional:bool -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -320,11 +341,13 @@ module Google = struct
 
         { name; number; label; type'; type_name; extendee; default_value; oneof_index; json_name; options; proto3_optional }
 
-      let to_proto =
-        let apply = fun ~f:f' { name; number; label; type'; type_name; extendee; default_value; oneof_index; json_name; options; proto3_optional } -> f' [] name number label type' type_name extendee default_value oneof_index json_name options proto3_optional in
-        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (3, int32_int) ^:: basic_opt (4, (enum FieldDescriptorProto.Label.to_int)) ^:: basic_opt (5, (enum FieldDescriptorProto.Type.to_int)) ^:: basic_opt (6, string) ^:: basic_opt (2, string) ^:: basic_opt (7, string) ^:: basic_opt (9, int32_int) ^:: basic_opt (10, string) ^:: basic_opt (8, (message (fun t -> FieldOptions.to_proto t))) ^:: basic_opt (17, bool) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { name; number; label; type'; type_name; extendee; default_value; oneof_index; json_name; options; proto3_optional } -> f' [] writer name number label type' type_name extendee default_value oneof_index json_name options proto3_optional in
+        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (3, int32_int) ^:: basic_opt (4, (enum FieldDescriptorProto.Label.to_int)) ^:: basic_opt (5, (enum FieldDescriptorProto.Type.to_int)) ^:: basic_opt (6, string) ^:: basic_opt (2, string) ^:: basic_opt (7, string) ^:: basic_opt (9, int32_int) ^:: basic_opt (10, string) ^:: basic_opt (8, (message (fun t -> FieldOptions.to_proto' t))) ^:: basic_opt (17, bool) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun _extensions name number label type' type_name extendee default_value oneof_index json_name options proto3_optional -> { name; number; label; type'; type_name; extendee; default_value; oneof_index; json_name; options; proto3_optional } in
@@ -338,6 +361,7 @@ module Google = struct
       val name': unit -> string
       type t = { name: string option; options: OneofOptions.t option }
       val make : ?name:string -> ?options:OneofOptions.t -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -349,11 +373,13 @@ module Google = struct
 
         { name; options }
 
-      let to_proto =
-        let apply = fun ~f:f' { name; options } -> f' [] name options in
-        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, (message (fun t -> OneofOptions.to_proto t))) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { name; options } -> f' [] writer name options in
+        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, (message (fun t -> OneofOptions.to_proto' t))) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun _extensions name options -> { name; options } in
@@ -368,6 +394,7 @@ module Google = struct
         val name': unit -> string
         type t = { start: int option; end': int option }
         val make : ?start:int -> ?end':int -> unit -> t
+        val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
         val to_proto: t -> Runtime'.Writer.t
         val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         val from_proto_exn: Runtime'.Reader.t -> t
@@ -375,6 +402,7 @@ module Google = struct
       val name': unit -> string
       type t = { name: string option; value: EnumValueDescriptorProto.t list; options: EnumOptions.t option; reserved_range: EnumDescriptorProto.EnumReservedRange.t list; reserved_name: string list }
       val make : ?name:string -> ?value:EnumValueDescriptorProto.t list -> ?options:EnumOptions.t -> ?reserved_range:EnumDescriptorProto.EnumReservedRange.t list -> ?reserved_name:string list -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -383,6 +411,7 @@ module Google = struct
         val name': unit -> string
         type t = { start: int option; end': int option }
         val make : ?start:int -> ?end':int -> unit -> t
+        val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
         val to_proto: t -> Runtime'.Writer.t
         val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         val from_proto_exn: Runtime'.Reader.t -> t
@@ -394,11 +423,13 @@ module Google = struct
 
           { start; end' }
 
-        let to_proto =
-          let apply = fun ~f:f' { start; end' } -> f' [] start end' in
+        let to_proto' =
+          let apply = fun ~f:f' writer { start; end' } -> f' [] writer start end' in
           let spec = Runtime'.Serialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: nil ) in
-          let serialize = Runtime'.Serialize.serialize [] (spec) in
-          fun t -> apply ~f:serialize t
+          let serialize = Runtime'.Serialize.serialize [] spec in
+          fun writer t -> apply ~f:serialize writer t
+
+        let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
         let from_proto_exn =
           let constructor = fun _extensions start end' -> { start; end' } in
@@ -417,11 +448,13 @@ module Google = struct
         let reserved_name = match reserved_name with Some v -> v | None -> [] in
         { name; value; options; reserved_range; reserved_name }
 
-      let to_proto =
-        let apply = fun ~f:f' { name; value; options; reserved_range; reserved_name } -> f' [] name value options reserved_range reserved_name in
-        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: repeated (2, (message (fun t -> EnumValueDescriptorProto.to_proto t)), not_packed) ^:: basic_opt (3, (message (fun t -> EnumOptions.to_proto t))) ^:: repeated (4, (message (fun t -> EnumDescriptorProto.EnumReservedRange.to_proto t)), not_packed) ^:: repeated (5, string, not_packed) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { name; value; options; reserved_range; reserved_name } -> f' [] writer name value options reserved_range reserved_name in
+        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: repeated (2, (message (fun t -> EnumValueDescriptorProto.to_proto' t)), not_packed) ^:: basic_opt (3, (message (fun t -> EnumOptions.to_proto' t))) ^:: repeated (4, (message (fun t -> EnumDescriptorProto.EnumReservedRange.to_proto' t)), not_packed) ^:: repeated (5, string, not_packed) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun _extensions name value options reserved_range reserved_name -> { name; value; options; reserved_range; reserved_name } in
@@ -435,6 +468,7 @@ module Google = struct
       val name': unit -> string
       type t = { name: string option; number: int option; options: EnumValueOptions.t option }
       val make : ?name:string -> ?number:int -> ?options:EnumValueOptions.t -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -446,11 +480,13 @@ module Google = struct
 
         { name; number; options }
 
-      let to_proto =
-        let apply = fun ~f:f' { name; number; options } -> f' [] name number options in
-        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, int32_int) ^:: basic_opt (3, (message (fun t -> EnumValueOptions.to_proto t))) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { name; number; options } -> f' [] writer name number options in
+        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, int32_int) ^:: basic_opt (3, (message (fun t -> EnumValueOptions.to_proto' t))) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun _extensions name number options -> { name; number; options } in
@@ -464,6 +500,7 @@ module Google = struct
       val name': unit -> string
       type t = { name: string option; method': MethodDescriptorProto.t list; options: ServiceOptions.t option }
       val make : ?name:string -> ?method':MethodDescriptorProto.t list -> ?options:ServiceOptions.t -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -475,11 +512,13 @@ module Google = struct
         let method' = match method' with Some v -> v | None -> [] in
         { name; method'; options }
 
-      let to_proto =
-        let apply = fun ~f:f' { name; method'; options } -> f' [] name method' options in
-        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: repeated (2, (message (fun t -> MethodDescriptorProto.to_proto t)), not_packed) ^:: basic_opt (3, (message (fun t -> ServiceOptions.to_proto t))) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { name; method'; options } -> f' [] writer name method' options in
+        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: repeated (2, (message (fun t -> MethodDescriptorProto.to_proto' t)), not_packed) ^:: basic_opt (3, (message (fun t -> ServiceOptions.to_proto' t))) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun _extensions name method' options -> { name; method'; options } in
@@ -493,6 +532,7 @@ module Google = struct
       val name': unit -> string
       type t = { name: string option; input_type: string option; output_type: string option; options: MethodOptions.t option; client_streaming: bool; server_streaming: bool }
       val make : ?name:string -> ?input_type:string -> ?output_type:string -> ?options:MethodOptions.t -> ?client_streaming:bool -> ?server_streaming:bool -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -505,11 +545,13 @@ module Google = struct
         let server_streaming = match server_streaming with Some v -> v | None -> false in
         { name; input_type; output_type; options; client_streaming; server_streaming }
 
-      let to_proto =
-        let apply = fun ~f:f' { name; input_type; output_type; options; client_streaming; server_streaming } -> f' [] name input_type output_type options client_streaming server_streaming in
-        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (3, string) ^:: basic_opt (4, (message (fun t -> MethodOptions.to_proto t))) ^:: basic (5, bool, proto2 (false)) ^:: basic (6, bool, proto2 (false)) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { name; input_type; output_type; options; client_streaming; server_streaming } -> f' [] writer name input_type output_type options client_streaming server_streaming in
+        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (3, string) ^:: basic_opt (4, (message (fun t -> MethodOptions.to_proto' t))) ^:: basic (5, bool, proto2 (false)) ^:: basic (6, bool, proto2 (false)) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun _extensions name input_type output_type options client_streaming server_streaming -> { name; input_type; output_type; options; client_streaming; server_streaming } in
@@ -529,6 +571,7 @@ module Google = struct
       val name': unit -> string
       type t = { java_package: string option; java_outer_classname: string option; java_multiple_files: bool; java_generate_equals_and_hash: bool option; java_string_check_utf8: bool; optimize_for: FileOptions.OptimizeMode.t; go_package: string option; cc_generic_services: bool; java_generic_services: bool; py_generic_services: bool; php_generic_services: bool; deprecated: bool; cc_enable_arenas: bool; objc_class_prefix: string option; csharp_namespace: string option; swift_prefix: string option; php_class_prefix: string option; php_namespace: string option; php_metadata_namespace: string option; ruby_package: string option; uninterpreted_option: UninterpretedOption.t list; extensions': Runtime'.Extensions.t }
       val make : ?java_package:string -> ?java_outer_classname:string -> ?java_multiple_files:bool -> ?java_generate_equals_and_hash:bool -> ?java_string_check_utf8:bool -> ?optimize_for:FileOptions.OptimizeMode.t -> ?go_package:string -> ?cc_generic_services:bool -> ?java_generic_services:bool -> ?py_generic_services:bool -> ?php_generic_services:bool -> ?deprecated:bool -> ?cc_enable_arenas:bool -> ?objc_class_prefix:string -> ?csharp_namespace:string -> ?swift_prefix:string -> ?php_class_prefix:string -> ?php_namespace:string -> ?php_metadata_namespace:string -> ?ruby_package:string -> ?uninterpreted_option:UninterpretedOption.t list -> ?extensions':Runtime'.Extensions.t -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -569,11 +612,13 @@ module Google = struct
         let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
         { java_package; java_outer_classname; java_multiple_files; java_generate_equals_and_hash; java_string_check_utf8; optimize_for; go_package; cc_generic_services; java_generic_services; py_generic_services; php_generic_services; deprecated; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_metadata_namespace; ruby_package; uninterpreted_option; extensions' }
 
-      let to_proto =
-        let apply = fun ~f:f' { java_package; java_outer_classname; java_multiple_files; java_generate_equals_and_hash; java_string_check_utf8; optimize_for; go_package; cc_generic_services; java_generic_services; py_generic_services; php_generic_services; deprecated; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_metadata_namespace; ruby_package; uninterpreted_option; extensions' } -> f' extensions' java_package java_outer_classname java_multiple_files java_generate_equals_and_hash java_string_check_utf8 optimize_for go_package cc_generic_services java_generic_services py_generic_services php_generic_services deprecated cc_enable_arenas objc_class_prefix csharp_namespace swift_prefix php_class_prefix php_namespace php_metadata_namespace ruby_package uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (8, string) ^:: basic (10, bool, proto2 (false)) ^:: basic_opt (20, bool) ^:: basic (27, bool, proto2 (false)) ^:: basic (9, (enum FileOptions.OptimizeMode.to_int), proto2 (FileOptions.OptimizeMode.SPEED)) ^:: basic_opt (11, string) ^:: basic (16, bool, proto2 (false)) ^:: basic (17, bool, proto2 (false)) ^:: basic (18, bool, proto2 (false)) ^:: basic (42, bool, proto2 (false)) ^:: basic (23, bool, proto2 (false)) ^:: basic (31, bool, proto2 (true)) ^:: basic_opt (36, string) ^:: basic_opt (37, string) ^:: basic_opt (39, string) ^:: basic_opt (40, string) ^:: basic_opt (41, string) ^:: basic_opt (44, string) ^:: basic_opt (45, string) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto t)), not_packed) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { java_package; java_outer_classname; java_multiple_files; java_generate_equals_and_hash; java_string_check_utf8; optimize_for; go_package; cc_generic_services; java_generic_services; py_generic_services; php_generic_services; deprecated; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_metadata_namespace; ruby_package; uninterpreted_option; extensions' } -> f' extensions' writer java_package java_outer_classname java_multiple_files java_generate_equals_and_hash java_string_check_utf8 optimize_for go_package cc_generic_services java_generic_services py_generic_services php_generic_services deprecated cc_enable_arenas objc_class_prefix csharp_namespace swift_prefix php_class_prefix php_namespace php_metadata_namespace ruby_package uninterpreted_option in
+        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (8, string) ^:: basic (10, bool, proto2 (false)) ^:: basic_opt (20, bool) ^:: basic (27, bool, proto2 (false)) ^:: basic (9, (enum FileOptions.OptimizeMode.to_int), proto2 (FileOptions.OptimizeMode.SPEED)) ^:: basic_opt (11, string) ^:: basic (16, bool, proto2 (false)) ^:: basic (17, bool, proto2 (false)) ^:: basic (18, bool, proto2 (false)) ^:: basic (42, bool, proto2 (false)) ^:: basic (23, bool, proto2 (false)) ^:: basic (31, bool, proto2 (true)) ^:: basic_opt (36, string) ^:: basic_opt (37, string) ^:: basic_opt (39, string) ^:: basic_opt (40, string) ^:: basic_opt (41, string) ^:: basic_opt (44, string) ^:: basic_opt (45, string) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun extensions' java_package java_outer_classname java_multiple_files java_generate_equals_and_hash java_string_check_utf8 optimize_for go_package cc_generic_services java_generic_services py_generic_services php_generic_services deprecated cc_enable_arenas objc_class_prefix csharp_namespace swift_prefix php_class_prefix php_namespace php_metadata_namespace ruby_package uninterpreted_option -> { java_package; java_outer_classname; java_multiple_files; java_generate_equals_and_hash; java_string_check_utf8; optimize_for; go_package; cc_generic_services; java_generic_services; py_generic_services; php_generic_services; deprecated; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_metadata_namespace; ruby_package; uninterpreted_option; extensions' } in
@@ -587,6 +632,7 @@ module Google = struct
       val name': unit -> string
       type t = { message_set_wire_format: bool; no_standard_descriptor_accessor: bool; deprecated: bool; map_entry: bool option; uninterpreted_option: UninterpretedOption.t list; extensions': Runtime'.Extensions.t }
       val make : ?message_set_wire_format:bool -> ?no_standard_descriptor_accessor:bool -> ?deprecated:bool -> ?map_entry:bool -> ?uninterpreted_option:UninterpretedOption.t list -> ?extensions':Runtime'.Extensions.t -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -601,11 +647,13 @@ module Google = struct
         let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
         { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions' }
 
-      let to_proto =
-        let apply = fun ~f:f' { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions' } -> f' extensions' message_set_wire_format no_standard_descriptor_accessor deprecated map_entry uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( basic (1, bool, proto2 (false)) ^:: basic (2, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic_opt (7, bool) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto t)), not_packed) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions' } -> f' extensions' writer message_set_wire_format no_standard_descriptor_accessor deprecated map_entry uninterpreted_option in
+        let spec = Runtime'.Serialize.C.( basic (1, bool, proto2 (false)) ^:: basic (2, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic_opt (7, bool) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun extensions' message_set_wire_format no_standard_descriptor_accessor deprecated map_entry uninterpreted_option -> { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions' } in
@@ -631,6 +679,7 @@ module Google = struct
       val name': unit -> string
       type t = { ctype: FieldOptions.CType.t; packed: bool option; jstype: FieldOptions.JSType.t; lazy': bool; unverified_lazy: bool; deprecated: bool; weak: bool; uninterpreted_option: UninterpretedOption.t list; extensions': Runtime'.Extensions.t }
       val make : ?ctype:FieldOptions.CType.t -> ?packed:bool -> ?jstype:FieldOptions.JSType.t -> ?lazy':bool -> ?unverified_lazy:bool -> ?deprecated:bool -> ?weak:bool -> ?uninterpreted_option:UninterpretedOption.t list -> ?extensions':Runtime'.Extensions.t -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -688,11 +737,13 @@ module Google = struct
         let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
         { ctype; packed; jstype; lazy'; unverified_lazy; deprecated; weak; uninterpreted_option; extensions' }
 
-      let to_proto =
-        let apply = fun ~f:f' { ctype; packed; jstype; lazy'; unverified_lazy; deprecated; weak; uninterpreted_option; extensions' } -> f' extensions' ctype packed jstype lazy' unverified_lazy deprecated weak uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( basic (1, (enum FieldOptions.CType.to_int), proto2 (FieldOptions.CType.STRING)) ^:: basic_opt (2, bool) ^:: basic (6, (enum FieldOptions.JSType.to_int), proto2 (FieldOptions.JSType.JS_NORMAL)) ^:: basic (5, bool, proto2 (false)) ^:: basic (15, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic (10, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto t)), not_packed) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { ctype; packed; jstype; lazy'; unverified_lazy; deprecated; weak; uninterpreted_option; extensions' } -> f' extensions' writer ctype packed jstype lazy' unverified_lazy deprecated weak uninterpreted_option in
+        let spec = Runtime'.Serialize.C.( basic (1, (enum FieldOptions.CType.to_int), proto2 (FieldOptions.CType.STRING)) ^:: basic_opt (2, bool) ^:: basic (6, (enum FieldOptions.JSType.to_int), proto2 (FieldOptions.JSType.JS_NORMAL)) ^:: basic (5, bool, proto2 (false)) ^:: basic (15, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic (10, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun extensions' ctype packed jstype lazy' unverified_lazy deprecated weak uninterpreted_option -> { ctype; packed; jstype; lazy'; unverified_lazy; deprecated; weak; uninterpreted_option; extensions' } in
@@ -706,6 +757,7 @@ module Google = struct
       val name': unit -> string
       type t = { uninterpreted_option: UninterpretedOption.t list; extensions': Runtime'.Extensions.t }
       val make : ?uninterpreted_option:UninterpretedOption.t list -> ?extensions':Runtime'.Extensions.t -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -717,11 +769,13 @@ module Google = struct
         let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
         { uninterpreted_option; extensions' }
 
-      let to_proto =
-        let apply = fun ~f:f' { uninterpreted_option; extensions' } -> f' extensions' uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( repeated (999, (message (fun t -> UninterpretedOption.to_proto t)), not_packed) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { uninterpreted_option; extensions' } -> f' extensions' writer uninterpreted_option in
+        let spec = Runtime'.Serialize.C.( repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun extensions' uninterpreted_option -> { uninterpreted_option; extensions' } in
@@ -735,6 +789,7 @@ module Google = struct
       val name': unit -> string
       type t = { allow_alias: bool option; deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions': Runtime'.Extensions.t }
       val make : ?allow_alias:bool -> ?deprecated:bool -> ?uninterpreted_option:UninterpretedOption.t list -> ?extensions':Runtime'.Extensions.t -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -747,11 +802,13 @@ module Google = struct
         let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
         { allow_alias; deprecated; uninterpreted_option; extensions' }
 
-      let to_proto =
-        let apply = fun ~f:f' { allow_alias; deprecated; uninterpreted_option; extensions' } -> f' extensions' allow_alias deprecated uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( basic_opt (2, bool) ^:: basic (3, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto t)), not_packed) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { allow_alias; deprecated; uninterpreted_option; extensions' } -> f' extensions' writer allow_alias deprecated uninterpreted_option in
+        let spec = Runtime'.Serialize.C.( basic_opt (2, bool) ^:: basic (3, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun extensions' allow_alias deprecated uninterpreted_option -> { allow_alias; deprecated; uninterpreted_option; extensions' } in
@@ -765,6 +822,7 @@ module Google = struct
       val name': unit -> string
       type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions': Runtime'.Extensions.t }
       val make : ?deprecated:bool -> ?uninterpreted_option:UninterpretedOption.t list -> ?extensions':Runtime'.Extensions.t -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -777,11 +835,13 @@ module Google = struct
         let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
         { deprecated; uninterpreted_option; extensions' }
 
-      let to_proto =
-        let apply = fun ~f:f' { deprecated; uninterpreted_option; extensions' } -> f' extensions' deprecated uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( basic (1, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto t)), not_packed) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { deprecated; uninterpreted_option; extensions' } -> f' extensions' writer deprecated uninterpreted_option in
+        let spec = Runtime'.Serialize.C.( basic (1, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun extensions' deprecated uninterpreted_option -> { deprecated; uninterpreted_option; extensions' } in
@@ -795,6 +855,7 @@ module Google = struct
       val name': unit -> string
       type t = { deprecated: bool; uninterpreted_option: UninterpretedOption.t list; extensions': Runtime'.Extensions.t }
       val make : ?deprecated:bool -> ?uninterpreted_option:UninterpretedOption.t list -> ?extensions':Runtime'.Extensions.t -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -807,11 +868,13 @@ module Google = struct
         let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
         { deprecated; uninterpreted_option; extensions' }
 
-      let to_proto =
-        let apply = fun ~f:f' { deprecated; uninterpreted_option; extensions' } -> f' extensions' deprecated uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( basic (33, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto t)), not_packed) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { deprecated; uninterpreted_option; extensions' } -> f' extensions' writer deprecated uninterpreted_option in
+        let spec = Runtime'.Serialize.C.( basic (33, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun extensions' deprecated uninterpreted_option -> { deprecated; uninterpreted_option; extensions' } in
@@ -831,6 +894,7 @@ module Google = struct
       val name': unit -> string
       type t = { deprecated: bool; idempotency_level: MethodOptions.IdempotencyLevel.t; uninterpreted_option: UninterpretedOption.t list; extensions': Runtime'.Extensions.t }
       val make : ?deprecated:bool -> ?idempotency_level:MethodOptions.IdempotencyLevel.t -> ?uninterpreted_option:UninterpretedOption.t list -> ?extensions':Runtime'.Extensions.t -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -864,11 +928,13 @@ module Google = struct
         let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
         { deprecated; idempotency_level; uninterpreted_option; extensions' }
 
-      let to_proto =
-        let apply = fun ~f:f' { deprecated; idempotency_level; uninterpreted_option; extensions' } -> f' extensions' deprecated idempotency_level uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( basic (33, bool, proto2 (false)) ^:: basic (34, (enum MethodOptions.IdempotencyLevel.to_int), proto2 (MethodOptions.IdempotencyLevel.IDEMPOTENCY_UNKNOWN)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto t)), not_packed) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { deprecated; idempotency_level; uninterpreted_option; extensions' } -> f' extensions' writer deprecated idempotency_level uninterpreted_option in
+        let spec = Runtime'.Serialize.C.( basic (33, bool, proto2 (false)) ^:: basic (34, (enum MethodOptions.IdempotencyLevel.to_int), proto2 (MethodOptions.IdempotencyLevel.IDEMPOTENCY_UNKNOWN)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun extensions' deprecated idempotency_level uninterpreted_option -> { deprecated; idempotency_level; uninterpreted_option; extensions' } in
@@ -883,6 +949,7 @@ module Google = struct
         val name': unit -> string
         type t = { name_part: string; is_extension: bool }
         val make : name_part:string -> is_extension:bool -> unit -> t
+        val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
         val to_proto: t -> Runtime'.Writer.t
         val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         val from_proto_exn: Runtime'.Reader.t -> t
@@ -890,6 +957,7 @@ module Google = struct
       val name': unit -> string
       type t = { name: UninterpretedOption.NamePart.t list; identifier_value: string option; positive_int_value: int option; negative_int_value: int option; double_value: float option; string_value: bytes option; aggregate_value: string option }
       val make : ?name:UninterpretedOption.NamePart.t list -> ?identifier_value:string -> ?positive_int_value:int -> ?negative_int_value:int -> ?double_value:float -> ?string_value:bytes -> ?aggregate_value:string -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -898,6 +966,7 @@ module Google = struct
         val name': unit -> string
         type t = { name_part: string; is_extension: bool }
         val make : name_part:string -> is_extension:bool -> unit -> t
+        val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
         val to_proto: t -> Runtime'.Writer.t
         val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         val from_proto_exn: Runtime'.Reader.t -> t
@@ -909,11 +978,13 @@ module Google = struct
 
           { name_part; is_extension }
 
-        let to_proto =
-          let apply = fun ~f:f' { name_part; is_extension } -> f' [] name_part is_extension in
+        let to_proto' =
+          let apply = fun ~f:f' writer { name_part; is_extension } -> f' [] writer name_part is_extension in
           let spec = Runtime'.Serialize.C.( basic (1, string, required) ^:: basic (2, bool, required) ^:: nil ) in
-          let serialize = Runtime'.Serialize.serialize [] (spec) in
-          fun t -> apply ~f:serialize t
+          let serialize = Runtime'.Serialize.serialize [] spec in
+          fun writer t -> apply ~f:serialize writer t
+
+        let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
         let from_proto_exn =
           let constructor = fun _extensions name_part is_extension -> { name_part; is_extension } in
@@ -930,11 +1001,13 @@ module Google = struct
         let name = match name with Some v -> v | None -> [] in
         { name; identifier_value; positive_int_value; negative_int_value; double_value; string_value; aggregate_value }
 
-      let to_proto =
-        let apply = fun ~f:f' { name; identifier_value; positive_int_value; negative_int_value; double_value; string_value; aggregate_value } -> f' [] name identifier_value positive_int_value negative_int_value double_value string_value aggregate_value in
-        let spec = Runtime'.Serialize.C.( repeated (2, (message (fun t -> UninterpretedOption.NamePart.to_proto t)), not_packed) ^:: basic_opt (3, string) ^:: basic_opt (4, uint64_int) ^:: basic_opt (5, int64_int) ^:: basic_opt (6, double) ^:: basic_opt (7, bytes) ^:: basic_opt (8, string) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer { name; identifier_value; positive_int_value; negative_int_value; double_value; string_value; aggregate_value } -> f' [] writer name identifier_value positive_int_value negative_int_value double_value string_value aggregate_value in
+        let spec = Runtime'.Serialize.C.( repeated (2, (message (fun t -> UninterpretedOption.NamePart.to_proto' t)), not_packed) ^:: basic_opt (3, string) ^:: basic_opt (4, uint64_int) ^:: basic_opt (5, int64_int) ^:: basic_opt (6, double) ^:: basic_opt (7, bytes) ^:: basic_opt (8, string) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun _extensions name identifier_value positive_int_value negative_int_value double_value string_value aggregate_value -> { name; identifier_value; positive_int_value; negative_int_value; double_value; string_value; aggregate_value } in
@@ -949,6 +1022,7 @@ module Google = struct
         val name': unit -> string
         type t = { path: int list; span: int list; leading_comments: string option; trailing_comments: string option; leading_detached_comments: string list }
         val make : ?path:int list -> ?span:int list -> ?leading_comments:string -> ?trailing_comments:string -> ?leading_detached_comments:string list -> unit -> t
+        val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
         val to_proto: t -> Runtime'.Writer.t
         val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         val from_proto_exn: Runtime'.Reader.t -> t
@@ -956,6 +1030,7 @@ module Google = struct
       val name': unit -> string
       type t = SourceCodeInfo.Location.t list
       val make : ?location:SourceCodeInfo.Location.t list -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -964,6 +1039,7 @@ module Google = struct
         val name': unit -> string
         type t = { path: int list; span: int list; leading_comments: string option; trailing_comments: string option; leading_detached_comments: string list }
         val make : ?path:int list -> ?span:int list -> ?leading_comments:string -> ?trailing_comments:string -> ?leading_detached_comments:string list -> unit -> t
+        val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
         val to_proto: t -> Runtime'.Writer.t
         val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         val from_proto_exn: Runtime'.Reader.t -> t
@@ -977,11 +1053,13 @@ module Google = struct
           let leading_detached_comments = match leading_detached_comments with Some v -> v | None -> [] in
           { path; span; leading_comments; trailing_comments; leading_detached_comments }
 
-        let to_proto =
-          let apply = fun ~f:f' { path; span; leading_comments; trailing_comments; leading_detached_comments } -> f' [] path span leading_comments trailing_comments leading_detached_comments in
+        let to_proto' =
+          let apply = fun ~f:f' writer { path; span; leading_comments; trailing_comments; leading_detached_comments } -> f' [] writer path span leading_comments trailing_comments leading_detached_comments in
           let spec = Runtime'.Serialize.C.( repeated (1, int32_int, packed) ^:: repeated (2, int32_int, packed) ^:: basic_opt (3, string) ^:: basic_opt (4, string) ^:: repeated (6, string, not_packed) ^:: nil ) in
-          let serialize = Runtime'.Serialize.serialize [] (spec) in
-          fun t -> apply ~f:serialize t
+          let serialize = Runtime'.Serialize.serialize [] spec in
+          fun writer t -> apply ~f:serialize writer t
+
+        let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
         let from_proto_exn =
           let constructor = fun _extensions path span leading_comments trailing_comments leading_detached_comments -> { path; span; leading_comments; trailing_comments; leading_detached_comments } in
@@ -998,11 +1076,13 @@ module Google = struct
         let location = match location with Some v -> v | None -> [] in
         location
 
-      let to_proto =
-        let apply = fun ~f:f' location -> f' [] location in
-        let spec = Runtime'.Serialize.C.( repeated (1, (message (fun t -> SourceCodeInfo.Location.to_proto t)), not_packed) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer location -> f' [] writer location in
+        let spec = Runtime'.Serialize.C.( repeated (1, (message (fun t -> SourceCodeInfo.Location.to_proto' t)), not_packed) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun _extensions location -> location in
@@ -1017,6 +1097,7 @@ module Google = struct
         val name': unit -> string
         type t = { path: int list; source_file: string option; begin': int option; end': int option }
         val make : ?path:int list -> ?source_file:string -> ?begin':int -> ?end':int -> unit -> t
+        val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
         val to_proto: t -> Runtime'.Writer.t
         val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         val from_proto_exn: Runtime'.Reader.t -> t
@@ -1024,6 +1105,7 @@ module Google = struct
       val name': unit -> string
       type t = GeneratedCodeInfo.Annotation.t list
       val make : ?annotation:GeneratedCodeInfo.Annotation.t list -> unit -> t
+      val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
       val to_proto: t -> Runtime'.Writer.t
       val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       val from_proto_exn: Runtime'.Reader.t -> t
@@ -1032,6 +1114,7 @@ module Google = struct
         val name': unit -> string
         type t = { path: int list; source_file: string option; begin': int option; end': int option }
         val make : ?path:int list -> ?source_file:string -> ?begin':int -> ?end':int -> unit -> t
+        val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
         val to_proto: t -> Runtime'.Writer.t
         val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         val from_proto_exn: Runtime'.Reader.t -> t
@@ -1043,11 +1126,13 @@ module Google = struct
           let path = match path with Some v -> v | None -> [] in
           { path; source_file; begin'; end' }
 
-        let to_proto =
-          let apply = fun ~f:f' { path; source_file; begin'; end' } -> f' [] path source_file begin' end' in
+        let to_proto' =
+          let apply = fun ~f:f' writer { path; source_file; begin'; end' } -> f' [] writer path source_file begin' end' in
           let spec = Runtime'.Serialize.C.( repeated (1, int32_int, packed) ^:: basic_opt (2, string) ^:: basic_opt (3, int32_int) ^:: basic_opt (4, int32_int) ^:: nil ) in
-          let serialize = Runtime'.Serialize.serialize [] (spec) in
-          fun t -> apply ~f:serialize t
+          let serialize = Runtime'.Serialize.serialize [] spec in
+          fun writer t -> apply ~f:serialize writer t
+
+        let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
         let from_proto_exn =
           let constructor = fun _extensions path source_file begin' end' -> { path; source_file; begin'; end' } in
@@ -1064,11 +1149,13 @@ module Google = struct
         let annotation = match annotation with Some v -> v | None -> [] in
         annotation
 
-      let to_proto =
-        let apply = fun ~f:f' annotation -> f' [] annotation in
-        let spec = Runtime'.Serialize.C.( repeated (1, (message (fun t -> GeneratedCodeInfo.Annotation.to_proto t)), not_packed) ^:: nil ) in
-        let serialize = Runtime'.Serialize.serialize [] (spec) in
-        fun t -> apply ~f:serialize t
+      let to_proto' =
+        let apply = fun ~f:f' writer annotation -> f' [] writer annotation in
+        let spec = Runtime'.Serialize.C.( repeated (1, (message (fun t -> GeneratedCodeInfo.Annotation.to_proto' t)), not_packed) ^:: nil ) in
+        let serialize = Runtime'.Serialize.serialize [] spec in
+        fun writer t -> apply ~f:serialize writer t
+
+      let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
       let from_proto_exn =
         let constructor = fun _extensions annotation -> annotation in

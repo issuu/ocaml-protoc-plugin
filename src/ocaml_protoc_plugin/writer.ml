@@ -6,27 +6,21 @@ open Field
 let sprintf = Printf.sprintf
 let printf = Printf.printf
 
-type field_list =
-  | Nil
-  | Cons_field of (Field.t * field_list)
-  | Cons_fields of (field_list * field_list)
+(** Bytes allocated at end of any data block to reduce number of allocated blocks *)
+let space_overhead = 256
 
-type t = {
-  mutable fields : field_list;
-  mutable size: int;
-}
+(** Hold multiple short strings in a list *)
+type substring = { mutable offset: int; buffer: Bytes.t }
 
-let rev_fields fields =
+type t = { mutable data: substring list }
+
+let init () = { data = [] }
+let size t =
   let rec inner acc = function
-    | Nil -> acc
-    | Cons_field (hd, tl) ->
-      inner (hd :: acc) tl
-    | Cons_fields (hd, tl) ->
-      inner (inner acc hd) tl
+    | [] -> acc
+    | { offset; _} :: tl -> inner (offset + acc) tl
   in
-  inner [] fields
-
-let init () = {fields = Nil; size = 0;}
+  inner 0 t.data
 
 (** Get index of most significant bit. *)
 let varint_size v =
@@ -45,9 +39,6 @@ let rec size_of_field = function
   | Fixed_32_bit _ -> 4
   | Fixed_64_bit _ -> 8
   | Length_delimited {length; _} -> size_of_field (Varint_unboxed length) + length
-
-[@@inline]
-let size t = t.size
 
 let write_varint buffer ~offset v =
   let rec inner ~offset v : int =
@@ -95,7 +86,7 @@ let write_length_delimited buffer ~offset ~src ~src_pos ~len =
   Bytes.blit ~src:(Bytes.of_string src) ~src_pos ~dst:buffer ~dst_pos:offset ~len;
   offset + len
 
-let write_field buffer ~offset = function
+let write_naked_field buffer ~offset = function
   | Varint_unboxed v -> write_varint_unboxed buffer ~offset v
   | Varint v -> write_varint buffer ~offset v
   | Fixed_32_bit v -> write_fixed32 buffer ~offset v
@@ -103,25 +94,16 @@ let write_field buffer ~offset = function
   | Length_delimited {offset = src_pos; length; data} ->
     write_length_delimited buffer ~offset ~src:data ~src_pos ~len:length
 
-let contents t =
-  let size = size t in
-  let t = rev_fields t.fields in
-  let buffer = Bytes.create size in
-  let next_offset =
-    List.fold_left ~init:0 ~f:(fun offset field -> write_field buffer ~offset field) t
-  in
-  assert (next_offset = size);
-  Bytes.to_string buffer
-
 let add_field t field =
-  t.fields <- Cons_field(field, t.fields);
-  t.size <- t.size + size_of_field field;
-  ()
-
-(** Add the contents of src as is *)
-let concat t ~src =
-  t.fields <- Cons_fields(src.fields, t.fields);
-  t.size <- t.size + src.size;
+  let size = size_of_field field in
+  let elem, tl = match t.data with
+    | { offset; buffer } as elem :: tl when Bytes.length buffer - offset >= size -> elem, tl
+    | tl -> { offset = 0; buffer = Bytes.create (size + space_overhead) }, tl
+  in
+  (* Write *)
+  let offset = write_naked_field elem.buffer ~offset:elem.offset field in
+  elem.offset <- offset;
+  t.data <- elem :: tl;
   ()
 
 let write_field_header : t -> int -> int -> unit =
@@ -142,12 +124,37 @@ let write_field : t -> int -> Field.t -> unit =
   write_field_header t index field_type;
   add_field t field
 
-(** Add the contents of src as a length_delimited field *)
-let concat_as_length_delimited t ~src index =
-  let size = size src in
+let add_length_delimited_field_header t index =
+  let sentinel = { offset = 0; buffer = Bytes.create 20; } in
+  t.data <- sentinel :: t.data;
   write_field_header t index 2;
-  add_field t (Varint_unboxed size);
-  concat t ~src
+  let offset = sentinel.offset in
+  sentinel.offset <- 20; (* Make sure nothing is written to this again *)
+  let rec size_data_added acc = function
+    | [] -> failwith "End of list reached. This is impossible"
+    | x :: _ when x == sentinel -> acc
+    | { offset; _ } :: xs -> size_data_added (offset + acc) xs
+  in
+  (* Return a function to use when done *)
+  fun () ->
+    let size = size_data_added 0 t.data in
+    let offset = write_naked_field sentinel.buffer ~offset (Varint_unboxed size) in
+    sentinel.offset <- offset;
+    ()
+
+let contents t =
+  let size = size t in
+  let contents = Bytes.create size in
+  let rec inner offset = function
+    | [] -> offset
+    | { offset = o; buffer} :: tl ->
+       let next_offset = offset - o in
+       Bytes.blit ~src:buffer ~src_pos:0 ~dst:contents ~dst_pos:next_offset ~len:o;
+       inner (next_offset) tl
+  in
+  let offset = inner size t.data in
+  assert (offset = 0);
+  Bytes.unsafe_to_string contents
 
 let dump t =
   let string_contents = contents t in
@@ -164,6 +171,10 @@ let of_list: (int * Field.t) list -> t = fun fields ->
 
 let%expect_test "Writefield" =
   let buffer = init () in
-  write_field buffer 1 (Varint 1L);
+  write_field buffer 1 (Varint 3L);
+  write_field buffer 2 (Varint 5L);
+  write_field buffer 3 (Varint 7L);
+  write_field buffer 4 (Varint 11L);
+
   dump buffer;
-  [%expect {| Buffer: 08-01 |}]
+  [%expect {| Buffer: 08-03-10-05-18-07-20-0b |}]

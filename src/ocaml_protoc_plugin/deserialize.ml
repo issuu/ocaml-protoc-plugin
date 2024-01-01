@@ -63,7 +63,7 @@ let rec type_of_spec: type a. a spec -> 'b * a decoder =
           (* If the high bit is set, we cannot represent it anyways *)
           Int32.to_int v
         | 64 ->
-          let move = int_of_string "0x1_0000_0000" in
+          let move = 0x1_0000_0000 in
           let i = Int32.to_int v in (if i < 0 then i + move else i)
         | _ -> assert false
       )
@@ -135,7 +135,7 @@ let rec type_of_spec: type a. a spec -> 'b * a decoder =
       | Field.Length_delimited {offset; length; data} -> String.sub ~pos:offset ~len:length data
       | field -> error_wrong_field "string" field)
   | Bytes -> (`Length_delimited, function
-      | Field.Length_delimited {offset; length; data} -> String.sub ~pos:offset ~len:length data |> Bytes.of_string
+      | Field.Length_delimited {offset; length; data} -> Bytes.sub ~pos:offset ~len:length (Bytes.unsafe_of_string data)
       | field -> error_wrong_field "bytes" field)
   | Message from_proto -> (`Length_delimited, function
       | Field.Length_delimited {offset; length; data} -> from_proto (Reader.create ~offset ~length data)

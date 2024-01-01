@@ -9,12 +9,12 @@ let compare _ _ = 0
 
 let get: ('b -> 'b, 'b) Deserialize.S.compound_list -> t -> 'b = fun spec t ->
   let writer = Writer.of_list t in
-  (* Back and forth - its the same, no? *)
   let reader = Writer.contents writer |> Reader.create in
   Deserialize.deserialize [] spec (fun _ a -> a) reader
 
 let set: ('a -> Writer.t, Writer.t) Serialize.S.compound_list -> t -> 'a -> t = fun spec t v ->
-  let writer = Serialize.serialize [] spec [] v in
+  let writer = Writer.init () in
+  let writer = Serialize.serialize [] spec [] writer v in
   let reader = Writer.contents writer |> Reader.create in
   match Reader.to_list reader with
   | (((index, _) :: _) as fields) ->

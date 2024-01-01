@@ -222,7 +222,7 @@ let type_of_spec: type a. a spec -> string = function
 let spec_of_message ~scope type_name =
   let type' = Scope.get_scoped_name ~postfix:"t" scope type_name in
   let deserialize_func = Scope.get_scoped_name ~postfix:"from_proto_exn" scope type_name in
-  let serialize_func = Scope.get_scoped_name ~postfix:"to_proto" scope type_name in
+  let serialize_func = Scope.get_scoped_name ~postfix:"to_proto'" scope type_name in
   Message (type', deserialize_func, serialize_func, None)
 
 let spec_of_enum ~scope type_name default =
@@ -600,7 +600,7 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
       (if has_extensions then "extensions'" else "_extensions") args (type_destr fields)
   in
   let apply =
-    sprintf "fun ~f:f' %s -> f' %s %s"
+    sprintf "fun ~f:f' writer %s -> f' %s writer %s"
       (type_destr fields) (if has_extensions then "extensions'" else "[]") args
   in
 

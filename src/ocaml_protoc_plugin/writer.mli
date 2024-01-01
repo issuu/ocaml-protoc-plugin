@@ -18,6 +18,6 @@ val write_length_delimited :
 val write_field : t -> int -> Field.t -> unit
 
 val add_field : t -> Field.t -> unit
-val concat_as_length_delimited : t -> src:t -> int -> unit
+val add_length_delimited_field_header : t -> int -> (unit -> unit)
 val dump : t -> unit
 (**/**)
