@@ -14,8 +14,8 @@
   (:proto echo.proto) (package ocaml-protoc-plugin))
  (action
   (run protoc -I %{read-lines:google_include} -I . "--ocaml_out=open=Google_types:." %{proto})))
-
-(alias
- (name runtest)
+(rule
  (deps test.exe)
+ (action (ignore-stdout (run %{deps})))
+ (alias runtest)
 )
