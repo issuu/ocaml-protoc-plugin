@@ -22,7 +22,8 @@
        %{proto}))
 )
 
-(alias
- (name runtest)
+(rule
  (deps test.exe)
+ (action (ignore-stdout (run %{deps})))
+ (alias runtest)
 )

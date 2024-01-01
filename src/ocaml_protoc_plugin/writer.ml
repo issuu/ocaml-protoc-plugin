@@ -135,14 +135,8 @@ let of_list: (int * Field.t) list -> t = fun fields ->
   List.iter ~f:(fun (index, field) -> write_field t index field) fields;
   t
 
-
-module Test = struct
-  let test () =
-    let (_:bool) =
-      let buffer = init () in
-      write_field buffer 1 (Varint 1L);
-      let c = contents buffer in
-      String.length c = 2 && String.equal c "\x08\x01" || failwith "Writefield failed"
-    in
-    ()
-end
+let%expect_test "Writefield" =
+  let buffer = init () in
+  write_field buffer 1 (Varint 1L);
+  dump buffer;
+  [%expect {| Buffer: 08-01 |}]

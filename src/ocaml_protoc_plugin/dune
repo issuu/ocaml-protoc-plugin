@@ -2,4 +2,6 @@
  (name ocaml_protoc_plugin)
  (public_name ocaml-protoc-plugin)
  (synopsis "Serialization and deserialization of protobuf types")
+ (inline_tests)
+ (preprocess (pps ppx_expect))
 )
