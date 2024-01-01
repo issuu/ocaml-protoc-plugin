@@ -117,8 +117,9 @@ let read_field : boxed -> t -> int * Field.t = fun boxed ->
 let to_list: t -> (int * Field.t) list =
   let read_field = read_field Boxed in
   fun t ->
-    let rec inner acc = match has_more t with
-      | true -> inner (read_field t :: acc)
-      | false -> List.rev acc
-    in
-  inner []
+  (* Make this tailrec *)
+  let[@tail_mod_cons] rec inner () = match has_more t with
+    | true -> read_field t :: inner ()
+    | false -> []
+  in
+  inner ()

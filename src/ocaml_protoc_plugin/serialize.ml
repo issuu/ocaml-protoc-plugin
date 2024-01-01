@@ -5,41 +5,39 @@ module S = Spec.Serialize
 module C = S.C
 open S
 
-let unsigned_varint v = Field.Varint v
-let unsigned_varint_unboxed v = Field.Varint_unboxed v
-
-let signed_varint v =
-  let open! Infix.Int64 in
-  let v =
-    match v with
-    | v when v < 0L -> v lsl 1 lxor (-1L)
-    | v -> v lsl 1
+let varint ~signed v =
+  let open Infix.Int64 in
+  let v = match signed with
+    | true when v < 0L -> v lsl 1 lxor (-1L)
+    | true -> v lsl 1
+    | false -> v
   in
   Field.Varint v
 
-let signed_varint_unboxed v =
-  let v =
-    match v with
-    | v when v < 0 -> v lsl 1 lxor -1
-    | v -> v lsl 1
+let varint_unboxed ~signed v =
+  let v = match signed with
+    | true when v < 0 -> v lsl 1 lxor (-1)
+    | true -> v lsl 1
+    | false -> v
   in
   Field.Varint_unboxed v
+
 
 let rec field_of_spec: type a. a spec -> a -> Field.t = function
   | Double -> fun v -> Fixed_64_bit (Int64.bits_of_float v)
   | Float -> fun v -> Fixed_32_bit (Int32.bits_of_float v)
-  | Int64 -> unsigned_varint
-  | Int64_int -> unsigned_varint_unboxed
-  | UInt64 -> unsigned_varint
-  | UInt64_int -> unsigned_varint_unboxed
-  | SInt64 -> signed_varint
-  | SInt64_int -> signed_varint_unboxed
-  | Int32 -> fun v -> unsigned_varint (Int64.of_int32 v)
-  | Int32_int -> unsigned_varint_unboxed
-  | UInt32 -> fun v -> unsigned_varint (Int64.of_int32 v)
-  | UInt32_int -> unsigned_varint_unboxed
-  | SInt32 -> fun v -> signed_varint (Int64.of_int32 v)
-  | SInt32_int -> signed_varint_unboxed
+  | Int64 -> varint ~signed:false
+  | Int64_int -> varint_unboxed ~signed:false
+  | UInt64 -> varint ~signed:false
+  | UInt64_int -> varint_unboxed ~signed:false
+  | SInt64 -> varint ~signed:true
+  | SInt64_int -> varint_unboxed ~signed:true
+  | Int32 -> fun v -> varint ~signed:false (Int64.of_int32 v)
+  | Int32_int -> varint_unboxed ~signed:false
+  | UInt32 -> fun v -> varint ~signed:false (Int64.of_int32 v)
+  | UInt32_int -> varint_unboxed ~signed:false
+  | SInt32 -> fun v -> varint ~signed:true (Int64.of_int32 v)
+  | SInt32_int -> varint_unboxed ~signed:true
 
   | Fixed64 -> fixed_64_bit
   | Fixed64_int -> fun v -> Fixed_64_bit (Int64.of_int v)
@@ -50,7 +48,7 @@ let rec field_of_spec: type a. a spec -> a -> Field.t = function
   | SFixed32 -> fixed_32_bit
   | SFixed32_int -> fun v -> Fixed_32_bit (Int32.of_int v)
 
-  | Bool -> fun v -> unsigned_varint_unboxed (match v with | true -> 1 | false -> 0)
+  | Bool -> fun v -> varint_unboxed ~signed:false (match v with | true -> 1 | false -> 0)
   | String -> fun v -> Length_delimited {offset = 0; length = String.length v; data = v}
   | Bytes -> fun v -> Length_delimited {offset = 0; length = Bytes.length v; data = Bytes.to_string v}
   | Enum f ->
@@ -60,7 +58,6 @@ let rec field_of_spec: type a. a spec -> a -> Field.t = function
     fun v ->
       let writer = to_proto v in
       Field.length_delimited (Writer.contents writer)
-
 
 let is_scalar: type a. a spec -> bool = function
   | String -> false
@@ -146,17 +143,78 @@ let serialize extension_ranges spec =
     serialize writer
 
 let%expect_test "signed varint" =
+
   let test v =
     let vl = Int64.of_int v in
-    Printf.printf "signed_varint %LdL = %s\n" vl (signed_varint vl |> Field.show);
+    Printf.printf "varint ~signed:true %LdL = %s\n" vl (varint ~signed:true vl |> Field.show);
+    Printf.printf "varint_unboxed ~signed:true %d = %s\n" v (varint_unboxed ~signed:true v |> Field.show);
+
+    let vl' = (varint ~signed:true vl |> Deserialize.read_varint ~signed:true ~type_name:"") in
+    Printf.printf "Signed: %LdL = %LdL (%b)\n" vl vl' (vl = vl');
+
+    let vl' = (varint ~signed:false vl |> Deserialize.read_varint ~signed:false ~type_name:"") in
+    Printf.printf "Unsigned: %LdL = %LdL (%b)\n" vl vl' (vl = vl');
+
+    let v' = (varint_unboxed ~signed:true v |> Deserialize.read_varint_unboxed ~signed:true ~type_name:"") in
+    Printf.printf "Signed unboxed: %d = %d (%b)\n" v v' (v = v');
+
+    let v' = (varint_unboxed ~signed:false v |> Deserialize.read_varint_unboxed ~signed:false ~type_name:"") in
+    Printf.printf "Unsigned unboxed: %d = %d (%b)\n" v v' (v=v');
     ()
   in
-  List.iter ~f:test [0; -1; 1; -2; 2; 2147483647; -2147483648];
+  List.iter ~f:test [0; -1; 1; -2; 2; 2147483647; -2147483648; Int.max_int; Int.min_int; ];
   [%expect {|
-    signed_varint 0L = (Field.Varint 0L)
-    signed_varint -1L = (Field.Varint 1L)
-    signed_varint 1L = (Field.Varint 2L)
-    signed_varint -2L = (Field.Varint 3L)
-    signed_varint 2L = (Field.Varint 4L)
-    signed_varint 2147483647L = (Field.Varint 4294967294L)
-    signed_varint -2147483648L = (Field.Varint 4294967295L) |}]
+    varint ~signed:true 0L = (Field.Varint 0L)
+    varint_unboxed ~signed:true 0 = (Field.Varint_unboxed 0)
+    Signed: 0L = 0L (true)
+    Unsigned: 0L = 0L (true)
+    Signed unboxed: 0 = 0 (true)
+    Unsigned unboxed: 0 = 0 (true)
+    varint ~signed:true -1L = (Field.Varint 1L)
+    varint_unboxed ~signed:true -1 = (Field.Varint_unboxed 1)
+    Signed: -1L = -1L (true)
+    Unsigned: -1L = -1L (true)
+    Signed unboxed: -1 = -1 (true)
+    Unsigned unboxed: -1 = -1 (true)
+    varint ~signed:true 1L = (Field.Varint 2L)
+    varint_unboxed ~signed:true 1 = (Field.Varint_unboxed 2)
+    Signed: 1L = 1L (true)
+    Unsigned: 1L = 1L (true)
+    Signed unboxed: 1 = 1 (true)
+    Unsigned unboxed: 1 = 1 (true)
+    varint ~signed:true -2L = (Field.Varint 3L)
+    varint_unboxed ~signed:true -2 = (Field.Varint_unboxed 3)
+    Signed: -2L = -2L (true)
+    Unsigned: -2L = -2L (true)
+    Signed unboxed: -2 = -2 (true)
+    Unsigned unboxed: -2 = -2 (true)
+    varint ~signed:true 2L = (Field.Varint 4L)
+    varint_unboxed ~signed:true 2 = (Field.Varint_unboxed 4)
+    Signed: 2L = 2L (true)
+    Unsigned: 2L = 2L (true)
+    Signed unboxed: 2 = 2 (true)
+    Unsigned unboxed: 2 = 2 (true)
+    varint ~signed:true 2147483647L = (Field.Varint 4294967294L)
+    varint_unboxed ~signed:true 2147483647 = (Field.Varint_unboxed 4294967294)
+    Signed: 2147483647L = 2147483647L (true)
+    Unsigned: 2147483647L = 2147483647L (true)
+    Signed unboxed: 2147483647 = 2147483647 (true)
+    Unsigned unboxed: 2147483647 = 2147483647 (true)
+    varint ~signed:true -2147483648L = (Field.Varint 4294967295L)
+    varint_unboxed ~signed:true -2147483648 = (Field.Varint_unboxed 4294967295)
+    Signed: -2147483648L = -2147483648L (true)
+    Unsigned: -2147483648L = -2147483648L (true)
+    Signed unboxed: -2147483648 = -2147483648 (true)
+    Unsigned unboxed: -2147483648 = -2147483648 (true)
+    varint ~signed:true 4611686018427387903L = (Field.Varint 9223372036854775806L)
+    varint_unboxed ~signed:true 4611686018427387903 = (Field.Varint_unboxed -2)
+    Signed: 4611686018427387903L = 4611686018427387903L (true)
+    Unsigned: 4611686018427387903L = 4611686018427387903L (true)
+    Signed unboxed: 4611686018427387903 = -1 (false)
+    Unsigned unboxed: 4611686018427387903 = 4611686018427387903 (true)
+    varint ~signed:true -4611686018427387904L = (Field.Varint 9223372036854775807L)
+    varint_unboxed ~signed:true -4611686018427387904 = (Field.Varint_unboxed -1)
+    Signed: -4611686018427387904L = -4611686018427387904L (true)
+    Unsigned: -4611686018427387904L = -4611686018427387904L (true)
+    Signed unboxed: -4611686018427387904 = -1 (false)
+    Unsigned unboxed: -4611686018427387904 = -4611686018427387904 (true) |}]
