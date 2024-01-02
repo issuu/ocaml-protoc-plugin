@@ -1,12 +1,50 @@
 open Base
 open Stdio
+[@@@ocaml.warning "-32"]
 
-module type Protobuf = sig
-  type t
-  val name : string
-  val encode : t -> string
-  val decode : string -> t
+module type Protoc_impl = sig
+  type m
+  val encode_pb_m: m -> Pbrt.Encoder.t -> unit
+  val decode_pb_m: Pbrt.Decoder.t -> m
 end
+
+module type Plugin_impl = sig
+  module M : sig
+    type t
+    val name' : unit -> string
+    val to_proto: t -> Ocaml_protoc_plugin.Writer.t
+    val from_proto_exn: Ocaml_protoc_plugin.Reader.t -> t
+  end
+end
+
+let make_tests (type v) (module Protoc: Protoc_impl) (module Plugin: Plugin_impl with type M.t = v) v_plugin =
+  let data = Plugin.M.to_proto v_plugin |> Ocaml_protoc_plugin.Writer.contents in
+  (* Assert decoding works *)
+  let v_protoc = Protoc.decode_pb_m (Pbrt.Decoder.of_string data) in
+  let protoc_encoder = Pbrt.Encoder.create () in
+  let () = Protoc.encode_pb_m v_protoc protoc_encoder in
+  let data_protoc = Pbrt.Encoder.to_string protoc_encoder in
+  let _v_plugin' = Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data_protoc) in
+  (* assert (Poly.equal v_plugin v_plugin'); *)
+  printf "%16s: Data length: %5d /%5d\n%!" (Plugin.M.name' ()) (String.length data) (String.length data_protoc);
+
+  let open Bechamel in
+    let test_encode =
+    Test.make_grouped ~name:"Encode"
+      [
+        Test.make ~name:"Plugin" (Staged.stage @@ fun () -> Plugin.M.to_proto v_plugin);
+        Test.make ~name:"Protoc" (Staged.stage @@ fun () -> Protoc.encode_pb_m v_protoc (Pbrt.Encoder.create ()))
+      ]
+  in
+  let test_decode =
+    Test.make_grouped ~name:"Decode"
+      [
+        Test.make ~name:"Plugin" (Staged.stage @@ fun () -> Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data));
+        Test.make ~name:"Protoc" (Staged.stage @@ fun () -> Protoc.decode_pb_m (Pbrt.Decoder.of_string data))
+      ]
+  in
+  Test.make_grouped ~name:(Plugin.M.name' ()) [test_encode; test_decode]
+
 let _ =
   Random.init 0;
   let module Gc = Stdlib.Gc in
@@ -14,48 +52,22 @@ let _ =
   let control = Gc.get () in
   Gc.set { control with minor_heap_size=4000_1000; space_overhead=500 }
 
-module Protoc_mod : Protobuf = struct
-  type t = Protoc.Bench.btree
-  let name = "Protoc"
-  let encode t =
-    let encoder = Pbrt.Encoder.create () in
-    Protoc.Bench.encode_pb_btree t encoder;
-    Pbrt.Encoder.to_string encoder
 
-  let decode data =
-    let decoder = Pbrt.Decoder.of_string data in
-    Protoc.Bench.decode_pb_btree decoder
-end
+let random_list ?(len=100) ~f () =
+  List.init (Random.int len) ~f:(fun _ -> f ())
 
-module Plugin_mod : Protobuf with type t = Plugin.Bench.Bench.Btree.t = struct
-  type t = Plugin.Bench.Bench.Btree.t
-  let name = "Plugin"
-  let encode t =
-    let writer = Plugin.Bench.Bench.Btree.to_proto t in
-    Ocaml_protoc_plugin.Writer.contents writer
-
-  let decode data =
-    let reader = Ocaml_protoc_plugin.Reader.create data in
-    Plugin.Bench.Bench.Btree.from_proto reader |> Ocaml_protoc_plugin.Result.get ~msg:"Unable to decode"
-end
+let random_string () =
+  String.init (Random.int 20) ~f:(fun _ -> Random.char ())
 
 let create_test_data ~depth () =
-  let module Btree = Plugin.Bench.Bench.Btree in
-  let module Data = Plugin.Bench.Bench.Data in
-  let module Enum = Plugin.Bench.Bench.Enum in
+  let module M = Plugin.Bench.M in
+  let module Data = Plugin.Bench.Data in
+  let module Enum = Plugin.Bench.Enum in
   let optional ~f () =
     match (Random.int 4 = 0) with
     | true -> None
     | false -> Some (f ())
   in
-  let random_string () =
-    String.init (Random.int 20) ~f:(fun _ -> Random.char ())
-  in
-
-  let random_list ?(len=100) ~f () =
-    List.init (Random.int len) ~f:(fun _ -> f ())
-  in
-
   let create_data () =
 
     let random_enum () =
@@ -86,20 +98,10 @@ let create_test_data ~depth () =
       let children =
         random_list ~len:8 ~f:(create_btree (n - 1)) () |> List.filter_opt
       in
-      Btree.make ~children ~data () |> Option.some
+      M.make ~children ~data () |> Option.some
   in
   create_btree depth ()
 
-let make_test (module P : Protobuf) data_str =
-  let data = P.decode data_str in
-  let open Bechamel in
-  let test_decode = Test.make ~name:"decode" (Staged.stage @@ fun () -> P.decode data_str) in
-  let test_encode = Test.make ~name:"encode" (Staged.stage @@ fun () -> P.encode data) in
-  Test.make_grouped ~name:P.name [test_decode; test_encode]
-
-let make_tests data_str =
-  [ make_test (module Protoc_mod) data_str; make_test (module Plugin_mod) data_str ]
-  |> Bechamel.Test.make_grouped ~name:"Protobuf"
 
 let benchmark tests =
   let open Bechamel in
@@ -136,18 +138,21 @@ let print_bench_results results =
   img (window, results) |> eol |> output_image
 
 let _ =
-  let data = create_test_data ~depth:2 () in
-  let data = Option.value_exn data in
-  let proto_str = Plugin_mod.encode data in
-  let _data = Plugin_mod.decode proto_str in
-  let data_protoc = Protoc_mod.decode proto_str in
-  let data_str' = Protoc_mod.encode data_protoc in
-  let data' = Plugin_mod.decode data_str' in
-  let data_str' = Plugin_mod.encode data' in
-  assert (String.equal data_str' proto_str);
-  printf "Data length: %d\n%!" (String.length proto_str);
+  let v_plugin = create_test_data ~depth:2 () |> Option.value_exn in
+  [ make_tests (module Protoc.Bench) (module Plugin.Bench) v_plugin;
+    make_tests (module Protoc.Int64) (module Plugin.Int64) 27;
+    make_tests (module Protoc.Float) (module Plugin.Float) 27.0;
+    make_tests (module Protoc.String) (module Plugin.String) "Benchmark";
+    make_tests (module Protoc.Enum) (module Plugin.Enum) Plugin.Enum.Enum.ED;
 
-  make_tests proto_str
-  |> benchmark
-  |> analyze
-  |> print_bench_results
+    random_list ~len:100 ~f:(fun () -> Random.int 1000) () |> make_tests (module Protoc.Int64_list) (module Plugin.Int64_list);
+    random_list ~len:100 ~f:(fun () -> Random.float 1000.0) () |> make_tests (module Protoc.Float_list) (module Plugin.Float_list);
+    random_list ~len:100 ~f:random_string () |> make_tests (module Protoc.String_list) (module Plugin.String_list);
+    (* random_list ~len:100 ~f:(fun () -> Plugin.Enum_list.Enum.ED) () |> make_tests (module Protoc.Enum_list) (module Plugin.Enum_list); *)
+  ]
+  |> List.iter ~f:(fun test ->
+    test
+    |> benchmark
+    |> analyze
+    |> print_bench_results
+  )

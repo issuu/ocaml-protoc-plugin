@@ -1,10 +1,19 @@
 (rule
- (targets bench.ml bench.mli)
+ (targets
+   bench.ml bench.mli
+   int64.ml  string.ml  float.ml  enum.ml
+   int64.mli string.mli float.mli enum.mli
+   int64_list.ml  string_list.ml  float_list.ml  enum_list.ml
+   int64_list.mli string_list.mli float_list.mli enum_list.mli
+ )
  (deps
-  (:proto ../bench.proto))
+  (:proto
+    ../bench.proto
+    ../int64.proto ../string.proto ../float.proto ../enum.proto
+    ../int64_list.proto ../string_list.proto ../float_list.proto ../enum_list.proto))
  (action
-  (run ocaml-protoc --binary --ml_out . %{proto})))
+  (bash "for p in %{proto}; do ocaml-protoc --binary --int32_type int_t --int64_type int_t --ml_out . $p; done")))
 
 (library
- (name        protoc)
- (libraries   pbrt))
+ (name  protoc)
+ (libraries pbrt))

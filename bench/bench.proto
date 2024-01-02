@@ -1,7 +1,5 @@
 syntax = "proto3";
 
-package bench;
-
 enum Enum {
   EA = 0;
   EB = 1;
@@ -20,7 +18,7 @@ message data {
   //repeated Enum e = 7;
 }
 
-message btree {
-  repeated btree children = 1;
+message M {
+  repeated M children = 1;
   repeated data data = 2;
 }
