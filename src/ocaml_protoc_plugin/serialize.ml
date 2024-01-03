@@ -67,14 +67,14 @@ let is_scalar: type a. a spec -> bool = function
   | _ -> true
 
 let rec write: type a. a compound -> Writer.t -> a -> unit = function
-  | Basic (index, Message (to_proto), _) -> begin
+  | Basic (index, Message to_proto, _) -> begin
       fun writer v ->
       let done_f = Writer.add_length_delimited_field_header writer index in
       let _writer = to_proto writer v in
       done_f ()
     end
   | Repeated (index, Message to_proto, _) ->
-    let write = write (Basic (index, Message to_proto, Required)) in
+    let write = write (Basic (index, Message to_proto, None)) in
     fun writer vs -> List.iter ~f:(fun v -> write writer v) vs
   | Repeated (index, spec, Packed) when is_scalar spec -> begin
       let f = field_of_spec spec in
@@ -91,21 +91,20 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
   | Basic (index, spec, default) -> begin
       let f = field_of_spec spec in
       match default with
-      | Proto3 -> begin
-          fun writer v -> match f v with
-            | Varint 0L -> ()
-            | Varint_unboxed 0 -> ()
-            | Fixed_64_bit 0L -> ()
-            | Fixed_32_bit 0l -> ()
-            | Length_delimited {length = 0; _} -> ()
-            | field -> Writer.write_field writer index field
-        end
-      | Proto2 default -> fun writer -> begin
+      | Some default -> fun writer -> begin
           function
           | v when v = default -> ()
           | v -> Writer.write_field writer index (f v)
         end
-      | Required -> fun writer v -> Writer.write_field writer index (f v)
+      | None -> fun writer v -> Writer.write_field writer index (f v)
+    end
+  | Basic_opt (index, Message to_proto) -> begin
+     fun writer -> function
+       | Some v ->
+          let done_f = Writer.add_length_delimited_field_header writer index in
+          let _ = to_proto writer v in
+          done_f ()
+       | None -> ()
     end
   | Basic_opt (index, spec) -> begin
     let f = field_of_spec spec in
@@ -118,7 +117,7 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
         | `not_set -> ()
         | v ->
             let Oneof_elem (index, spec, v) = f v in
-            write (Basic (index, spec, Required)) writer v
+            write (Basic (index, spec, None)) writer v
     end
 
 (** Allow emitted code to present a protobuf specification. *)

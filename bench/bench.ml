@@ -1,7 +1,6 @@
 open Base
 open Stdio
 [@@@ocaml.warning "-32"]
-
 module type Protoc_impl = sig
   type m
   val encode_pb_m: m -> Pbrt.Encoder.t -> unit
@@ -12,6 +11,8 @@ module type Plugin_impl = sig
   module M : sig
     type t
     val name' : unit -> string
+    val show: t -> string
+    val equal: t -> t -> bool
     val to_proto: t -> Ocaml_protoc_plugin.Writer.t
     val from_proto_exn: Ocaml_protoc_plugin.Reader.t -> t
   end
@@ -19,14 +20,22 @@ end
 
 let make_tests (type v) (module Protoc: Protoc_impl) (module Plugin: Plugin_impl with type M.t = v) v_plugin =
   let data = Plugin.M.to_proto v_plugin |> Ocaml_protoc_plugin.Writer.contents in
+  (* We need to reconstruct the data, as we might loose precision when using floats (32bit, compared to doubles) (64 bit) *)
+  let v_plugin = Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data) in
   (* Assert decoding works *)
   let v_protoc = Protoc.decode_pb_m (Pbrt.Decoder.of_string data) in
   let protoc_encoder = Pbrt.Encoder.create () in
   let () = Protoc.encode_pb_m v_protoc protoc_encoder in
   let data_protoc = Pbrt.Encoder.to_string protoc_encoder in
-  let _v_plugin' = Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data_protoc) in
-  (* assert (Poly.equal v_plugin v_plugin'); *)
-  printf "%16s: Data length: %5d /%5d\n%!" (Plugin.M.name' ()) (String.length data) (String.length data_protoc);
+  let v_plugin' = Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data_protoc) in
+  let () = match Plugin.M.equal v_plugin v_plugin' with
+    | true -> ()
+    | false ->
+       eprintf "Orig: %s\n" (Plugin.M.show v_plugin);
+       eprintf "New: %s\n" (Plugin.M.show v_plugin');
+       failwith "Data not the same"
+  in
+  printf "%16s: Data length: %5d /%5d (%b)\n%!" (Plugin.M.name' ()) (String.length data) (String.length data_protoc) (Poly.equal v_plugin v_plugin');
 
   let open Bechamel in
     let test_encode =
@@ -71,13 +80,7 @@ let create_test_data ~depth () =
   let create_data () =
 
     let random_enum () =
-      match Random.int 5 with
-      | 0 -> Enum.EA
-      | 1 -> Enum.EB
-      | 2 -> Enum.EC
-      | 3 -> Enum.ED
-      | 4 -> Enum.EE
-      | _ -> failwith "Impossible value"
+      Array.random_element_exn [| Enum.EA; Enum.EB; Enum.EC; Enum.ED; Enum.EE; |]
     in
     let s1 = optional ~f:random_string () in
     let n1 = optional ~f:(random_list ~f:(fun () -> Random.int 1_000)) () in
@@ -106,8 +109,7 @@ let create_test_data ~depth () =
 let benchmark tests =
   let open Bechamel in
   let instances = Bechamel_perf.Instance.[ cpu_clock ] in
-  let cfg = Benchmark.cfg ~limit:1000 ~stabilize:true ~compaction:true
-              ~quota:(Time.second 2.5) () in
+  let cfg = Benchmark.cfg ~stabilize:true ~compaction:true () in
   Benchmark.all cfg instances tests
 
 let analyze results =
@@ -141,7 +143,7 @@ let _ =
   let v_plugin = create_test_data ~depth:2 () |> Option.value_exn in
   [ make_tests (module Protoc.Bench) (module Plugin.Bench) v_plugin;
     make_tests (module Protoc.Int64) (module Plugin.Int64) 27;
-    make_tests (module Protoc.Float) (module Plugin.Float) 27.0;
+    make_tests (module Protoc.Float) (module Plugin.Float) 27.0001;
     make_tests (module Protoc.String) (module Plugin.String) "Benchmark";
     make_tests (module Protoc.Enum) (module Plugin.Enum) Plugin.Enum.Enum.ED;
 

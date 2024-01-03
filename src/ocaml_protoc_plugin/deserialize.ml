@@ -178,7 +178,7 @@ let sentinal: type a. a compound -> (int * (unit decoder * Reader.boxed)) list *
       | field -> error_wrong_field "message" field
     in
     ([index, (read, Unboxed)], get)
-  | Basic (index, spec, Required) ->
+  | Basic (index, spec, None) ->
     let expect, read = type_of_spec spec in
     let boxed = get_boxed_type expect in
     let v = ref None in
@@ -194,9 +194,9 @@ let sentinal: type a. a compound -> (int * (unit decoder * Reader.boxed)) list *
     let field_type, read = type_of_spec spec in
     let boxed = get_boxed_type field_type in
     let default = match default with
-      | Proto2 default -> default
-      | Required
-      | Proto3 -> begin
+
+      | Some default -> default
+      | None -> begin
           default_of_field_type field_type
           |> fun v -> try read v with Result.Error _ -> failwith "Cannot decode default field value"
         end

@@ -41,7 +41,7 @@ end = struct
 
   let to_proto' =
     let apply = fun ~f:f' writer mangle_names -> f' [] writer mangle_names in
-    let spec = Runtime'.Serialize.C.( basic (1, bool, proto3) ^:: nil ) in
+    let spec = Runtime'.Serialize.C.( basic (1, bool, Some (false)) ^:: nil ) in
     let serialize = Runtime'.Serialize.serialize [] spec in
     fun writer t -> apply ~f:serialize writer t
 
@@ -49,7 +49,7 @@ end = struct
 
   let from_proto_exn =
     let constructor = fun _extensions mangle_names -> mangle_names in
-    let spec = Runtime'.Deserialize.C.( basic (1, bool, proto3) ^:: nil ) in
+    let spec = Runtime'.Deserialize.C.( basic (1, bool, Some (false)) ^:: nil ) in
     let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
     fun writer -> deserialize writer
     let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)

@@ -1,4 +1,9 @@
 open StdLabels
+(* Extend scope to have a map over default enum values. enum type string -> enum default value string *)
+(* That should be in the type db, and possibly a different map. *)
+(* We have the full type name (I assume), so we can take the first in the list, and strip the last . off to get the name. *)
+(* We should also have proto name -> proto default name. Then we can lookup, as we already do *)
+
 
 (* This module is a bit elaborate.
    The idea is to construct the actual types needed
@@ -111,41 +116,42 @@ let string_of_default: type a. a spec -> a -> string = function
   | Bool -> string_of_bool
   | String -> sprintf "{|%s|}"
   | Bytes -> fun bytes -> sprintf "(Bytes.of_string {|%s|})" (Bytes.to_string bytes)
-  | Enum (_, _, _,  s) -> fun _ -> Option.value_exn s
+  | Enum (_, _, _,  Some s) -> fun _ -> s
+  | Enum (s', s, _,  None) -> fun _ -> sprintf "(%s 0 (* And its an %s *))" s' s (* Is this the ocaml name???. Maybe we need the protoc name  *)
   | Message _ -> failwith "Messages defaults are not relevant"
 
-let default_of_spec: type a. a spec -> string = fun spec -> match spec with
-  | Double -> string_of_default spec 0.0
-  | Float -> string_of_default spec 0.0
+let default_of_spec: type a. a spec -> a = fun spec -> match spec with
+  | Double -> 0.0
+  | Float -> 0.0
 
-  | Int32 -> string_of_default spec 0l
-  | UInt32 -> string_of_default spec 0l
-  | SInt32 -> string_of_default spec 0l
-  | Fixed32 -> string_of_default spec 0l
-  | SFixed32 -> string_of_default spec 0l
+  | Int32 -> 0l
+  | UInt32 -> 0l
+  | SInt32 -> 0l
+  | Fixed32 -> 0l
+  | SFixed32 -> 0l
 
-  | Int32_int -> string_of_default spec 0
-  | UInt32_int -> string_of_default spec 0
-  | SInt32_int -> string_of_default spec 0
-  | Fixed32_int -> string_of_default spec 0
-  | SFixed32_int -> string_of_default spec 0
+  | Int32_int -> 0
+  | UInt32_int -> 0
+  | SInt32_int -> 0
+  | Fixed32_int -> 0
+  | SFixed32_int -> 0
 
-  | Int64 -> string_of_default spec 0L
-  | UInt64 -> string_of_default spec 0L
-  | SInt64 -> string_of_default spec 0L
-  | Fixed64 -> string_of_default spec 0L
-  | SFixed64 -> string_of_default spec 0L
+  | Int64 -> 0L
+  | UInt64 -> 0L
+  | SInt64 -> 0L
+  | Fixed64 -> 0L
+  | SFixed64 -> 0L
 
-  | UInt64_int -> string_of_default spec 0
-  | Int64_int -> string_of_default spec 0
-  | SInt64_int -> string_of_default spec 0
-  | Fixed64_int -> string_of_default spec 0
-  | SFixed64_int -> string_of_default spec 0
+  | UInt64_int -> 0
+  | Int64_int -> 0
+  | SInt64_int -> 0
+  | Fixed64_int -> 0
+  | SFixed64_int -> 0
 
-  | Bool -> string_of_default spec false
-  | String -> string_of_default spec ""
-  | Bytes -> string_of_default spec (Bytes.of_string "")
-  | Enum (_ , s, _,  _) -> sprintf {|(%s 0)|} s
+  | Bool -> false
+  | String -> ""
+  | Bytes -> Bytes.of_string ""
+  | Enum _-> failwith "Enums not handled here"
   | Message _ -> failwith "Messages defaults are not relevant"
 
 let string_of_spec: type a. [`Deserialize | `Serialize] -> a spec -> string = fun dir spec ->
@@ -229,8 +235,17 @@ let spec_of_enum ~scope type_name default =
   let type' = Scope.get_scoped_name ~postfix:"t" scope type_name in
   let deserialize_func = Scope.get_scoped_name ~postfix:"from_int_exn" scope type_name in
   let serialize_func = Scope.get_scoped_name ~postfix:"to_int" scope type_name in
-  let default = Option.map ~f:(fun default -> Scope.get_scoped_name ~postfix:default scope type_name) default in
-  Enum (type', deserialize_func, serialize_func, default)
+  let default =
+    match default with
+    | Some default ->
+      Option.value_exn type_name
+      |> (fun type_name -> sprintf "%s.%s" type_name default)
+      |> Option.some
+      |> Scope.get_scoped_name scope
+    | None ->
+      Scope.get_scoped_enum_name scope type_name
+  in
+  (type', deserialize_func, serialize_func, Some default)
 
 open Parameters
 let spec_of_type ~params ~scope type_name default =
@@ -271,17 +286,16 @@ let spec_of_type ~params ~scope type_name default =
 
   | TYPE_GROUP    -> failwith "Groups not supported"
   | TYPE_MESSAGE  -> Espec (spec_of_message ~scope type_name)
-  | TYPE_ENUM     -> Espec (spec_of_enum ~scope type_name default)
+  | TYPE_ENUM     -> Espec (Enum (spec_of_enum ~scope type_name default))
 
 let string_of_oneof_elem dir (Oneof_elem (index, spec, (_, deser, ser, _))) =
   let spec_string = string_of_spec dir spec in
   let s = match dir with `Deserialize -> deser | `Serialize -> ser in
   sprintf "oneof_elem (%d, %s, %s)" index spec_string s
 
-let string_of_proto_type: type a. a spec -> a proto_type -> string = fun spec -> function
-  | Proto3 -> "proto3"
-  | Proto2 default -> sprintf "proto2 (%s)" (string_of_default spec default)
-  | Required -> "required"
+let string_of_proto_type: type a. a spec -> a option -> string = fun spec -> function
+  | Some s -> sprintf "Some (%s)" (string_of_default spec s)
+  | None -> "None"
 
 let string_of_packed = function
   | Packed -> "packed"
@@ -289,15 +303,14 @@ let string_of_packed = function
 
 let c_of_compound: type a. string -> a compound -> c = fun name compound ->
   match compound with
-  | Basic (index, spec, proto_type) ->
-    let deserialize_spec = sprintf "basic (%d, %s, %s)" index (string_of_spec `Deserialize spec) (string_of_proto_type spec proto_type) in
-    let serialize_spec = sprintf "basic (%d, %s, %s)" index (string_of_spec `Serialize spec) (string_of_proto_type spec proto_type) in
+  | Basic (index, spec, default) ->
+    let deserialize_spec = sprintf "basic (%d, %s, %s)" index (string_of_spec `Deserialize spec) (string_of_proto_type spec default) in
+    let serialize_spec = sprintf "basic (%d, %s, %s)" index (string_of_spec `Serialize spec) (string_of_proto_type spec default) in
     let modifier =
-      match spec, proto_type with
-      | _, Required -> Required
+      match spec, default with
+      | _, None-> Required
       | Message _, _ -> Optional
-      | _, Proto3 -> No_modifier (default_of_spec spec)
-      | _, Proto2 v -> No_modifier (string_of_default spec v)
+      | _, Some v -> No_modifier (string_of_default spec v)
     in
     let type' = { name = type_of_spec spec; modifier } in
     { name; type'; deserialize_spec; serialize_spec }
@@ -344,38 +357,38 @@ let c_of_field ~params ~syntax ~scope field =
   (* Required message *)
   | `Proto2, { label = Some Label.LABEL_REQUIRED; type' = Some TYPE_MESSAGE; type_name; _ } ->
     let spec = spec_of_message ~scope type_name in
-    Basic (number, spec, Required)
+    Basic (number, spec, None)
     |> c_of_compound name
 
   (* Enum under proto2 with a default value *)
   | `Proto2, { label = Some Label.LABEL_OPTIONAL; type' = Some TYPE_ENUM; type_name; default_value = Some default; _ } ->
     let spec = spec_of_enum ~scope type_name (Some default) in
-    Basic (number, spec, Proto2 (Some default))
+    Basic (number, Enum spec, Some default)
     |> c_of_compound name
 
   (* Enum under proto2 with no default value *)
   | `Proto2, { label = Some Label.LABEL_OPTIONAL; type' = Some TYPE_ENUM; type_name; default_value = None; _ } ->
     let spec = spec_of_enum ~scope type_name None in
-    Basic_opt (number, spec)
+    Basic_opt (number, Enum spec)
     |> c_of_compound name
 
   (* Required Enum under proto2 *)
   | `Proto2, { label = Some Label.LABEL_REQUIRED; type' = Some TYPE_ENUM; type_name; _ } ->
     let spec = spec_of_enum ~scope type_name None in
-    Basic (number, spec, Required)
+    Basic (number, Enum spec, None)
     |> c_of_compound name
 
   (* Required fields under proto2 *)
   | `Proto2, { label = Some Label.LABEL_REQUIRED; type' = Some type'; type_name; _ } ->
     let Espec spec = spec_of_type ~params ~scope type_name None type' in
-    Basic (number, spec, Required)
+    Basic (number, spec, None)
     |> c_of_compound name
 
   (* Proto2 optional fields with a default *)
   | `Proto2, { label = Some Label.LABEL_OPTIONAL; type' = Some type'; type_name; default_value = Some default; _ } ->
     let Espec spec = spec_of_type ~params ~scope type_name (Some default) type' in
     let default = make_default spec default in
-    Basic (number, spec, Proto2 default)
+    Basic (number, spec, Some default)
     |> c_of_compound name
 
   (* Proto2 optional fields - no default *)
@@ -390,10 +403,18 @@ let c_of_field ~params ~syntax ~scope field =
     Basic_opt (number, spec)
     |> c_of_compound name
 
+  (* Proto3 enum implicitly optional field *)
+  | `Proto3, { label = Some Label.LABEL_OPTIONAL; type' = Some TYPE_ENUM; type_name; _} ->
+    let spec = spec_of_enum ~scope type_name None in
+    let (_, _, _, default) = spec in
+    Basic (number, Enum spec, default)
+    |> c_of_compound name
+
   (* Proto3 implicitly optional field *)
   | `Proto3, { label = Some Label.LABEL_OPTIONAL; type' = Some type'; type_name; _} ->
     let Espec spec = spec_of_type ~params ~scope type_name None type' in
-    Basic (number, spec, Proto3)
+    let default = default_of_spec spec in
+    Basic (number, spec, Some default)
     |> c_of_compound name
 
   (* Repeated fields cannot have a default *)
@@ -414,7 +435,7 @@ let c_of_field ~params ~syntax ~scope field =
       | `Proto2, _ -> Not_packed
       | `Proto3, _ -> Packed
     in
-    Repeated (number, spec, packed)
+    Repeated (number, Enum spec, packed)
     |> c_of_compound name
 
   (* Repeated basic type *)

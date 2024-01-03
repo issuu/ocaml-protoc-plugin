@@ -547,7 +547,7 @@ module Google = struct
 
       let to_proto' =
         let apply = fun ~f:f' writer { name; input_type; output_type; options; client_streaming; server_streaming } -> f' [] writer name input_type output_type options client_streaming server_streaming in
-        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (3, string) ^:: basic_opt (4, (message (fun t -> MethodOptions.to_proto' t))) ^:: basic (5, bool, proto2 (false)) ^:: basic (6, bool, proto2 (false)) ^:: nil ) in
+        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (3, string) ^:: basic_opt (4, (message (fun t -> MethodOptions.to_proto' t))) ^:: basic (5, bool, Some (false)) ^:: basic (6, bool, Some (false)) ^:: nil ) in
         let serialize = Runtime'.Serialize.serialize [] spec in
         fun writer t -> apply ~f:serialize writer t
 
@@ -555,7 +555,7 @@ module Google = struct
 
       let from_proto_exn =
         let constructor = fun _extensions name input_type output_type options client_streaming server_streaming -> { name; input_type; output_type; options; client_streaming; server_streaming } in
-        let spec = Runtime'.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (3, string) ^:: basic_opt (4, (message (fun t -> MethodOptions.from_proto_exn t))) ^:: basic (5, bool, proto2 (false)) ^:: basic (6, bool, proto2 (false)) ^:: nil ) in
+        let spec = Runtime'.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (3, string) ^:: basic_opt (4, (message (fun t -> MethodOptions.from_proto_exn t))) ^:: basic (5, bool, Some (false)) ^:: basic (6, bool, Some (false)) ^:: nil ) in
         let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
         fun writer -> deserialize writer
         let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)
@@ -614,7 +614,7 @@ module Google = struct
 
       let to_proto' =
         let apply = fun ~f:f' writer { java_package; java_outer_classname; java_multiple_files; java_generate_equals_and_hash; java_string_check_utf8; optimize_for; go_package; cc_generic_services; java_generic_services; py_generic_services; php_generic_services; deprecated; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_metadata_namespace; ruby_package; uninterpreted_option; extensions' } -> f' extensions' writer java_package java_outer_classname java_multiple_files java_generate_equals_and_hash java_string_check_utf8 optimize_for go_package cc_generic_services java_generic_services py_generic_services php_generic_services deprecated cc_enable_arenas objc_class_prefix csharp_namespace swift_prefix php_class_prefix php_namespace php_metadata_namespace ruby_package uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (8, string) ^:: basic (10, bool, proto2 (false)) ^:: basic_opt (20, bool) ^:: basic (27, bool, proto2 (false)) ^:: basic (9, (enum FileOptions.OptimizeMode.to_int), proto2 (FileOptions.OptimizeMode.SPEED)) ^:: basic_opt (11, string) ^:: basic (16, bool, proto2 (false)) ^:: basic (17, bool, proto2 (false)) ^:: basic (18, bool, proto2 (false)) ^:: basic (42, bool, proto2 (false)) ^:: basic (23, bool, proto2 (false)) ^:: basic (31, bool, proto2 (true)) ^:: basic_opt (36, string) ^:: basic_opt (37, string) ^:: basic_opt (39, string) ^:: basic_opt (40, string) ^:: basic_opt (41, string) ^:: basic_opt (44, string) ^:: basic_opt (45, string) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (8, string) ^:: basic (10, bool, Some (false)) ^:: basic_opt (20, bool) ^:: basic (27, bool, Some (false)) ^:: basic (9, (enum FileOptions.OptimizeMode.to_int), Some (FileOptions.OptimizeMode.SPEED)) ^:: basic_opt (11, string) ^:: basic (16, bool, Some (false)) ^:: basic (17, bool, Some (false)) ^:: basic (18, bool, Some (false)) ^:: basic (42, bool, Some (false)) ^:: basic (23, bool, Some (false)) ^:: basic (31, bool, Some (true)) ^:: basic_opt (36, string) ^:: basic_opt (37, string) ^:: basic_opt (39, string) ^:: basic_opt (40, string) ^:: basic_opt (41, string) ^:: basic_opt (44, string) ^:: basic_opt (45, string) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
         let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
         fun writer t -> apply ~f:serialize writer t
 
@@ -622,7 +622,7 @@ module Google = struct
 
       let from_proto_exn =
         let constructor = fun extensions' java_package java_outer_classname java_multiple_files java_generate_equals_and_hash java_string_check_utf8 optimize_for go_package cc_generic_services java_generic_services py_generic_services php_generic_services deprecated cc_enable_arenas objc_class_prefix csharp_namespace swift_prefix php_class_prefix php_namespace php_metadata_namespace ruby_package uninterpreted_option -> { java_package; java_outer_classname; java_multiple_files; java_generate_equals_and_hash; java_string_check_utf8; optimize_for; go_package; cc_generic_services; java_generic_services; py_generic_services; php_generic_services; deprecated; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_metadata_namespace; ruby_package; uninterpreted_option; extensions' } in
-        let spec = Runtime'.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (8, string) ^:: basic (10, bool, proto2 (false)) ^:: basic_opt (20, bool) ^:: basic (27, bool, proto2 (false)) ^:: basic (9, (enum FileOptions.OptimizeMode.from_int_exn), proto2 (FileOptions.OptimizeMode.SPEED)) ^:: basic_opt (11, string) ^:: basic (16, bool, proto2 (false)) ^:: basic (17, bool, proto2 (false)) ^:: basic (18, bool, proto2 (false)) ^:: basic (42, bool, proto2 (false)) ^:: basic (23, bool, proto2 (false)) ^:: basic (31, bool, proto2 (true)) ^:: basic_opt (36, string) ^:: basic_opt (37, string) ^:: basic_opt (39, string) ^:: basic_opt (40, string) ^:: basic_opt (41, string) ^:: basic_opt (44, string) ^:: basic_opt (45, string) ^:: repeated (999, (message (fun t -> UninterpretedOption.from_proto_exn t)), not_packed) ^:: nil ) in
+        let spec = Runtime'.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (8, string) ^:: basic (10, bool, Some (false)) ^:: basic_opt (20, bool) ^:: basic (27, bool, Some (false)) ^:: basic (9, (enum FileOptions.OptimizeMode.from_int_exn), Some (FileOptions.OptimizeMode.SPEED)) ^:: basic_opt (11, string) ^:: basic (16, bool, Some (false)) ^:: basic (17, bool, Some (false)) ^:: basic (18, bool, Some (false)) ^:: basic (42, bool, Some (false)) ^:: basic (23, bool, Some (false)) ^:: basic (31, bool, Some (true)) ^:: basic_opt (36, string) ^:: basic_opt (37, string) ^:: basic_opt (39, string) ^:: basic_opt (40, string) ^:: basic_opt (41, string) ^:: basic_opt (44, string) ^:: basic_opt (45, string) ^:: repeated (999, (message (fun t -> UninterpretedOption.from_proto_exn t)), not_packed) ^:: nil ) in
         let deserialize = Runtime'.Deserialize.deserialize [(1000, 536870912)] spec constructor in
         fun writer -> deserialize writer
         let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)
@@ -649,7 +649,7 @@ module Google = struct
 
       let to_proto' =
         let apply = fun ~f:f' writer { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions' } -> f' extensions' writer message_set_wire_format no_standard_descriptor_accessor deprecated map_entry uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( basic (1, bool, proto2 (false)) ^:: basic (2, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic_opt (7, bool) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let spec = Runtime'.Serialize.C.( basic (1, bool, Some (false)) ^:: basic (2, bool, Some (false)) ^:: basic (3, bool, Some (false)) ^:: basic_opt (7, bool) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
         let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
         fun writer t -> apply ~f:serialize writer t
 
@@ -657,7 +657,7 @@ module Google = struct
 
       let from_proto_exn =
         let constructor = fun extensions' message_set_wire_format no_standard_descriptor_accessor deprecated map_entry uninterpreted_option -> { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions' } in
-        let spec = Runtime'.Deserialize.C.( basic (1, bool, proto2 (false)) ^:: basic (2, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic_opt (7, bool) ^:: repeated (999, (message (fun t -> UninterpretedOption.from_proto_exn t)), not_packed) ^:: nil ) in
+        let spec = Runtime'.Deserialize.C.( basic (1, bool, Some (false)) ^:: basic (2, bool, Some (false)) ^:: basic (3, bool, Some (false)) ^:: basic_opt (7, bool) ^:: repeated (999, (message (fun t -> UninterpretedOption.from_proto_exn t)), not_packed) ^:: nil ) in
         let deserialize = Runtime'.Deserialize.deserialize [(1000, 536870912)] spec constructor in
         fun writer -> deserialize writer
         let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)
@@ -739,7 +739,7 @@ module Google = struct
 
       let to_proto' =
         let apply = fun ~f:f' writer { ctype; packed; jstype; lazy'; unverified_lazy; deprecated; weak; uninterpreted_option; extensions' } -> f' extensions' writer ctype packed jstype lazy' unverified_lazy deprecated weak uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( basic (1, (enum FieldOptions.CType.to_int), proto2 (FieldOptions.CType.STRING)) ^:: basic_opt (2, bool) ^:: basic (6, (enum FieldOptions.JSType.to_int), proto2 (FieldOptions.JSType.JS_NORMAL)) ^:: basic (5, bool, proto2 (false)) ^:: basic (15, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic (10, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let spec = Runtime'.Serialize.C.( basic (1, (enum FieldOptions.CType.to_int), Some (FieldOptions.CType.STRING)) ^:: basic_opt (2, bool) ^:: basic (6, (enum FieldOptions.JSType.to_int), Some (FieldOptions.JSType.JS_NORMAL)) ^:: basic (5, bool, Some (false)) ^:: basic (15, bool, Some (false)) ^:: basic (3, bool, Some (false)) ^:: basic (10, bool, Some (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
         let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
         fun writer t -> apply ~f:serialize writer t
 
@@ -747,7 +747,7 @@ module Google = struct
 
       let from_proto_exn =
         let constructor = fun extensions' ctype packed jstype lazy' unverified_lazy deprecated weak uninterpreted_option -> { ctype; packed; jstype; lazy'; unverified_lazy; deprecated; weak; uninterpreted_option; extensions' } in
-        let spec = Runtime'.Deserialize.C.( basic (1, (enum FieldOptions.CType.from_int_exn), proto2 (FieldOptions.CType.STRING)) ^:: basic_opt (2, bool) ^:: basic (6, (enum FieldOptions.JSType.from_int_exn), proto2 (FieldOptions.JSType.JS_NORMAL)) ^:: basic (5, bool, proto2 (false)) ^:: basic (15, bool, proto2 (false)) ^:: basic (3, bool, proto2 (false)) ^:: basic (10, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.from_proto_exn t)), not_packed) ^:: nil ) in
+        let spec = Runtime'.Deserialize.C.( basic (1, (enum FieldOptions.CType.from_int_exn), Some (FieldOptions.CType.STRING)) ^:: basic_opt (2, bool) ^:: basic (6, (enum FieldOptions.JSType.from_int_exn), Some (FieldOptions.JSType.JS_NORMAL)) ^:: basic (5, bool, Some (false)) ^:: basic (15, bool, Some (false)) ^:: basic (3, bool, Some (false)) ^:: basic (10, bool, Some (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.from_proto_exn t)), not_packed) ^:: nil ) in
         let deserialize = Runtime'.Deserialize.deserialize [(1000, 536870912)] spec constructor in
         fun writer -> deserialize writer
         let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)
@@ -804,7 +804,7 @@ module Google = struct
 
       let to_proto' =
         let apply = fun ~f:f' writer { allow_alias; deprecated; uninterpreted_option; extensions' } -> f' extensions' writer allow_alias deprecated uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( basic_opt (2, bool) ^:: basic (3, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let spec = Runtime'.Serialize.C.( basic_opt (2, bool) ^:: basic (3, bool, Some (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
         let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
         fun writer t -> apply ~f:serialize writer t
 
@@ -812,7 +812,7 @@ module Google = struct
 
       let from_proto_exn =
         let constructor = fun extensions' allow_alias deprecated uninterpreted_option -> { allow_alias; deprecated; uninterpreted_option; extensions' } in
-        let spec = Runtime'.Deserialize.C.( basic_opt (2, bool) ^:: basic (3, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.from_proto_exn t)), not_packed) ^:: nil ) in
+        let spec = Runtime'.Deserialize.C.( basic_opt (2, bool) ^:: basic (3, bool, Some (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.from_proto_exn t)), not_packed) ^:: nil ) in
         let deserialize = Runtime'.Deserialize.deserialize [(1000, 536870912)] spec constructor in
         fun writer -> deserialize writer
         let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)
@@ -837,7 +837,7 @@ module Google = struct
 
       let to_proto' =
         let apply = fun ~f:f' writer { deprecated; uninterpreted_option; extensions' } -> f' extensions' writer deprecated uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( basic (1, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let spec = Runtime'.Serialize.C.( basic (1, bool, Some (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
         let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
         fun writer t -> apply ~f:serialize writer t
 
@@ -845,7 +845,7 @@ module Google = struct
 
       let from_proto_exn =
         let constructor = fun extensions' deprecated uninterpreted_option -> { deprecated; uninterpreted_option; extensions' } in
-        let spec = Runtime'.Deserialize.C.( basic (1, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.from_proto_exn t)), not_packed) ^:: nil ) in
+        let spec = Runtime'.Deserialize.C.( basic (1, bool, Some (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.from_proto_exn t)), not_packed) ^:: nil ) in
         let deserialize = Runtime'.Deserialize.deserialize [(1000, 536870912)] spec constructor in
         fun writer -> deserialize writer
         let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)
@@ -870,7 +870,7 @@ module Google = struct
 
       let to_proto' =
         let apply = fun ~f:f' writer { deprecated; uninterpreted_option; extensions' } -> f' extensions' writer deprecated uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( basic (33, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let spec = Runtime'.Serialize.C.( basic (33, bool, Some (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
         let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
         fun writer t -> apply ~f:serialize writer t
 
@@ -878,7 +878,7 @@ module Google = struct
 
       let from_proto_exn =
         let constructor = fun extensions' deprecated uninterpreted_option -> { deprecated; uninterpreted_option; extensions' } in
-        let spec = Runtime'.Deserialize.C.( basic (33, bool, proto2 (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.from_proto_exn t)), not_packed) ^:: nil ) in
+        let spec = Runtime'.Deserialize.C.( basic (33, bool, Some (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.from_proto_exn t)), not_packed) ^:: nil ) in
         let deserialize = Runtime'.Deserialize.deserialize [(1000, 536870912)] spec constructor in
         fun writer -> deserialize writer
         let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)
@@ -930,7 +930,7 @@ module Google = struct
 
       let to_proto' =
         let apply = fun ~f:f' writer { deprecated; idempotency_level; uninterpreted_option; extensions' } -> f' extensions' writer deprecated idempotency_level uninterpreted_option in
-        let spec = Runtime'.Serialize.C.( basic (33, bool, proto2 (false)) ^:: basic (34, (enum MethodOptions.IdempotencyLevel.to_int), proto2 (MethodOptions.IdempotencyLevel.IDEMPOTENCY_UNKNOWN)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
+        let spec = Runtime'.Serialize.C.( basic (33, bool, Some (false)) ^:: basic (34, (enum MethodOptions.IdempotencyLevel.to_int), Some (MethodOptions.IdempotencyLevel.IDEMPOTENCY_UNKNOWN)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
         let serialize = Runtime'.Serialize.serialize [(1000, 536870912)] spec in
         fun writer t -> apply ~f:serialize writer t
 
@@ -938,7 +938,7 @@ module Google = struct
 
       let from_proto_exn =
         let constructor = fun extensions' deprecated idempotency_level uninterpreted_option -> { deprecated; idempotency_level; uninterpreted_option; extensions' } in
-        let spec = Runtime'.Deserialize.C.( basic (33, bool, proto2 (false)) ^:: basic (34, (enum MethodOptions.IdempotencyLevel.from_int_exn), proto2 (MethodOptions.IdempotencyLevel.IDEMPOTENCY_UNKNOWN)) ^:: repeated (999, (message (fun t -> UninterpretedOption.from_proto_exn t)), not_packed) ^:: nil ) in
+        let spec = Runtime'.Deserialize.C.( basic (33, bool, Some (false)) ^:: basic (34, (enum MethodOptions.IdempotencyLevel.from_int_exn), Some (MethodOptions.IdempotencyLevel.IDEMPOTENCY_UNKNOWN)) ^:: repeated (999, (message (fun t -> UninterpretedOption.from_proto_exn t)), not_packed) ^:: nil ) in
         let deserialize = Runtime'.Deserialize.deserialize [(1000, 536870912)] spec constructor in
         fun writer -> deserialize writer
         let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)
@@ -980,7 +980,7 @@ module Google = struct
 
         let to_proto' =
           let apply = fun ~f:f' writer { name_part; is_extension } -> f' [] writer name_part is_extension in
-          let spec = Runtime'.Serialize.C.( basic (1, string, required) ^:: basic (2, bool, required) ^:: nil ) in
+          let spec = Runtime'.Serialize.C.( basic (1, string, None) ^:: basic (2, bool, None) ^:: nil ) in
           let serialize = Runtime'.Serialize.serialize [] spec in
           fun writer t -> apply ~f:serialize writer t
 
@@ -988,7 +988,7 @@ module Google = struct
 
         let from_proto_exn =
           let constructor = fun _extensions name_part is_extension -> { name_part; is_extension } in
-          let spec = Runtime'.Deserialize.C.( basic (1, string, required) ^:: basic (2, bool, required) ^:: nil ) in
+          let spec = Runtime'.Deserialize.C.( basic (1, string, None) ^:: basic (2, bool, None) ^:: nil ) in
           let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
           fun writer -> deserialize writer
           let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)

@@ -12,7 +12,7 @@
     ../int64.proto ../string.proto ../float.proto ../enum.proto
     ../int64_list.proto ../string_list.proto ../float_list.proto ../enum_list.proto))
  (action
-  (bash "for p in %{proto}; do ocaml-protoc --binary --int32_type int_t --int64_type int_t --ml_out . $p; done")))
+  (bash "for p in %{proto}; do ocaml-protoc -I .. --binary --int32_type int_t --int64_type int_t --ml_out . $p; done")))
 
 (library
  (name  protoc)

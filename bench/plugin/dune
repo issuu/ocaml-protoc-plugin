@@ -12,8 +12,11 @@
   (:plugin ../../src/plugin/protoc_gen_ocaml.exe)
  )
  (action
-  (bash "for p in %{proto}; do protoc -I .. --plugin=protoc-gen-ocaml=%{plugin} --ocaml_out=. $p; done")))
+  (bash "for p in %{proto}; do protoc -I .. --plugin=protoc-gen-ocaml=%{plugin} \"--ocaml_out=annot=[@@deriving show { with_path = false },eq]:.\" $p; done")))
 
 (library
  (name        plugin)
- (libraries   ocaml_protoc_plugin))
+ (libraries   ocaml_protoc_plugin)
+ (preprocess
+  (pps ppx_deriving.show ppx_deriving.eq ppx_deriving.ord))
+)

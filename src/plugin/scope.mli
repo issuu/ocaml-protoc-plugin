@@ -21,6 +21,9 @@ val import_module_name: string
 (** Get the ocaml name of the given proto type name, based on the current scope *)
 val get_scoped_name : ?postfix:string -> t -> string option -> string
 
+(** Get the ocaml name of the default enum *)
+val get_scoped_enum_name : t -> string option -> string
+
 (** Get the ocaml name of the given proto type name, based on the current scope *)
 val get_name : t -> string -> string
 
