@@ -19,7 +19,8 @@ module type Plugin_impl = sig
 end
 
 let make_tests (type v) (module Protoc: Protoc_impl) (module Plugin: Plugin_impl with type M.t = v) v_plugin =
-  let data = Plugin.M.to_proto v_plugin |> Ocaml_protoc_plugin.Writer.contents in
+  let contents = Plugin.M.to_proto v_plugin in
+  let data = contents |> Ocaml_protoc_plugin.Writer.contents in
   (* We need to reconstruct the data, as we might loose precision when using floats (32bit, compared to doubles) (64 bit) *)
   let v_plugin = Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data) in
   (* Assert decoding works *)
@@ -35,7 +36,7 @@ let make_tests (type v) (module Protoc: Protoc_impl) (module Plugin: Plugin_impl
        eprintf "New: %s\n" (Plugin.M.show v_plugin');
        failwith "Data not the same"
   in
-  printf "%16s: Data length: %5d /%5d (%b)\n%!" (Plugin.M.name' ()) (String.length data) (String.length data_protoc) (Poly.equal v_plugin v_plugin');
+  printf "%16s: Data length: %5d /%5d (%b). Waste: %5d\n%!" (Plugin.M.name' ()) (String.length data) (String.length data_protoc) (Poly.equal v_plugin v_plugin') (Ocaml_protoc_plugin.Writer.unused contents);
 
   let open Bechamel in
     let test_encode =
@@ -139,8 +140,30 @@ let print_bench_results results =
     | None -> { Bechamel_notty.w= 80; h= 1; } in
   img (window, results) |> eol |> output_image
 
+
+let test_unroll () =
+  let open Bechamel in
+  let values = List.init 9 ~f:(fun idx -> Int64.shift_left 1L (idx*7)) in
+  let buffer = Bytes.create 10 in
+  List.mapi ~f:(fun index vl ->
+    let v = Int64.to_int_exn vl in
+    Test.make_grouped ~name:(Printf.sprintf "bits %d" (index*7)) [
+      Test.make ~name:"Varint unboxed unrolled" (Staged.stage @@ fun () ->
+                                  Ocaml_protoc_plugin.Writer.write_varint_unboxed buffer ~offset:0 v |> ignore);
+      Test.make ~name:"Varint unboxed reference" (Staged.stage @@ fun () ->
+                                  Ocaml_protoc_plugin.Writer.write_varint_unboxed_reference buffer ~offset:0 v |> ignore);
+
+      Test.make ~name:"Varint unrolled" (Staged.stage @@ fun () ->
+                                  Ocaml_protoc_plugin.Writer.write_varint buffer ~offset:0 vl |> ignore);
+      Test.make ~name:"Varint reference" (Staged.stage @@ fun () ->
+                                  Ocaml_protoc_plugin.Writer.write_varint_reference buffer ~offset:0 vl |> ignore);
+
+    ]) values
+
+
 let _ =
   let v_plugin = create_test_data ~depth:2 () |> Option.value_exn in
+  test_unroll () @
   [ make_tests (module Protoc.Bench) (module Plugin.Bench) v_plugin;
     make_tests (module Protoc.Int64) (module Plugin.Int64) 27;
     make_tests (module Protoc.Float) (module Plugin.Float) 27.0001;
@@ -152,7 +175,7 @@ let _ =
     random_list ~len:100 ~f:random_string () |> make_tests (module Protoc.String_list) (module Plugin.String_list);
     (* random_list ~len:100 ~f:(fun () -> Plugin.Enum_list.Enum.ED) () |> make_tests (module Protoc.Enum_list) (module Plugin.Enum_list); *)
   ]
-  |> List.iter ~f:(fun test ->
+  |> List.rev |> List.iter ~f:(fun test ->
     test
     |> benchmark
     |> analyze

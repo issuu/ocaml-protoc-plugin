@@ -99,6 +99,40 @@ module Make(T : T) = struct
 
     let ( ^:: ) a b = Cons (a, b)
     let nil = Nil
+
+    let show: type a. a spec -> string = function
+      | Double -> "Double"
+      | Float -> "Float"
+
+      | Int32 -> "Int32"
+      | UInt32 -> "UInt32"
+      | SInt32 -> "SInt32"
+      | Fixed32 -> "Fixed32"
+      | SFixed32 -> "SFixed32"
+
+      | Int32_int -> "Int32_int"
+      | UInt32_int -> "UInt32_int"
+      | SInt32_int -> "SInt32_int"
+      | Fixed32_int -> "Fixed32_int"
+      | SFixed32_int -> "SFixed32_int"
+
+      | UInt64 -> "UInt64"
+      | Int64 -> "Int64"
+      | SInt64 -> "SInt64"
+      | Fixed64 -> "Fixed64"
+      | SFixed64 -> "SFixed64"
+
+      | UInt64_int -> "UInt64_int"
+      | Int64_int -> "Int64_int"
+      | SInt64_int -> "SInt64_int"
+      | Fixed64_int -> "Fixed64_int"
+      | SFixed64_int -> "SFixed64_int"
+
+      | Bool -> "Bool"
+      | String -> "String"
+      | Bytes -> "Bytes"
+      | Enum _ -> "Enum"
+      | Message _ -> "Message"
   end
 end
 

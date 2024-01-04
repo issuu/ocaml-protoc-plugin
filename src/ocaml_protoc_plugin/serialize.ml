@@ -1,64 +1,135 @@
 open StdLabels
-open Field
 
 module S = Spec.Serialize
 module C = S.C
 open S
 
-let varint ~signed v =
+let rec size_of_field: type a. a spec -> a -> int = function
+  (* We could just assume 10 bytes for a varint to speed it up *)
+  | Double | Fixed64 | SFixed64 | Fixed64_int | SFixed64_int -> fun _ -> 8
+  | Float | Fixed32 | SFixed32 | Fixed32_int | SFixed32_int -> fun _ -> 4
+  | Int64 -> fun v -> Writer.varint_size (Int64.to_int v)
+  | UInt64 -> fun v -> Writer.varint_size (Int64.to_int v)
+  | SInt64 -> fun v -> Writer.varint_size (Int64.to_int v)
+
+  | Int32 -> fun v ->  Writer.varint_size (Int32.to_int v)
+  | UInt32 -> fun v ->  Writer.varint_size (Int32.to_int v)
+  | SInt32 -> fun v ->  Writer.varint_size (Int32.to_int v)
+
+  | Int64_int -> Writer.varint_size
+  | UInt64_int -> Writer.varint_size
+  | Int32_int -> Writer.varint_size
+  | UInt32_int -> Writer.varint_size
+  | SInt64_int -> Writer.varint_size
+  | SInt32_int -> Writer.varint_size
+
+  | Bool -> let size = size_of_field Int64_int 1 in fun _ -> size
+  | String -> let size = size_of_field Int64_int in fun v -> let length = String.length v in (size length) + length
+  | Bytes -> let size = size_of_field Int64_int in fun v -> let length = Bytes.length v in (size length) + length
+  | Enum _ -> failwith "Enums must be converted to varint"
+  | Message _ -> failwith "Message sizes should not be pre-computed as we have a continuation and don't need to preallocate"
+
+let field_type: type a. a spec -> int = function
+  | Int64 | UInt64 | SInt64 | Int32 | UInt32 | SInt32
+  | Int64_int | UInt64_int | Int32_int | UInt32_int | SInt64_int | SInt32_int
+  | Bool | Enum _ -> 0 (* Varint *)
+  | String | Bytes | Message _ -> 2 (* Length delimited *)
+  | Double | Fixed64 | SFixed64 | Fixed64_int | SFixed64_int -> 1 (* Fixed 64 bit *)
+  | Float | Fixed32 | SFixed32 | Fixed32_int | SFixed32_int -> 5 (* Fixed 32 bit *)
+
+let write_fixed64 ~f v =
+  let size = 8 in
+  let writer = Writer.write_fixed64 in
+  Writer.write_value ~size ~writer (f v)
+
+let write_fixed32 ~f v =
+  let size = 4 in
+  let writer = Writer.write_fixed32 in
+  Writer.write_value ~size ~writer (f v)
+
+let zigzag_encoding v =
   let open Infix.Int64 in
-  let v = match signed with
-    | true when v < 0L -> v lsl 1 lxor (-1L)
-    | true -> v lsl 1
-    | false -> v
+  let v = match v < 0L with
+    | true -> v lsl 1 lxor (-1L)
+    | false -> v lsl 1
   in
-  Field.Varint v
+  v
 
-let varint_unboxed ~signed v =
-  let v = match signed with
-    | true when v < 0 -> v lsl 1 lxor (-1)
-    | true -> v lsl 1
-    | false -> v
+let zigzag_encoding_unboxed v =
+  let v = match v < 0 with
+    | true -> v lsl 1 lxor (-1)
+    | false -> v lsl 1
   in
-  Field.Varint_unboxed v
+  v
 
+let write_varint ~f v =
+  let v = f v in
+  let size = Writer.varint_size (Int64.to_int v) in
+  let writer = Writer.write_varint in
+  Writer.write_value ~size ~writer v
 
-let rec field_of_spec: type a. a spec -> a -> Field.t = function
-  | Double -> fun v -> Fixed_64_bit (Int64.bits_of_float v)
-  | Float -> fun v -> Fixed_32_bit (Int32.bits_of_float v)
-  | Int64 -> varint ~signed:false
-  | Int64_int -> varint_unboxed ~signed:false
-  | UInt64 -> varint ~signed:false
-  | UInt64_int -> varint_unboxed ~signed:false
-  | SInt64 -> varint ~signed:true
-  | SInt64_int -> varint_unboxed ~signed:true
-  | Int32 -> fun v -> varint ~signed:false (Int64.of_int32 v)
-  | Int32_int -> varint_unboxed ~signed:false
-  | UInt32 -> fun v -> varint ~signed:false (Int64.of_int32 v)
-  | UInt32_int -> varint_unboxed ~signed:false
-  | SInt32 -> fun v -> varint ~signed:true (Int64.of_int32 v)
-  | SInt32_int -> varint_unboxed ~signed:true
+let write_varint_unboxed ~f v =
+  let v = f v in
+  let size = Writer.varint_size v in
+  let writer = Writer.write_varint_unboxed in
+  Writer.write_value ~size ~writer v
 
-  | Fixed64 -> fixed_64_bit
-  | Fixed64_int -> fun v -> Fixed_64_bit (Int64.of_int v)
-  | SFixed64 -> fixed_64_bit
-  | SFixed64_int -> fun v -> Fixed_64_bit (Int64.of_int v)
-  | Fixed32 -> fixed_32_bit
-  | Fixed32_int -> fun v -> Fixed_32_bit (Int32.of_int v)
-  | SFixed32 -> fixed_32_bit
-  | SFixed32_int -> fun v -> Fixed_32_bit (Int32.of_int v)
+(* Can only write a string *)
+let write_string ~f v =
+  let v = f v in
+  let write_length = write_varint_unboxed ~f:String.length v in
+  let write_string = Writer.write_string in
+  fun t ->
+    write_length t;
+    Writer.write_value ~size:(String.length v) ~writer:write_string v t
 
-  | Bool -> fun v -> varint_unboxed ~signed:false (match v with | true -> 1 | false -> 0)
-  | String -> fun v -> Length_delimited {offset = 0; length = String.length v; data = v}
-  | Bytes -> fun v -> Length_delimited {offset = 0; length = Bytes.length v; data = Bytes.unsafe_to_string v}
-  | Enum f ->
-    let to_field = field_of_spec UInt64_int in
-    fun v -> f v |> to_field
-  | Message to_proto -> (* Consider inlining this into write *)
-    fun v ->
-      let writer = Writer.init () in
-      let writer = to_proto writer v in
-      length_delimited (Writer.contents writer)
+let write_message ~f v writer =
+  Writer.write_length_delimited_value ~write:f v writer
+
+let id x = x
+let (@@) a b = fun v -> b (a v)
+
+let write_value : type a. a spec -> a -> Writer.t -> unit = function
+  | Double -> write_fixed64 ~f:Int64.bits_of_float
+  | Float -> write_fixed32 ~f:Int32.bits_of_float
+  | Fixed64 -> write_fixed64 ~f:id
+  | SFixed64 -> write_fixed64 ~f:id
+  | Fixed64_int -> write_fixed64 ~f:Int64.of_int
+  | SFixed64_int -> write_fixed64 ~f:Int64.of_int
+  | Fixed32 -> write_fixed32 ~f:id
+  | SFixed32 -> write_fixed32 ~f:id
+  | Fixed32_int -> write_fixed32 ~f:Int32.of_int
+  | SFixed32_int -> write_fixed32 ~f:Int32.of_int
+  | Int64 -> write_varint ~f:id
+  | UInt64 -> write_varint ~f:id
+  | SInt64 -> write_varint ~f:zigzag_encoding
+  | Int32 -> write_varint_unboxed ~f:Int32.to_int
+  | UInt32 -> write_varint_unboxed ~f:Int32.to_int
+  | SInt32 -> write_varint_unboxed ~f:(Int32.to_int @@ zigzag_encoding_unboxed)
+  | Int64_int -> write_varint_unboxed ~f:id
+  | UInt64_int -> write_varint_unboxed ~f:id
+  | Int32_int -> write_varint_unboxed ~f:id
+  | UInt32_int -> write_varint_unboxed ~f:id
+  | SInt64_int -> write_varint_unboxed ~f:zigzag_encoding_unboxed
+  | SInt32_int -> write_varint_unboxed ~f:zigzag_encoding_unboxed
+
+  | Bool -> write_varint_unboxed ~f:(function true -> 1 | false -> 0)
+  | String -> write_string ~f:id
+  | Bytes -> write_string ~f:Bytes.unsafe_to_string
+  | Enum f -> write_varint_unboxed ~f
+  | Message to_proto -> write_message ~f:(fun v writer -> to_proto writer v |> ignore)
+
+let write_field_header: 'a spec -> int -> Writer.t -> unit = fun spec index ->
+  let field_type = field_type spec in
+  let header = (index lsl 3) + field_type in
+  write_value Int64_int header
+
+let write_field: type a. a spec -> int -> a -> Writer.t -> unit = fun spec index ->
+  let write_field_header = write_field_header spec index in
+  let write_value = write_value spec in
+  fun v writer ->
+    write_field_header writer;
+    write_value v writer
 
 let is_scalar: type a. a spec -> bool = function
   | String -> false
@@ -66,54 +137,46 @@ let is_scalar: type a. a spec -> bool = function
   | Message _ -> false
   | _ -> true
 
+(* Try remove the fold et. al. *)
 let rec write: type a. a compound -> Writer.t -> a -> unit = function
-  | Basic (index, Message to_proto, _) -> begin
-      fun writer v ->
-      let done_f = Writer.add_length_delimited_field_header writer index in
-      let _writer = to_proto writer v in
-      done_f ()
-    end
-  | Repeated (index, Message to_proto, _) ->
-    let write = write (Basic (index, Message to_proto, None)) in
-    fun writer vs -> List.iter ~f:(fun v -> write writer v) vs
   | Repeated (index, spec, Packed) when is_scalar spec -> begin
-      let f = field_of_spec spec in
-      fun writer -> function
-      | [] -> ()
-      | vs ->
-         let done_f = Writer.add_length_delimited_field_header writer index in
-         List.iter ~f:(fun v -> Writer.add_field writer (f v)) vs;
-         done_f ()
+      let write = write_value spec in
+      let write vs writer = List.iter ~f:(fun v -> write v writer) vs in
+      let write_header = write_field_header String index in
+      fun writer vs ->
+        match vs with
+        | [] -> ()
+        | vs ->
+          write_header writer;
+          Writer.write_length_delimited_value ~write vs writer
     end
   | Repeated (index, spec, _) ->
-      let f = field_of_spec spec in
-      fun writer vs -> List.iter ~f:(fun v -> Writer.write_field writer index (f v)) vs
+    let write = write_field spec index in
+    fun writer vs ->
+      List.iter ~f:(fun v -> write v writer) vs
+
   | Basic (index, spec, default) -> begin
-      let f = field_of_spec spec in
+      let write = write_field spec index in
       match default with
-      | Some default -> fun writer -> begin
-          function
-          | v when v = default -> ()
-          | v -> Writer.write_field writer index (f v)
+      | Some default ->
+        fun writer v -> begin
+            match v with
+            | v when v = default -> ()
+            | v -> write v writer
         end
-      | None -> fun writer v -> Writer.write_field writer index (f v)
-    end
-  | Basic_opt (index, Message to_proto) -> begin
-     fun writer -> function
-       | Some v ->
-          let done_f = Writer.add_length_delimited_field_header writer index in
-          let _ = to_proto writer v in
-          done_f ()
-       | None -> ()
+      | None ->
+        fun writer v -> write v writer
     end
   | Basic_opt (index, spec) -> begin
-    let f = field_of_spec spec in
-    fun writer -> function
-      | Some v -> Writer.write_field writer index (f v)
-      | None -> ()
+      let write = write_field spec index in
+      fun writer v ->
+        match v with
+        | Some v -> write v writer
+        | None -> ()
   end
   | Oneof f -> begin
-      fun writer -> function
+      fun writer v ->
+        match v with
         | `not_set -> ()
         | v ->
             let Oneof_elem (index, spec, v) = f v in
@@ -142,79 +205,30 @@ let serialize extension_ranges spec =
       ) extensions;
     serialize writer
 
-let%expect_test "signed varint" =
 
+let%expect_test "zigzag encoding" =
   let test v =
     let vl = Int64.of_int v in
-    Printf.printf "varint ~signed:true %LdL = %s\n" vl (varint ~signed:true vl |> Field.show);
-    Printf.printf "varint_unboxed ~signed:true %d = %s\n" v (varint_unboxed ~signed:true v |> Field.show);
-
-    let vl' = (varint ~signed:true vl |> Deserialize.read_varint ~signed:true ~type_name:"") in
-    Printf.printf "Signed: %LdL = %LdL (%b)\n" vl vl' (vl = vl');
-
-    let vl' = (varint ~signed:false vl |> Deserialize.read_varint ~signed:false ~type_name:"") in
-    Printf.printf "Unsigned: %LdL = %LdL (%b)\n" vl vl' (vl = vl');
-
-    let v' = (varint_unboxed ~signed:true v |> Deserialize.read_varint_unboxed ~signed:true ~type_name:"") in
-    Printf.printf "Signed unboxed: %d = %d (%b)\n" v v' (v = v');
-
-    let v' = (varint_unboxed ~signed:false v |> Deserialize.read_varint_unboxed ~signed:false ~type_name:"") in
-    Printf.printf "Unsigned unboxed: %d = %d (%b)\n" v v' (v=v');
-    ()
+    Printf.printf "zigzag_encoding(%LdL) = %LdL\n" vl (zigzag_encoding vl);
+    Printf.printf "zigzag_encoding_unboxed(%d) = %d\n" v (zigzag_encoding_unboxed v);
   in
   List.iter ~f:test [0; -1; 1; -2; 2; 2147483647; -2147483648; Int.max_int; Int.min_int; ];
   [%expect {|
-    varint ~signed:true 0L = (Field.Varint 0L)
-    varint_unboxed ~signed:true 0 = (Field.Varint_unboxed 0)
-    Signed: 0L = 0L (true)
-    Unsigned: 0L = 0L (true)
-    Signed unboxed: 0 = 0 (true)
-    Unsigned unboxed: 0 = 0 (true)
-    varint ~signed:true -1L = (Field.Varint 1L)
-    varint_unboxed ~signed:true -1 = (Field.Varint_unboxed 1)
-    Signed: -1L = -1L (true)
-    Unsigned: -1L = -1L (true)
-    Signed unboxed: -1 = -1 (true)
-    Unsigned unboxed: -1 = -1 (true)
-    varint ~signed:true 1L = (Field.Varint 2L)
-    varint_unboxed ~signed:true 1 = (Field.Varint_unboxed 2)
-    Signed: 1L = 1L (true)
-    Unsigned: 1L = 1L (true)
-    Signed unboxed: 1 = 1 (true)
-    Unsigned unboxed: 1 = 1 (true)
-    varint ~signed:true -2L = (Field.Varint 3L)
-    varint_unboxed ~signed:true -2 = (Field.Varint_unboxed 3)
-    Signed: -2L = -2L (true)
-    Unsigned: -2L = -2L (true)
-    Signed unboxed: -2 = -2 (true)
-    Unsigned unboxed: -2 = -2 (true)
-    varint ~signed:true 2L = (Field.Varint 4L)
-    varint_unboxed ~signed:true 2 = (Field.Varint_unboxed 4)
-    Signed: 2L = 2L (true)
-    Unsigned: 2L = 2L (true)
-    Signed unboxed: 2 = 2 (true)
-    Unsigned unboxed: 2 = 2 (true)
-    varint ~signed:true 2147483647L = (Field.Varint 4294967294L)
-    varint_unboxed ~signed:true 2147483647 = (Field.Varint_unboxed 4294967294)
-    Signed: 2147483647L = 2147483647L (true)
-    Unsigned: 2147483647L = 2147483647L (true)
-    Signed unboxed: 2147483647 = 2147483647 (true)
-    Unsigned unboxed: 2147483647 = 2147483647 (true)
-    varint ~signed:true -2147483648L = (Field.Varint 4294967295L)
-    varint_unboxed ~signed:true -2147483648 = (Field.Varint_unboxed 4294967295)
-    Signed: -2147483648L = -2147483648L (true)
-    Unsigned: -2147483648L = -2147483648L (true)
-    Signed unboxed: -2147483648 = -2147483648 (true)
-    Unsigned unboxed: -2147483648 = -2147483648 (true)
-    varint ~signed:true 4611686018427387903L = (Field.Varint 9223372036854775806L)
-    varint_unboxed ~signed:true 4611686018427387903 = (Field.Varint_unboxed -2)
-    Signed: 4611686018427387903L = 4611686018427387903L (true)
-    Unsigned: 4611686018427387903L = 4611686018427387903L (true)
-    Signed unboxed: 4611686018427387903 = -1 (false)
-    Unsigned unboxed: 4611686018427387903 = 4611686018427387903 (true)
-    varint ~signed:true -4611686018427387904L = (Field.Varint 9223372036854775807L)
-    varint_unboxed ~signed:true -4611686018427387904 = (Field.Varint_unboxed -1)
-    Signed: -4611686018427387904L = -4611686018427387904L (true)
-    Unsigned: -4611686018427387904L = -4611686018427387904L (true)
-    Signed unboxed: -4611686018427387904 = -1 (false)
-    Unsigned unboxed: -4611686018427387904 = -4611686018427387904 (true) |}]
+    zigzag_encoding(0L) = 0L
+    zigzag_encoding_unboxed(0) = 0
+    zigzag_encoding(-1L) = 1L
+    zigzag_encoding_unboxed(-1) = 1
+    zigzag_encoding(1L) = 2L
+    zigzag_encoding_unboxed(1) = 2
+    zigzag_encoding(-2L) = 3L
+    zigzag_encoding_unboxed(-2) = 3
+    zigzag_encoding(2L) = 4L
+    zigzag_encoding_unboxed(2) = 4
+    zigzag_encoding(2147483647L) = 4294967294L
+    zigzag_encoding_unboxed(2147483647) = 4294967294
+    zigzag_encoding(-2147483648L) = 4294967295L
+    zigzag_encoding_unboxed(-2147483648) = 4294967295
+    zigzag_encoding(4611686018427387903L) = 9223372036854775806L
+    zigzag_encoding_unboxed(4611686018427387903) = -2
+    zigzag_encoding(-4611686018427387904L) = 9223372036854775807L
+    zigzag_encoding_unboxed(-4611686018427387904) = -1 |}]
