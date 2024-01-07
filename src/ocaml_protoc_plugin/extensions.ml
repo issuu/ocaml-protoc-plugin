@@ -17,7 +17,7 @@ let set: ('a -> Writer.t, Writer.t) Serialize.S.compound_list -> t -> 'a -> t = 
   let writer = Serialize.serialize [] spec [] writer v in
   let reader = Writer.contents writer |> Reader.create in
   match Reader.to_list reader with
-  | (((index, _) :: _) as fields) ->
-    (List.filter ~f:(fun (i, _) -> i != index) t) @  fields
+  | ((index, _) :: _) as fields ->
+    (List.filter ~f:(fun (i, _) -> i != index) t) @ fields
   | [] -> t
   | exception Result.Error _ -> failwith "Internal serialization fail"

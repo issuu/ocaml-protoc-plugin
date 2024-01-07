@@ -113,13 +113,11 @@ let read_field : boxed -> t -> int * Field.t = fun boxed ->
     let (field_type, field_number) = read_field_header t in
     field_number, read_field_content field_type t
 
-
 let to_list: t -> (int * Field.t) list =
   let read_field = read_field Boxed in
-  fun t ->
-  (* Make this tailrec *)
-  let[@tail_mod_cons] rec inner () = match has_more t with
-    | true -> read_field t :: inner ()
-    | false -> []
+  let rec next t () = match has_more t with
+    | true -> Seq.Cons (read_field t, next t)
+    | false -> Seq.Nil
   in
-  inner ()
+  fun t ->
+    next t |> List.of_seq
