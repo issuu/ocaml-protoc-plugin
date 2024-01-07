@@ -192,7 +192,6 @@ let serialize extension_ranges spec =
       ) extensions;
       serialize writer
 
-
 let%expect_test "zigzag encoding" =
   let test v =
     let vl = Int64.of_int v in

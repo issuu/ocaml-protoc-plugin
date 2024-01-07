@@ -33,7 +33,7 @@ let has_more t = t.offset < t.end_offset
 [@@inline]
 let read_byte t =
   validate_capacity t 1;
-  let v = String.get_uint8 t.data t.offset in
+  let v = Bytes.get_uint8 (Bytes.unsafe_of_string t.data) t.offset in
   t.offset <- t.offset + 1;
   v
 
@@ -41,7 +41,7 @@ let read_raw_varint t =
   let open Infix.Int64 in
   let rec inner n acc =
     let v = Int64.of_int (read_byte t) in
-    let acc = acc + (v land 0x7FL) lsl n in
+    let acc = acc + (v land 0x7fL) lsl n in
     match v > 127L with
     | true ->
       (* Still More data *)
@@ -53,7 +53,7 @@ let read_raw_varint t =
 let read_raw_varint_unboxed t =
   let rec inner n acc =
     let v = read_byte t in
-    let acc = acc + (v land 0x7F) lsl n in
+    let acc = acc + (v land 0x7f) lsl n in
     match v > 127 with
     | true ->
       (* Still More data *)
