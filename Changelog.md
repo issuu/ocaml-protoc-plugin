@@ -1,3 +1,12 @@
+## 5.0.0: Unreleased
+- [ ] Merge messages when receiving multiple messages for the same
+      field (#57)
+- [ ] Optimize serialization and deserialization (#55)
+- [x] Fix upper case handling in name mangling and apply name mangling
+      for serivce records (#54) (thanks @crackcomm)
+- [x] Fix bug in name resolution leading to uncompilable code (#53)
+
+
 ## 4.5.0: 2023-06-16
 - [x] Add more fields in generated service structs to make it easier
       to extract service endpoint names for gRPC (#50)
