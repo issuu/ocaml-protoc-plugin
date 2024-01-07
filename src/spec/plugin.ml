@@ -23,9 +23,117 @@ module Imported'modules = struct
   module Descriptor = Descriptor
 end
 (**/**)
-module Google = struct
-  module Protobuf = struct
-    module Compiler = struct
+module rec Google : sig
+  module rec Protobuf : sig
+    module rec Compiler : sig
+      module rec Version : sig
+        val name': unit -> string
+        type t = { major: int option; minor: int option; patch: int option; suffix: string option } 
+        val make : ?major:int -> ?minor:int -> ?patch:int -> ?suffix:string -> unit -> t
+        val to_proto: t -> Runtime'.Writer.t
+        val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
+      end
+      and CodeGeneratorRequest : sig
+        val name': unit -> string
+        type t = { file_to_generate: string list; parameter: string option; proto_file: Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.t list; compiler_version: Version.t option } 
+        val make : ?file_to_generate:string list -> ?parameter:string -> ?proto_file:Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.t list -> ?compiler_version:Version.t -> unit -> t
+        val to_proto: t -> Runtime'.Writer.t
+        val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
+      end
+      and CodeGeneratorResponse : sig
+        module rec Feature : sig
+          type t = FEATURE_NONE | FEATURE_PROTO3_OPTIONAL 
+          val to_int: t -> int
+          val from_int: int -> (t, [> Runtime'.Result.error]) result
+        end
+        and File : sig
+          val name': unit -> string
+          type t = { name: string option; insertion_point: string option; content: string option; generated_code_info: Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.t option } 
+          val make : ?name:string -> ?insertion_point:string -> ?content:string -> ?generated_code_info:Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.t -> unit -> t
+          val to_proto: t -> Runtime'.Writer.t
+          val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
+        end
+        val name': unit -> string
+        type t = { error: string option; supported_features: int option; file: File.t list } 
+        val make : ?error:string -> ?supported_features:int -> ?file:File.t list -> unit -> t
+        val to_proto: t -> Runtime'.Writer.t
+        val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
+      end
+    end
+  end
+end = struct
+  module rec Protobuf : sig
+    module rec Compiler : sig
+      module rec Version : sig
+        val name': unit -> string
+        type t = { major: int option; minor: int option; patch: int option; suffix: string option } 
+        val make : ?major:int -> ?minor:int -> ?patch:int -> ?suffix:string -> unit -> t
+        val to_proto: t -> Runtime'.Writer.t
+        val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
+      end
+      and CodeGeneratorRequest : sig
+        val name': unit -> string
+        type t = { file_to_generate: string list; parameter: string option; proto_file: Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.t list; compiler_version: Version.t option } 
+        val make : ?file_to_generate:string list -> ?parameter:string -> ?proto_file:Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.t list -> ?compiler_version:Version.t -> unit -> t
+        val to_proto: t -> Runtime'.Writer.t
+        val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
+      end
+      and CodeGeneratorResponse : sig
+        module rec Feature : sig
+          type t = FEATURE_NONE | FEATURE_PROTO3_OPTIONAL 
+          val to_int: t -> int
+          val from_int: int -> (t, [> Runtime'.Result.error]) result
+        end
+        and File : sig
+          val name': unit -> string
+          type t = { name: string option; insertion_point: string option; content: string option; generated_code_info: Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.t option } 
+          val make : ?name:string -> ?insertion_point:string -> ?content:string -> ?generated_code_info:Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.t -> unit -> t
+          val to_proto: t -> Runtime'.Writer.t
+          val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
+        end
+        val name': unit -> string
+        type t = { error: string option; supported_features: int option; file: File.t list } 
+        val make : ?error:string -> ?supported_features:int -> ?file:File.t list -> unit -> t
+        val to_proto: t -> Runtime'.Writer.t
+        val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
+      end
+    end
+  end = struct
+    module rec Compiler : sig
+      module rec Version : sig
+        val name': unit -> string
+        type t = { major: int option; minor: int option; patch: int option; suffix: string option } 
+        val make : ?major:int -> ?minor:int -> ?patch:int -> ?suffix:string -> unit -> t
+        val to_proto: t -> Runtime'.Writer.t
+        val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
+      end
+      and CodeGeneratorRequest : sig
+        val name': unit -> string
+        type t = { file_to_generate: string list; parameter: string option; proto_file: Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.t list; compiler_version: Version.t option } 
+        val make : ?file_to_generate:string list -> ?parameter:string -> ?proto_file:Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.t list -> ?compiler_version:Version.t -> unit -> t
+        val to_proto: t -> Runtime'.Writer.t
+        val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
+      end
+      and CodeGeneratorResponse : sig
+        module rec Feature : sig
+          type t = FEATURE_NONE | FEATURE_PROTO3_OPTIONAL 
+          val to_int: t -> int
+          val from_int: int -> (t, [> Runtime'.Result.error]) result
+        end
+        and File : sig
+          val name': unit -> string
+          type t = { name: string option; insertion_point: string option; content: string option; generated_code_info: Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.t option } 
+          val make : ?name:string -> ?insertion_point:string -> ?content:string -> ?generated_code_info:Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.t -> unit -> t
+          val to_proto: t -> Runtime'.Writer.t
+          val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
+        end
+        val name': unit -> string
+        type t = { error: string option; supported_features: int option; file: File.t list } 
+        val make : ?error:string -> ?supported_features:int -> ?file:File.t list -> unit -> t
+        val to_proto: t -> Runtime'.Writer.t
+        val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
+      end
+    end = struct
       module rec Version : sig
         val name': unit -> string
         type t = { major: int option; minor: int option; patch: int option; suffix: string option } 
@@ -89,14 +197,14 @@ module Google = struct
         end
         and File : sig
           val name': unit -> string
-          type t = { name: string option; insertion_point: string option; content: string option } 
-          val make : ?name:string -> ?insertion_point:string -> ?content:string -> unit -> t
+          type t = { name: string option; insertion_point: string option; content: string option; generated_code_info: Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.t option } 
+          val make : ?name:string -> ?insertion_point:string -> ?content:string -> ?generated_code_info:Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.t -> unit -> t
           val to_proto: t -> Runtime'.Writer.t
           val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         end
         val name': unit -> string
-        type t = { error: string option; supported_features: int option; file: CodeGeneratorResponse.File.t list } 
-        val make : ?error:string -> ?supported_features:int -> ?file:CodeGeneratorResponse.File.t list -> unit -> t
+        type t = { error: string option; supported_features: int option; file: File.t list } 
+        val make : ?error:string -> ?supported_features:int -> ?file:File.t list -> unit -> t
         val to_proto: t -> Runtime'.Writer.t
         val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
       end = struct 
@@ -118,33 +226,33 @@ module Google = struct
         end
         and File : sig
           val name': unit -> string
-          type t = { name: string option; insertion_point: string option; content: string option } 
-          val make : ?name:string -> ?insertion_point:string -> ?content:string -> unit -> t
+          type t = { name: string option; insertion_point: string option; content: string option; generated_code_info: Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.t option } 
+          val make : ?name:string -> ?insertion_point:string -> ?content:string -> ?generated_code_info:Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.t -> unit -> t
           val to_proto: t -> Runtime'.Writer.t
           val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
         end = struct 
           let name' () = "plugin.google.protobuf.compiler.CodeGeneratorResponse.File"
-          type t = { name: string option; insertion_point: string option; content: string option }
+          type t = { name: string option; insertion_point: string option; content: string option; generated_code_info: Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.t option }
           let make =
-            fun ?name ?insertion_point ?content () -> 
+            fun ?name ?insertion_point ?content ?generated_code_info () -> 
             
-            { name; insertion_point; content }
+            { name; insertion_point; content; generated_code_info }
           
           let to_proto =
-            let apply = fun ~f:f' { name; insertion_point; content } -> f' [] name insertion_point content in
-            let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (15, string) ^:: nil ) in
+            let apply = fun ~f:f' { name; insertion_point; content; generated_code_info } -> f' [] name insertion_point content generated_code_info in
+            let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (15, string) ^:: basic_opt (16, (message (fun t -> Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.to_proto t))) ^:: nil ) in
             let serialize = Runtime'.Serialize.serialize [] (spec) in
             fun t -> apply ~f:serialize t
           
           let from_proto =
-            let constructor = fun _extensions name insertion_point content -> { name; insertion_point; content } in
-            let spec = Runtime'.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (15, string) ^:: nil ) in
+            let constructor = fun _extensions name insertion_point content generated_code_info -> { name; insertion_point; content; generated_code_info } in
+            let spec = Runtime'.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (15, string) ^:: basic_opt (16, (message (fun t -> Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.from_proto t))) ^:: nil ) in
             let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
             fun writer -> deserialize writer |> Runtime'.Result.open_error
           
         end
         let name' () = "plugin.google.protobuf.compiler.CodeGeneratorResponse"
-        type t = { error: string option; supported_features: int option; file: CodeGeneratorResponse.File.t list }
+        type t = { error: string option; supported_features: int option; file: File.t list }
         let make =
           fun ?error ?supported_features ?file () -> 
           let file = match file with Some v -> v | None -> [] in
@@ -152,13 +260,13 @@ module Google = struct
         
         let to_proto =
           let apply = fun ~f:f' { error; supported_features; file } -> f' [] error supported_features file in
-          let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, uint64_int) ^:: repeated (15, (message (fun t -> CodeGeneratorResponse.File.to_proto t)), not_packed) ^:: nil ) in
+          let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, uint64_int) ^:: repeated (15, (message (fun t -> File.to_proto t)), not_packed) ^:: nil ) in
           let serialize = Runtime'.Serialize.serialize [] (spec) in
           fun t -> apply ~f:serialize t
         
         let from_proto =
           let constructor = fun _extensions error supported_features file -> { error; supported_features; file } in
-          let spec = Runtime'.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (2, uint64_int) ^:: repeated (15, (message (fun t -> CodeGeneratorResponse.File.from_proto t)), not_packed) ^:: nil ) in
+          let spec = Runtime'.Deserialize.C.( basic_opt (1, string) ^:: basic_opt (2, uint64_int) ^:: repeated (15, (message (fun t -> File.from_proto t)), not_packed) ^:: nil ) in
           let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
           fun writer -> deserialize writer |> Runtime'.Result.open_error
         

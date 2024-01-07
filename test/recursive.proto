@@ -36,3 +36,28 @@ message StdTree {
   int64 value = 2;
   StdTree right = 3;
 }
+
+
+message Recursive1 {
+  message Recursive {
+    message A { }
+    message B { }
+
+    message Recursive {
+      message B { }
+      message A { }
+      .recursive.Recursive1.Recursive.Recursive.A r1 = 1;
+      .recursive.Recursive1.Recursive.Recursive.B r2 = 2;
+      .recursive.Recursive1.Recursive.A r3 = 3;
+      .recursive.Recursive1.Recursive.B r4 = 4;
+    }
+    .recursive.Recursive1.Recursive.Recursive.A r1 = 1;
+    .recursive.Recursive1.Recursive.Recursive.B r2 = 2;
+    .recursive.Recursive1.Recursive.A r3 = 3;
+    .recursive.Recursive1.Recursive.B r4 = 4;
+  }
+  .recursive.Recursive1.Recursive.Recursive.A r1 = 1;
+  .recursive.Recursive1.Recursive.Recursive.B r2 = 2;
+  .recursive.Recursive1.Recursive.A r3 = 3;
+  .recursive.Recursive1.Recursive.B r4 = 4;
+}
