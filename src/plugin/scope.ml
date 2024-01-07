@@ -45,6 +45,14 @@ let module_name_of_proto file =
   |> String.capitalize_ascii
   |> String.map ~f:(function '-' -> '_' | c -> c)
 
+let has_mangle_option options =
+  Option.map ~f:Spec.Options.Ocaml_options.get options
+  |> function
+  | Some (Ok (Some v)) -> v
+  | Some (Ok None) -> false
+  | None -> false
+  | Some (Error _e) -> failwith "Could not parse ocaml-protoc-plugin options with id 1074"
+
 module Type_tree = struct
   type t = { name: string; types: t list; depends: string list; fields: string list * string list list; enum_names: string list; service_names: string list }
   type file = { module_name: string; types: t list }
@@ -275,19 +283,11 @@ module Type_tree = struct
     let map = StringMap.singleton "" { ocaml_name = ""; module_name; cyclic = false } in
     traverse_types map "" types
 
-  let option_mangle_names FileDescriptorProto.{ options; _ } =
-    Option.map ~f:Spec.Options.Ocaml_options.get options
-    |> function
-    | Some (Ok (Some v)) -> v
-    | Some (Ok None) -> false
-    | None -> false
-    | Some (Error _e) -> failwith "Could not parse ocaml-protoc-plugin options with id 1074"
-
   let create_db (files : FileDescriptorProto.t list)=
     let inner proto_file =
       let map = map_file proto_file in
       let cyclic_map = create_cyclic_map map in
-      let file_db = create_file_db ~mangle:(option_mangle_names proto_file) cyclic_map map in
+      let file_db = create_file_db ~mangle:(has_mangle_option proto_file.options) cyclic_map map in
       file_db
     in
     List.map ~f:inner files
