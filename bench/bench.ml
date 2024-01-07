@@ -60,10 +60,10 @@ let make_tests (type v) (module Protoc: Protoc_impl) (module Plugin: Plugin_impl
     let test_encode =
     Test.make_grouped ~name:"Encode"
       [
-        Test.make ~name:"Plugin balanced" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Balanced ()) v_plugin);
-        Test.make ~name:"Plugin speed" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Speed ()) v_plugin);
-        Test.make ~name:"Plugin space" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Space ()) v_plugin);
-        Test.make ~name:"Protoc" (Staged.stage @@ fun () -> Protoc.encode_pb_m v_protoc (Pbrt.Encoder.create ()))
+        Test.make ~name:"Plugin balanced" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Balanced ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents);
+        Test.make ~name:"Plugin speed" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Speed ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents);
+        Test.make ~name:"Plugin space" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Space ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents);
+        Test.make ~name:"Protoc" (Staged.stage @@ fun () -> let encoder = Pbrt.Encoder.create () in Protoc.encode_pb_m v_protoc encoder; (Pbrt.Encoder.to_string encoder))
       ]
   in
   let test_decode =
