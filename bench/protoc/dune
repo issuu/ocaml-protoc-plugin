@@ -16,4 +16,5 @@
 
 (library
  (name  protoc)
+ (ocamlopt_flags :standard \ -unboxed-types)
  (libraries pbrt))

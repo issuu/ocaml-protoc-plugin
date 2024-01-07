@@ -14,16 +14,32 @@ module type Plugin_impl = sig
     val show: t -> string
     val equal: t -> t -> bool
     val to_proto: t -> Ocaml_protoc_plugin.Writer.t
+    val to_proto': Ocaml_protoc_plugin.Writer.t -> t -> Ocaml_protoc_plugin.Writer.t
     val from_proto_exn: Ocaml_protoc_plugin.Reader.t -> t
   end
 end
 
 let make_tests (type v) (module Protoc: Protoc_impl) (module Plugin: Plugin_impl with type M.t = v) v_plugin =
-  let contents = Plugin.M.to_proto v_plugin in
-  let data = contents |> Ocaml_protoc_plugin.Writer.contents in
-  (* We need to reconstruct the data, as we might loose precision when using floats (32bit, compared to doubles) (64 bit) *)
+
+  (* Verify *)
+  let verify_identity ~mode data =
+    let writer = Plugin.M.to_proto' (Ocaml_protoc_plugin.Writer.init ~mode ()) data in
+    let data' = Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create (Ocaml_protoc_plugin.Writer.contents writer)) in
+    let () = match Plugin.M.equal data data' with
+      | true -> ()
+      | false ->
+        eprintf "Orig: %s\n" (Plugin.M.show data);
+        eprintf "New: %s\n" (Plugin.M.show data');
+        failwith "Data not the same"
+    in
+    Ocaml_protoc_plugin.Writer.contents writer |> String.length,
+    Ocaml_protoc_plugin.Writer.unused_space writer
+  in
+  let size_normal, unused_normal = verify_identity ~mode:Ocaml_protoc_plugin.Writer.Balanced v_plugin in
+  let size_speed, unused_speed = verify_identity ~mode:Ocaml_protoc_plugin.Writer.Speed v_plugin in
+  let size_space, unused_space = verify_identity ~mode:Ocaml_protoc_plugin.Writer.Space v_plugin in
+  let data = Plugin.M.to_proto' (Ocaml_protoc_plugin.Writer.init ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents  in
   let v_plugin = Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data) in
-  (* Assert decoding works *)
   let v_protoc = Protoc.decode_pb_m (Pbrt.Decoder.of_string data) in
   let protoc_encoder = Pbrt.Encoder.create () in
   let () = Protoc.encode_pb_m v_protoc protoc_encoder in
@@ -36,13 +52,17 @@ let make_tests (type v) (module Protoc: Protoc_impl) (module Plugin: Plugin_impl
        eprintf "New: %s\n" (Plugin.M.show v_plugin');
        failwith "Data not the same"
   in
-  printf "%16s: Data length: %5d /%5d (%b). Waste: %5d\n%!" (Plugin.M.name' ()) (String.length data) (String.length data_protoc) (Poly.equal v_plugin v_plugin') (Ocaml_protoc_plugin.Writer.unused contents);
+  printf "%-16s: %5d+%-5d(B) / %5d+%-5d(S) / %5d+%-5d(Sp) - %5d\n%!" (Plugin.M.name' ())
+    size_normal unused_normal size_speed unused_speed size_space unused_space (String.length data_protoc);
+
 
   let open Bechamel in
     let test_encode =
     Test.make_grouped ~name:"Encode"
       [
-        Test.make ~name:"Plugin" (Staged.stage @@ fun () -> Plugin.M.to_proto v_plugin);
+        Test.make ~name:"Plugin balanced" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Balanced ()) v_plugin);
+        Test.make ~name:"Plugin speed" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Speed ()) v_plugin);
+        Test.make ~name:"Plugin space" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Space ()) v_plugin);
         Test.make ~name:"Protoc" (Staged.stage @@ fun () -> Protoc.encode_pb_m v_protoc (Pbrt.Encoder.create ()))
       ]
   in
@@ -106,16 +126,15 @@ let create_test_data ~depth () =
   in
   create_btree depth ()
 
-
 let benchmark tests =
   let open Bechamel in
   let instances = Bechamel_perf.Instance.[ cpu_clock ] in
-  let cfg = Benchmark.cfg ~stabilize:true ~compaction:true () in
+  let cfg = Benchmark.cfg ~limit:2000 ~quota:(Time.second 5.0) ~kde:(Some 1000) ~stabilize:true ~compaction:false () in
   Benchmark.all cfg instances tests
 
 let analyze results =
   let open Bechamel in
-  let ols = Analyze.ols ~bootstrap:0 ~r_square:true
+  let ols = Analyze.ols ~bootstrap:10 ~r_square:false
     ~predictors:[| Measure.run |] in
   let results = Analyze.all ols Bechamel_perf.Instance.cpu_clock results in
   Analyze.merge ols [ Bechamel_perf.Instance.cpu_clock ] [ results ]
@@ -141,38 +160,17 @@ let print_bench_results results =
   img (window, results) |> eol |> output_image
 
 
-let test_unroll () =
-  let open Bechamel in
-  let values = List.init 9 ~f:(fun idx -> Int64.shift_left 1L (idx*7)) in
-  let buffer = Bytes.create 10 in
-  List.mapi ~f:(fun index vl ->
-    let v = Int64.to_int_exn vl in
-    Test.make_grouped ~name:(Printf.sprintf "bits %d" (index*7)) [
-      Test.make ~name:"Varint unboxed unrolled" (Staged.stage @@ fun () ->
-                                  Ocaml_protoc_plugin.Writer.write_varint_unboxed buffer ~offset:0 v |> ignore);
-      Test.make ~name:"Varint unboxed reference" (Staged.stage @@ fun () ->
-                                  Ocaml_protoc_plugin.Writer.write_varint_unboxed_reference buffer ~offset:0 v |> ignore);
-
-      Test.make ~name:"Varint unrolled" (Staged.stage @@ fun () ->
-                                  Ocaml_protoc_plugin.Writer.write_varint buffer ~offset:0 vl |> ignore);
-      Test.make ~name:"Varint reference" (Staged.stage @@ fun () ->
-                                  Ocaml_protoc_plugin.Writer.write_varint_reference buffer ~offset:0 vl |> ignore);
-
-    ]) values
-
-
 let _ =
   let v_plugin = create_test_data ~depth:2 () |> Option.value_exn in
-  test_unroll () @
   [ make_tests (module Protoc.Bench) (module Plugin.Bench) v_plugin;
     make_tests (module Protoc.Int64) (module Plugin.Int64) 27;
     make_tests (module Protoc.Float) (module Plugin.Float) 27.0001;
     make_tests (module Protoc.String) (module Plugin.String) "Benchmark";
     make_tests (module Protoc.Enum) (module Plugin.Enum) Plugin.Enum.Enum.ED;
 
-    random_list ~len:100 ~f:(fun () -> Random.int 1000) () |> make_tests (module Protoc.Int64_list) (module Plugin.Int64_list);
-    random_list ~len:100 ~f:(fun () -> Random.float 1000.0) () |> make_tests (module Protoc.Float_list) (module Plugin.Float_list);
-    random_list ~len:100 ~f:random_string () |> make_tests (module Protoc.String_list) (module Plugin.String_list);
+    List.init 1000 ~f:(fun i -> i) |> make_tests (module Protoc.Int64_list) (module Plugin.Int64_list);
+    List.init 1000 ~f:(fun i -> Float.of_int i) |> make_tests (module Protoc.Float_list) (module Plugin.Float_list);
+    List.init 1000 ~f:(fun _ -> random_string ()) |> make_tests (module Protoc.String_list) (module Plugin.String_list);
     (* random_list ~len:100 ~f:(fun () -> Plugin.Enum_list.Enum.ED) () |> make_tests (module Protoc.Enum_list) (module Plugin.Enum_list); *)
   ]
   |> List.rev |> List.iter ~f:(fun test ->

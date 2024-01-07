@@ -4,31 +4,6 @@ module S = Spec.Serialize
 module C = S.C
 open S
 
-let rec size_of_field: type a. a spec -> a -> int = function
-  (* We could just assume 10 bytes for a varint to speed it up *)
-  | Double | Fixed64 | SFixed64 | Fixed64_int | SFixed64_int -> fun _ -> 8
-  | Float | Fixed32 | SFixed32 | Fixed32_int | SFixed32_int -> fun _ -> 4
-  | Int64 -> fun v -> Writer.varint_size (Int64.to_int v)
-  | UInt64 -> fun v -> Writer.varint_size (Int64.to_int v)
-  | SInt64 -> fun v -> Writer.varint_size (Int64.to_int v)
-
-  | Int32 -> fun v ->  Writer.varint_size (Int32.to_int v)
-  | UInt32 -> fun v ->  Writer.varint_size (Int32.to_int v)
-  | SInt32 -> fun v ->  Writer.varint_size (Int32.to_int v)
-
-  | Int64_int -> Writer.varint_size
-  | UInt64_int -> Writer.varint_size
-  | Int32_int -> Writer.varint_size
-  | UInt32_int -> Writer.varint_size
-  | SInt64_int -> Writer.varint_size
-  | SInt32_int -> Writer.varint_size
-
-  | Bool -> let size = size_of_field Int64_int 1 in fun _ -> size
-  | String -> let size = size_of_field Int64_int in fun v -> let length = String.length v in (size length) + length
-  | Bytes -> let size = size_of_field Int64_int in fun v -> let length = Bytes.length v in (size length) + length
-  | Enum _ -> failwith "Enums must be converted to varint"
-  | Message _ -> failwith "Message sizes should not be pre-computed as we have a continuation and don't need to preallocate"
-
 let field_type: type a. a spec -> int = function
   | Int64 | UInt64 | SInt64 | Int32 | UInt32 | SInt32
   | Int64_int | UInt64_int | Int32_int | UInt32_int | SInt64_int | SInt32_int
@@ -74,7 +49,6 @@ let write_varint_unboxed ~f v =
   let writer = Writer.write_varint_unboxed in
   Writer.write_value ~size ~writer v
 
-(* Can only write a string *)
 let write_string ~f v =
   let v = f v in
   let write_length = write_varint_unboxed ~f:String.length v in
@@ -82,9 +56,6 @@ let write_string ~f v =
   fun t ->
     write_length t;
     Writer.write_value ~size:(String.length v) ~writer:write_string v t
-
-let write_message ~f v writer =
-  Writer.write_length_delimited_value ~write:f v writer
 
 let id x = x
 let (@@) a b = fun v -> b (a v)
@@ -117,12 +88,28 @@ let write_value : type a. a spec -> a -> Writer.t -> unit = function
   | String -> write_string ~f:id
   | Bytes -> write_string ~f:Bytes.unsafe_to_string
   | Enum f -> write_varint_unboxed ~f
-  | Message to_proto -> write_message ~f:(fun v writer -> to_proto writer v |> ignore)
+  | Message to_proto ->
+      (*
+         fun v writer ->
+         let cont = Writer.write_length_delimited_value_cont writer in
+         let _ = to_proto writer v in
+         cont ()
+      *)
+      Writer.write_length_delimited_value ~write:to_proto
+
+(** Optimized when the value is given in advance, and the continuation is expected to be called multiple times *)
+let write_value_const : type a. a spec -> a -> Writer.t -> unit = fun spec v ->
+  let write_value = write_value spec in
+  let writer = Writer.init () in
+  write_value v writer;
+  let data = Writer.contents writer in
+  let size = String.length data in
+  Writer.write_value ~size ~writer:Writer.write_string data
 
 let write_field_header: 'a spec -> int -> Writer.t -> unit = fun spec index ->
   let field_type = field_type spec in
   let header = (index lsl 3) + field_type in
-  write_value Int64_int header
+  write_value_const Int64_int header
 
 let write_field: type a. a spec -> int -> a -> Writer.t -> unit = fun spec index ->
   let write_field_header = write_field_header spec index in
@@ -137,11 +124,9 @@ let is_scalar: type a. a spec -> bool = function
   | Message _ -> false
   | _ -> true
 
-(* Try remove the fold et. al. *)
 let rec write: type a. a compound -> Writer.t -> a -> unit = function
   | Repeated (index, spec, Packed) when is_scalar spec -> begin
-      let write = write_value spec in
-      let write vs writer = List.iter ~f:(fun v -> write v writer) vs in
+      let write writer vs = List.iter ~f:(fun v -> write_value spec v writer) vs in
       let write_header = write_field_header String index in
       fun writer vs ->
         match vs with
@@ -183,7 +168,6 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
             write (Basic (index, spec, None)) writer v
     end
 
-(** Allow emitted code to present a protobuf specification. *)
 let rec serialize : type a. (a, Writer.t) compound_list -> Writer.t -> a = function
   | Nil -> fun writer -> writer
   | Cons (compound, rest) ->
@@ -198,12 +182,15 @@ let in_extension_ranges extension_ranges index =
 
 let serialize extension_ranges spec =
   let serialize = serialize spec in
-  fun extensions writer ->
-    List.iter ~f:(function
+  match extension_ranges with
+  | [] -> fun _ -> serialize
+  | extension_ranges ->
+    fun extensions writer ->
+      List.iter ~f:(function
         | (index, field) when in_extension_ranges extension_ranges index -> Writer.write_field writer index field
         | _ -> ()
       ) extensions;
-    serialize writer
+      serialize writer
 
 
 let%expect_test "zigzag encoding" =
