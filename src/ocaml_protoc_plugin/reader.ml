@@ -37,12 +37,35 @@ let read_byte t =
   t.offset <- t.offset + 1;
   v
 
+[@@inline]
 let read_raw_varint t =
+  let rec inner n acc =
+    let v = read_byte t in
+    let acc = acc + (v land 0x7f) lsl n in
+    match v land 0x80 = 0x80 with
+    | true when acc < 0 -> begin
+        let accl = Int64.of_int acc in (* If bit63 was set, then bit63 and bit64 are now set *)
+        let accl = match read_byte t land 0x01 = 0x01 with
+          | true -> accl
+          | false -> Int64.logand accl 0x7fffffffffffffffL (* Apparently not a negative number after all *)
+        in
+        accl
+      end
+    | true -> inner (n + 7) acc
+    | false when acc < 0 -> (* Bit 63 is set, convert into a 64 bit integer, but clear bit64  *)
+      Int64.logand 0x7fffffffffffffffL (Int64.of_int acc)
+    | false -> Int64.of_int acc
+
+  in
+  inner 0 0
+
+[@@inline]
+let read_raw_varint_reference t =
   let open Infix.Int64 in
   let rec inner n acc =
-    let v = Int64.of_int (read_byte t) in
+    let v = read_byte t |> Int64.of_int in
     let acc = acc + (v land 0x7fL) lsl n in
-    match v > 127L with
+    match v land 0x80L = 0x80L with
     | true ->
       (* Still More data *)
       inner (Int.add n 7) acc
@@ -50,11 +73,12 @@ let read_raw_varint t =
   in
   inner 0 0L
 
+[@@inline]
 let read_raw_varint_unboxed t =
   let rec inner n acc =
     let v = read_byte t in
     let acc = acc + (v land 0x7f) lsl n in
-    match v > 127 with
+    match v land 0x80 = 0x80 with
     | true ->
       (* Still More data *)
       inner (n + 7) acc
@@ -64,7 +88,9 @@ let read_raw_varint_unboxed t =
 
 [@@inline]
 let read_varint t = Varint (read_raw_varint t)
+
 let read_varint_unboxed t = Varint_unboxed (read_raw_varint_unboxed t)
+[@@inline]
 
 (* Implement little endian ourselves *)
 let read_fixed32 t =
@@ -121,3 +147,24 @@ let to_list: t -> (int * Field.t) list =
   in
   fun t ->
     next t |> List.of_seq
+
+
+let%expect_test "varint boxed" =
+  let values = [-2L; -1L; 0x7FFFFFFFFFFFFFFFL; 0x7FFFFFFFFFFFFFFEL; 0x3FFFFFFFFFFFFFFFL; 0x3FFFFFFFFFFFFFFEL; 0L; 1L] in
+  List.iter ~f:(fun v ->
+    let buffer = Bytes.create 10 in
+    let _ = Writer.write_varint buffer ~offset:0 v in
+    Printf.printf "0x%016LxL = 0x%016LxL\n"
+      (read_raw_varint_reference (create (Bytes.to_string buffer)))
+      (read_raw_varint (create (Bytes.to_string buffer)));
+    ()
+  ) values;
+  [%expect {|
+    0xfffffffffffffffeL = 0xfffffffffffffffeL
+    0xffffffffffffffffL = 0xffffffffffffffffL
+    0x7fffffffffffffffL = 0x7fffffffffffffffL
+    0x7ffffffffffffffeL = 0x7ffffffffffffffeL
+    0x3fffffffffffffffL = 0x3fffffffffffffffL
+    0x3ffffffffffffffeL = 0x3ffffffffffffffeL
+    0x0000000000000000L = 0x0000000000000000L
+    0x0000000000000001L = 0x0000000000000001L |}]
