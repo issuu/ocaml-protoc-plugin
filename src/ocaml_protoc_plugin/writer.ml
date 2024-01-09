@@ -261,12 +261,13 @@ let write_delimited_field_length_fixed_size buffer ~offset v =
 
 (* If we clear the top bit, then its not signed anymore... Maybe. *)
 let write_varint buffer ~offset vl =
-  match Infix.Int64.(vl lsr 62 > 0L) with
-  | false ->
-    (* Bits 63 or 64 are not set, so write as unboxed *)
-    write_varint_unboxed buffer ~offset (Int64.to_int vl)
+  let v = Int64.to_int vl in
+  (* Int64.to_int just strips the high bit *)
+  match (Int64.shift_right_logical vl 62) = 0L with
   | true ->
-    let v = Int64.to_int vl in
+    (* Bits 63 or 64 are not set, so write as unboxed *)
+    write_varint_unboxed buffer ~offset v
+  | false ->
     Bytes.set_uint8 buffer offset (v lor 128);
     let v = v lsr 7 in
     let offset = offset + 1 in
@@ -290,16 +291,15 @@ let write_varint buffer ~offset vl =
     let offset = offset + 1 in
     Bytes.set_uint8 buffer offset (v lor 128);
     let offset = offset + 1 in
+    let v = v lsr 7 in
     let offset = match vl < 0L with
       | true ->
-        (* Bit 64 (signed bit) set *)
-        Bytes.set_uint8 buffer offset ((Int64.shift_right vl (8*7) |> Int64.to_int) lor 128);
+        Bytes.set_uint8 buffer offset (v lor 128);
         let offset = offset + 1 in
-        Bytes.set_uint8 buffer offset 0x01;
+        Bytes.set_uint8 buffer offset (0x01);
         offset
       | false ->
-        (* Bit 64 not set so only write 9 bytes (9*7bit = 63bit)*)
-        Bytes.set_uint8 buffer offset (Int64.shift_right vl (8*7) |> Int64.to_int);
+        Bytes.set_uint8 buffer offset v;
         offset
     in
     offset + 1
@@ -500,7 +500,9 @@ let%expect_test "Writefield" =
 
 let%test "varint unrolled" =
   let open Infix.Int64 in
-  let values = List.init ~len:64 ~f:(fun idx -> 1L lsl idx) in
+  let values = List.init ~len:64 ~f:(fun idx -> 1L lsl idx) @
+               List.init ~len:64 ~f:(fun idx -> (-1L) lsl idx)
+  in
   List.fold_left ~init:true ~f:(fun acc v ->
     List.fold_left ~init:acc ~f:(fun acc v ->
 
