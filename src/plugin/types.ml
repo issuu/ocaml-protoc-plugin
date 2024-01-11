@@ -426,6 +426,12 @@ let c_of_field ~params ~syntax ~scope field =
     Repeated (number, spec, Not_packed)
     |> c_of_compound name
 
+  (* Repeated bytes and strings are not packed *)
+  | _, { label = Some Label.LABEL_REPEATED; type' = Some (TYPE_STRING | TYPE_BYTES as type'); type_name; _ } ->
+    let Espec spec = spec_of_type ~params ~scope type_name None type' in
+    Repeated (number, spec, Not_packed)
+    |> c_of_compound name
+
   (* Repeated enum *)
   | _, { label = Some Label.LABEL_REPEATED; type' = Some Type.TYPE_ENUM; type_name; options; _} ->
     let spec = spec_of_enum ~scope type_name None in

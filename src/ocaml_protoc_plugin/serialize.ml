@@ -13,14 +13,10 @@ let field_type: type a. a spec -> int = function
   | Float | Fixed32 | SFixed32 | Fixed32_int | SFixed32_int -> 5 (* Fixed 32 bit *)
 
 let write_fixed64 ~f v =
-  let size = 8 in
-  let writer = Writer.write_fixed64 in
-  Writer.write_value ~size ~writer (f v)
+  Writer.write_fixed64_value (f v)
 
 let write_fixed32 ~f v =
-  let size = 4 in
-  let writer = Writer.write_fixed32 in
-  Writer.write_value ~size ~writer (f v)
+  Writer.write_fixed32_value (f v)
 
 let zigzag_encoding v =
   let open Infix.Int64 in
@@ -38,24 +34,14 @@ let zigzag_encoding_unboxed v =
   v
 
 let write_varint ~f v =
-  let v = f v in
-  let size = Writer.varint_size (Int64.to_int v) in
-  let writer = Writer.write_varint in
-  Writer.write_value ~size ~writer v
+  Writer.write_varint_value (f v)
 
 let write_varint_unboxed ~f v =
-  let v = f v in
-  let size = Writer.varint_size v in
-  let writer = Writer.write_varint_unboxed in
-  Writer.write_value ~size ~writer v
+  Writer.write_varint_unboxed_value (f v)
 
-let write_string ~f v =
+let write_length_delimited_string ~f v =
   let v = f v in
-  let write_length = write_varint_unboxed ~f:String.length v in
-  let write_string = Writer.write_string in
-  fun t ->
-    write_length t;
-    Writer.write_value ~size:(String.length v) ~writer:write_string v t
+  Writer.write_length_delimited_value ~data:v ~offset:0 ~len:(String.length v)
 
 let id x = x
 let (@@) a b = fun v -> b (a v)
@@ -85,17 +71,11 @@ let write_value : type a. a spec -> a -> Writer.t -> unit = function
   | SInt32_int -> write_varint_unboxed ~f:zigzag_encoding_unboxed
 
   | Bool -> write_varint_unboxed ~f:(function true -> 1 | false -> 0)
-  | String -> write_string ~f:id
-  | Bytes -> write_string ~f:Bytes.unsafe_to_string
+  | String -> write_length_delimited_string ~f:id
+  | Bytes -> write_length_delimited_string ~f:Bytes.unsafe_to_string
   | Enum f -> write_varint_unboxed ~f
   | Message to_proto ->
-      (*
-         fun v writer ->
-         let cont = Writer.write_length_delimited_value_cont writer in
-         let _ = to_proto writer v in
-         cont ()
-      *)
-      Writer.write_length_delimited_value ~write:to_proto
+    Writer.write_length_delimited_value' ~write:to_proto
 
 (** Optimized when the value is given in advance, and the continuation is expected to be called multiple times *)
 let write_value_const : type a. a spec -> a -> Writer.t -> unit = fun spec v ->
@@ -103,8 +83,7 @@ let write_value_const : type a. a spec -> a -> Writer.t -> unit = fun spec v ->
   let writer = Writer.init () in
   write_value v writer;
   let data = Writer.contents writer in
-  let size = String.length data in
-  Writer.write_value ~size ~writer:Writer.write_string data
+  Writer.write_const_value data
 
 let write_field_header: 'a spec -> int -> Writer.t -> unit = fun spec index ->
   let field_type = field_type spec in
@@ -118,14 +97,8 @@ let write_field: type a. a spec -> int -> a -> Writer.t -> unit = fun spec index
     write_field_header writer;
     write_value v writer
 
-let is_scalar: type a. a spec -> bool = function
-  | String -> false
-  | Bytes -> false
-  | Message _ -> false
-  | _ -> true
-
 let rec write: type a. a compound -> Writer.t -> a -> unit = function
-  | Repeated (index, spec, Packed) when is_scalar spec -> begin
+  | Repeated (index, spec, Packed) -> begin
       let write writer vs = List.iter ~f:(fun v -> write_value spec v writer) vs in
       let write_header = write_field_header String index in
       fun writer vs ->
@@ -133,9 +106,9 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
         | [] -> ()
         | vs ->
           write_header writer;
-          Writer.write_length_delimited_value ~write vs writer
+          Writer.write_length_delimited_value' ~write vs writer
     end
-  | Repeated (index, spec, _) ->
+  | Repeated (index, spec, Not_packed) ->
     let write = write_field spec index in
     fun writer vs ->
       List.iter ~f:(fun v -> write v writer) vs

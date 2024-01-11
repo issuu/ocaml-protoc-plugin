@@ -2,11 +2,6 @@
 open StdLabels
 open Field
 
-
-let sprintf = Printf.sprintf
-let printf = Printf.printf
-
-
 let length_delimited_size_field_length = 5
 
 type substring = { mutable offset: int; buffer: Bytes.t }
@@ -35,9 +30,8 @@ let unused_space t =
 let varint_size_reference v =
   let rec inner acc = function
     | 0 -> acc
-    | v -> inner (acc + 1) (v lsr 1) [@@ocaml.unrolled 10]
+    | v -> inner (acc + 1) (v lsr 1)
   in
-
   match v with
   | v when v < 0 -> 10
   | 0 -> 1
@@ -54,13 +48,6 @@ let varint_size = function
   | v when v < 0x2000000000000 -> 7
   | v when v < 0x100000000000000 -> 8
   | _ -> 9
-
-let rec size_of_field = function
-  | Varint v -> varint_size (Int64.to_int v)
-  | Varint_unboxed v -> varint_size v
-  | Fixed_32_bit _ -> 4
-  | Fixed_64_bit _ -> 8
-  | Length_delimited {length; _} -> size_of_field (Varint_unboxed length) + length
 
 (* Manually unroll *)
 let write_varint_unboxed buffer ~offset = function
@@ -241,7 +228,9 @@ let write_varint_unboxed buffer ~offset = function
 (* Write a field delimited length.
    A delimited field length can be no larger than 2^31.
    This function always write 5 bytes (7*5bits > 31bits).
-   This allows the field length to be statically allocated and written later
+   This allows the field length to be statically allocated and written later.
+   The spec does not forbid this encoding, but there might be implementation
+   that disallow '0' as the ending varint value.
 *)
 let write_delimited_field_length_fixed_size buffer ~offset v =
     Bytes.set_uint8 buffer offset (v lor 128);
@@ -296,7 +285,7 @@ let write_varint buffer ~offset vl =
       | true ->
         Bytes.set_uint8 buffer offset (v lor 128);
         let offset = offset + 1 in
-        Bytes.set_uint8 buffer offset (0x01);
+        Bytes.set_uint8 buffer offset (0x01); (* Always set the 64'th bit *)
         offset
       | false ->
         Bytes.set_uint8 buffer offset v;
@@ -314,8 +303,8 @@ let write_varint_reference buffer ~offset v =
       Bytes.set_uint8 buffer offset (Int64.to_int v);
       next_offset
     | rem ->
-      Bytes.set_uint8 buffer offset (Int.logor (Int64.to_int v |> Int.logand 0x7F) 0x80);
-      inner ~offset:next_offset rem [@@ocaml.unrolled 10]
+      Bytes.set_uint8 buffer offset (Int.logor (Int64.to_int v) 0x80);
+      inner ~offset:next_offset rem
   in
   inner ~offset v
 
@@ -336,24 +325,6 @@ let write_varint_unboxed_reference buffer ~offset v =
   in
   inner ~is_negative:(v < 0) ~offset v
 
-let write_fixed32 buffer ~offset v =
-  Bytes.set_int32_le buffer offset v;
-  offset + 4
-
-let write_fixed64 buffer ~offset v =
-  Bytes.set_int64_le buffer offset v;
-  offset + 8
-
-let write_string buffer ~offset v =
-  let len = String.length v in
-  Bytes.blit_string ~src:v ~src_pos:0 ~dst:buffer ~dst_pos:offset ~len;
-  offset + len
-
-let write_length_delimited buffer ~offset ~src ~src_pos ~len =
-  let offset = write_varint_unboxed buffer ~offset len in
-  Bytes.blit_string ~src:src ~src_pos ~dst:buffer ~dst_pos:offset ~len;
-  offset + len
-
 let ensure_capacity ~size t =
   match t.data with
     | { offset; buffer } as elem :: _ when Bytes.length buffer - offset >= size -> elem
@@ -362,46 +333,62 @@ let ensure_capacity ~size t =
       t.data <- elem :: tl;
       elem
 
-let write_value: size:int -> writer:(Bytes.t -> offset:int -> 'a -> int) -> 'a -> t -> unit =
-  fun ~size ~writer v t ->
-  let elem = ensure_capacity ~size t in
-  let offset = writer elem.buffer ~offset:elem.offset v in
+(** Direct functions *)
+let write_const_value data t =
+  let len = String.length data in
+  let elem = ensure_capacity ~size:len t in
+  Bytes.blit_string ~src:data ~src_pos:0 ~dst:elem.buffer ~dst_pos:elem.offset ~len;
+  elem.offset <- elem.offset + len
+
+let write_fixed32_value: int32 -> t -> unit = fun v t ->
+  let elem = ensure_capacity ~size:4 t in
+  Bytes.set_int32_le elem.buffer elem.offset v;
+  elem.offset <- elem.offset + 4
+
+let write_fixed64_value: int64 -> t -> unit = fun v t ->
+  let elem = ensure_capacity ~size:8 t in
+  Bytes.set_int64_le elem.buffer elem.offset v;
+  elem.offset <- elem.offset + 8
+
+let write_varint_unboxed_value: int -> t -> unit = fun v t ->
+  let elem = ensure_capacity ~size:10 t in
+  let offset = write_varint_unboxed elem.buffer ~offset:elem.offset v in
   elem.offset <- offset
 
-let write_naked_field buffer ~offset = function
-  | Varint_unboxed v -> write_varint_unboxed buffer ~offset v
-  | Varint v -> write_varint buffer ~offset v
-  | Fixed_32_bit v -> write_fixed32 buffer ~offset v
-  | Fixed_64_bit v -> write_fixed64 buffer ~offset v
-  | Length_delimited {offset = src_pos; length; data} ->
-    write_length_delimited buffer ~offset ~src:data ~src_pos ~len:length
+let write_varint_value: int64 -> t -> unit = fun v t ->
+  let elem = ensure_capacity ~size:10 t in
+  let offset = write_varint elem.buffer ~offset:elem.offset v in
+  elem.offset <- offset
 
-let add_field t field =
-  let size = size_of_field field in
-  let elem = ensure_capacity ~size t in
-  let offset = write_naked_field elem.buffer ~offset:elem.offset field in
-  elem.offset <- offset;
-  ()
+let write_length_delimited_value: data:string -> offset:int -> len:int -> t -> unit = fun ~data ~offset ~len t ->
+  write_varint_unboxed_value len t;
+  let elem = ensure_capacity ~size:len t in
+  Bytes.blit_string ~src:data ~src_pos:offset ~dst:elem.buffer ~dst_pos:elem.offset ~len;
+  elem.offset <- elem.offset + len
 
-let write_field_header : t -> int -> int -> unit =
-  fun t index field_type ->
+let write_field_header : t -> int -> int -> unit = fun t index field_type ->
   let header = (index lsl 3) + field_type in
-  add_field t (Varint_unboxed (header))
+  write_varint_unboxed_value header t
 
-let write_field : t -> int -> Field.t -> unit =
- fun t index field ->
-  let field_type =
+let write_field : t -> int -> Field.t -> unit = fun t index field ->
+  let field_type, writer =
     match field with
-    | Varint _ -> 0
-    | Varint_unboxed _ -> 0
-    | Fixed_64_bit _ -> 1
-    | Length_delimited _ -> 2
-    | Fixed_32_bit _ -> 5
+    | Varint v ->
+      0, write_varint_value v
+    | Varint_unboxed v ->
+      0, write_varint_unboxed_value v
+    | Fixed_64_bit v ->
+      1, write_fixed64_value v
+    | Length_delimited {offset; length; data} ->
+      2, write_length_delimited_value ~data ~offset ~len:length
+    | Fixed_32_bit v ->
+      5, write_fixed32_value v
   in
   write_field_header t index field_type;
-  add_field t field
+  writer t
 
-let write_length_delimited_value ~write v t =
+
+let write_length_delimited_value' ~write v t =
   let rec size_data_added sentinel acc = function
     | [] -> failwith "End of list reached. This is impossible"
     | x :: _ when x == sentinel -> acc
@@ -442,17 +429,14 @@ let write_length_delimited_value ~write v t =
     let _ = write t v in
     let size = size_data_added sentinel (sentinel.offset - (offset + length_delimited_size_field_length)) t.data in
     let offset' = write_varint_unboxed sentinel.buffer ~offset size in
-    (* Move data, to avoid holes *)
+    (* Move data to avoid holes *)
     let () = match (offset + length_delimited_size_field_length = offset') with
       | true -> ()
       | false ->
-        (* Offset points to the first new byte. *)
-        (*
-        Printf.eprintf "\nHole size: %d. %d, %d, %d\n" n offset offset' sentinel.offset;
-           Printf.eprintf "Bytes.blit ~src:sentinel.buffer ~src_pos:%d ~dst:sentinel.buffer ~dst_pos:%d ~len:%d\n" (offset+5) offset' (sentinel.offset - (offset + 5));
-        *)
-        Bytes.blit ~src:sentinel.buffer ~src_pos:(offset+5) ~dst:sentinel.buffer ~dst_pos:offset' ~len:(sentinel.offset - (offset + 5));
-        sentinel.offset <- sentinel.offset - (offset+5-offset');
+        Bytes.blit ~src:sentinel.buffer ~src_pos:(offset + length_delimited_size_field_length)
+          ~dst:sentinel.buffer ~dst_pos:offset'
+          ~len:(sentinel.offset - (offset + length_delimited_size_field_length));
+        sentinel.offset <- sentinel.offset - (offset+length_delimited_size_field_length-offset');
     in
     ()
   in
@@ -478,10 +462,10 @@ let contents t =
 let dump t =
   let string_contents = contents t in
   List.init ~len:(String.length string_contents) ~f:(fun i ->
-    sprintf "%02x" (Char.code (String.get string_contents i))
+    Printf.sprintf "%02x" (Char.code (String.get string_contents i))
   )
   |> String.concat ~sep:"-"
-  |> printf "Buffer: %s\n"
+  |> Printf.printf "Buffer: %s\n"
 
 let of_list: (int * Field.t) list -> t = fun fields ->
   let t = init () in

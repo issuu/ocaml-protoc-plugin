@@ -152,11 +152,14 @@ let to_list: t -> (int * Field.t) list =
 let%expect_test "varint boxed" =
   let values = [-2L; -1L; 0x7FFFFFFFFFFFFFFFL; 0x7FFFFFFFFFFFFFFEL; 0x3FFFFFFFFFFFFFFFL; 0x3FFFFFFFFFFFFFFEL; 0L; 1L] in
   List.iter ~f:(fun v ->
-    let buffer = Bytes.create 10 in
-    let _ = Writer.write_varint buffer ~offset:0 v in
+    let buffer =
+      let writer = Writer.init () in
+      Writer.write_varint_value v writer;
+      Writer.contents writer
+    in
     Printf.printf "0x%016LxL = 0x%016LxL\n"
-      (read_raw_varint_reference (create (Bytes.to_string buffer)))
-      (read_raw_varint (create (Bytes.to_string buffer)));
+      (read_raw_varint_reference (create buffer))
+      (read_raw_varint (create buffer));
     ()
   ) values;
   [%expect {|

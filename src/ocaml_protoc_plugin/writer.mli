@@ -17,14 +17,17 @@ val contents : t -> string
 
 (**/**)
 val varint_size : int -> int
-val write_varint : bytes -> offset:int -> int64 -> int
-val write_varint_unboxed : bytes -> offset:int -> int -> int
-val write_fixed32 : bytes -> offset:int -> Int32.t -> int
-val write_fixed64 : bytes -> offset:int -> Int64.t -> int
-val write_string : bytes -> offset:int -> string -> int
-val write_length_delimited : bytes -> offset:int -> src:string -> src_pos:int -> len:int -> int
+
+(** Direct functions *)
+val write_fixed32_value: int32 -> t -> unit
+val write_fixed64_value: int64 -> t -> unit
+val write_varint_unboxed_value: int -> t -> unit
+val write_varint_value: int64 -> t -> unit
+val write_length_delimited_value: data:string -> offset:int -> len:int -> t -> unit
+val write_const_value: string -> t -> unit
+
+val write_length_delimited_value': write:(t -> 'a -> _) -> 'a -> t -> unit
 val write_field : t -> int -> Field.t -> unit
-val write_length_delimited_value : write:(t -> 'a -> 'b) -> 'a -> t -> unit
 
 (** Construct a writer from a field list *)
 val of_list: (int * Field.t) list -> t
@@ -33,5 +36,4 @@ val of_list: (int * Field.t) list -> t
 val dump : t -> unit
 
 val unused_space : t -> int
-val write_value: size:int -> writer:(Bytes.t -> offset:int -> 'a -> int) -> 'a -> t -> unit
 (**/**)
