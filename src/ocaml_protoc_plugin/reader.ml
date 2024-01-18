@@ -38,7 +38,7 @@ let read_byte t =
   v
 
 [@@inline]
-let read_raw_varint t =
+let read_varint t =
   let rec inner n acc =
     let v = read_byte t in
     let acc = acc + (v land 0x7f) lsl n in
@@ -60,7 +60,7 @@ let read_raw_varint t =
   inner 0 0
 
 [@@inline]
-let read_raw_varint_reference t =
+let read_varint_reference t =
   let open Infix.Int64 in
   let rec inner n acc =
     let v = read_byte t |> Int64.of_int in
@@ -74,7 +74,7 @@ let read_raw_varint_reference t =
   inner 0 0L
 
 [@@inline]
-let read_raw_varint_unboxed t =
+let read_varint_unboxed t =
   let rec inner n acc =
     let v = read_byte t in
     let acc = acc + (v land 0x7f) lsl n in
@@ -86,50 +86,44 @@ let read_raw_varint_unboxed t =
   in
   inner 0 0
 
-[@@inline]
-let read_varint t = Varint (read_raw_varint t)
-
-let read_varint_unboxed t = Varint_unboxed (read_raw_varint_unboxed t)
-[@@inline]
-
 (* Implement little endian ourselves *)
 let read_fixed32 t =
   let size = 4 in
   validate_capacity t size;
   let v = Bytes.get_int32_le (Bytes.unsafe_of_string t.data) t.offset in
   t.offset <- t.offset + size;
-  (Fixed_32_bit v)
+  v
 
 let read_fixed64 t =
   let size = 8 in
   validate_capacity t size;
   let v = Bytes.get_int64_le (Bytes.unsafe_of_string t.data) t.offset in
   t.offset <- t.offset + size;
-  (Fixed_64_bit v)
+  v
 
 let read_length_delimited t =
-  let length = read_raw_varint_unboxed t in
+  let length = read_varint_unboxed t in
   validate_capacity t length;
   let v = Length_delimited {offset = t.offset; length; data = t.data} in
   t.offset <- t.offset + length;
   v
 
 let read_field_header : t -> int * int = fun t ->
-  let v = read_raw_varint_unboxed t in
+  let v = read_varint_unboxed t in
   let tpe = v land 0x7 in
   let field_number = v / 8 in
   (tpe, field_number)
 
 let read_field_content = fun boxed ->
   let read_varint = match boxed with
-    | Boxed -> read_varint
-    | Unboxed -> read_varint_unboxed
+    | Boxed -> fun r -> Varint (read_varint r)
+    | Unboxed -> fun r -> Varint_unboxed (read_varint_unboxed r)
   in
   function
-  | 0 -> read_varint
-  | 1 -> read_fixed64
+  | 0 -> fun r -> read_varint r
+  | 1 -> fun r -> Fixed_64_bit (read_fixed64 r)
   | 2 -> read_length_delimited
-  | 5 -> read_fixed32
+  | 5 -> fun r -> Fixed_32_bit (read_fixed32 r)
   | n -> fun _ -> Result.raise (`Unknown_field_type n)
 
 
@@ -158,8 +152,8 @@ let%expect_test "varint boxed" =
       Writer.contents writer
     in
     Printf.printf "0x%016LxL = 0x%016LxL\n"
-      (read_raw_varint_reference (create buffer))
-      (read_raw_varint (create buffer));
+      (read_varint_reference (create buffer))
+      (read_varint (create buffer));
     ()
   ) values;
   [%expect {|

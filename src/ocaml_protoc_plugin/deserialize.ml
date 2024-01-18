@@ -17,13 +17,23 @@ let error_wrong_field str field = Result.raise (`Wrong_field_type (str, field))
 let error_illegal_value str field = Result.raise (`Illegal_value (str, field))
 let error_required_field_missing () = Result.raise `Required_field_missing
 
+let decode_zigzag v =
+  let open Infix.Int64 in
+  match v land 0x01L = 0L with
+  | true -> v / 2L
+  | false -> (v / 2L * -1L) - 1L
+
+let decode_zigzag_unboxed v =
+  match v land 0x01 = 0 with
+  | true -> v / 2
+  | false -> (v / 2 * -1) - 1
+
 let read_varint ~signed ~type_name =
   let open! Infix.Int64 in
   function
   | Field.Varint v -> begin
       let v = match signed with
-        | true when v land 0x01L = 0L -> v / 2L
-        | true -> (v / 2L * -1L) - 1L
+        | true -> decode_zigzag v
         | false -> v
       in
       v
@@ -33,8 +43,7 @@ let read_varint ~signed ~type_name =
 let rec read_varint_unboxed ~signed ~type_name = function
   | Field.Varint_unboxed v -> begin
       let v = match signed with
-        | true when v land 0x01 = 0 -> v / 2
-        | true -> (v / 2 * -1) - 1
+        | true -> decode_zigzag_unboxed v
         | false -> v
       in
       v
@@ -44,6 +53,35 @@ let rec read_varint_unboxed ~signed ~type_name = function
 
 let read_varint32 ~signed ~type_name field =
   read_varint ~signed ~type_name field |> Int64.to_int32
+
+let get_packed_read_function: type a. a spec -> (Reader.t -> a) = function
+  | Double -> fun reader -> Reader.read_fixed64 reader |> Int64.float_of_bits
+  | Float  -> fun reader -> Reader.read_fixed32 reader |> Int32.float_of_bits
+  | Int32 -> fun reader -> Reader.read_varint_unboxed reader |> Int32.of_int
+  | Int32_int -> Reader.read_varint_unboxed
+  | Int64 -> Reader.read_varint
+  | Int64_int -> Reader.read_varint_unboxed
+  | UInt32 -> fun reader -> Reader.read_varint_unboxed reader |> Int32.of_int
+  | UInt32_int -> Reader.read_varint_unboxed
+  | UInt64 -> Reader.read_varint
+  | UInt64_int -> Reader.read_varint_unboxed
+  | SInt32 -> fun reader -> Reader.read_varint_unboxed reader |> decode_zigzag_unboxed |> Int32.of_int
+  | SInt32_int -> fun reader -> Reader.read_varint_unboxed reader |> decode_zigzag_unboxed
+  | SInt64 -> fun reader -> Reader.read_varint reader |> decode_zigzag
+  | SInt64_int -> fun reader -> Reader.read_varint_unboxed reader |> decode_zigzag_unboxed
+  | Fixed32 -> Reader.read_fixed32
+  | Fixed32_int -> fun reader -> Reader.read_fixed32 reader |> Int32.to_int
+  | Fixed64 -> Reader.read_fixed64
+  | Fixed64_int -> fun reader -> Reader.read_fixed64 reader |> Int64.to_int
+  | SFixed32 -> Reader.read_fixed32
+  | SFixed32_int -> fun reader -> Reader.read_fixed32 reader |> Int32.to_int
+  | SFixed64 -> Reader.read_fixed64
+  | SFixed64_int -> fun reader -> Reader.read_fixed64 reader |> Int64.to_int
+  | Bool -> fun reader -> Reader.read_varint_unboxed reader != 0
+  | Enum of_int -> fun reader -> Reader.read_varint_unboxed reader |> of_int
+  | String -> failwith "Strings cannot be packed"
+  | Bytes -> failwith "Bytes cannot be packed"
+  | Message _ -> failwith "Messages cannot be packed"
 
 let rec type_of_spec: type a. a spec -> 'b * a decoder =
   let int_of_int32 spec =
@@ -163,6 +201,12 @@ let get_boxed_type = function
   | `Fixed_64_bit -> Reader.Boxed
   | `Length_delimited -> Reader.Unboxed
 
+let is_scalar: type a. a spec -> bool = function
+  | Message _ -> false
+  | String -> false
+  | Bytes -> false
+  | _ -> true
+
 let sentinal: type a. a compound -> (int * (unit decoder * Reader.boxed)) list * a sentinal = function
   (* This is the same as required, so we should just use that! *)
   | Basic (index, (Message deser), _) ->
@@ -194,7 +238,6 @@ let sentinal: type a. a compound -> (int * (unit decoder * Reader.boxed)) list *
     let field_type, read = type_of_spec spec in
     let boxed = get_boxed_type field_type in
     let default = match default with
-
       | Some default -> default
       | None -> begin
           default_of_field_type field_type
@@ -204,7 +247,7 @@ let sentinal: type a. a compound -> (int * (unit decoder * Reader.boxed)) list *
     let v = ref default in
     let get () = !v in
     let read field =
-      read field |> fun value -> v := value
+      read field |> fun v' -> v := v'
     in
     ([index, (read, boxed)], get)
   | Basic_opt (index, spec) ->
@@ -216,35 +259,34 @@ let sentinal: type a. a compound -> (int * (unit decoder * Reader.boxed)) list *
       read field |> fun value -> v := Some value
     in
     ([index, (read, boxed)], get)
-  | Repeated (index, spec, _) ->
-    let read_field = function
-      | `Length_delimited -> None
-      | `Varint -> Some Reader.read_varint
-      | `Varint_unboxed -> Some Reader.read_varint_unboxed
-      | `Fixed_64_bit -> Some Reader.read_fixed64
-      | `Fixed_32_bit -> Some Reader.read_fixed32
-    in
-    let rec read_repeated reader decode read_f =
+  | Repeated (index, spec, _) when is_scalar spec ->
+    let v = ref [] in
+    let get () = List.rev !v in
+    let read_packed_field = get_packed_read_function spec in
+    let rec read_packed read_f acc reader =
       match Reader.has_more reader with
-      | false -> ()
-      | true ->
-        decode reader |> fun field ->
-          read_f field |> fun () ->
-            read_repeated reader decode read_f
+      | true -> read_packed read_f (read_f reader :: acc) reader
+      | false -> acc
     in
     let (field_type, read_type) = type_of_spec spec in
     let boxed = get_boxed_type field_type in
-    let read_field_type = read_field field_type in
-    let v = ref [] in
-    let get () = List.rev !v in
-    let rec read field = match field, read_field_type with
-      | (Field.Length_delimited _ as field), None ->
-        read_type field |> fun v' -> v := v' :: !v
-      | Field.Length_delimited { offset; length; data }, Some read_field ->
-        read_repeated (Reader.create ~offset ~length data) read_field read
-      | field, _ -> read_type field |> fun v' -> v := v' :: !v
+    let read_field field = read_type field |> fun v' -> v := v' :: !v in
+    let read = function
+      | Field.Length_delimited { offset; length; data } ->
+        v := read_packed read_packed_field (!v) (Reader.create ~offset ~length data)
+      | field -> read_field field
     in
     ([index, (read, boxed)], get)
+
+  | Repeated (index, spec, _) ->
+    (* Non-scalar types cannot be packed *)
+    let v = ref [] in
+    let get () = List.rev !v in
+    let (field_type, read_type) = type_of_spec spec in
+    let boxed = get_boxed_type field_type in
+    let read field = read_type field |> fun v' -> v := v' :: !v in
+    ([index, (read, boxed)], get)
+
   | Oneof oneofs ->
     let make_reader: a ref -> a oneof -> (int * (unit decoder * Reader.boxed)) = fun v (Oneof_elem (index, spec, constr)) ->
       let field_type, read = type_of_spec spec in

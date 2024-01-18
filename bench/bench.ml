@@ -60,17 +60,17 @@ let make_tests (type v) (module Protoc: Protoc_impl) (module Plugin: Plugin_impl
     let test_encode =
     Test.make_grouped ~name:"Encode"
       [
-        Test.make ~name:"Plugin balanced" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Balanced ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents);
-        Test.make ~name:"Plugin speed" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Speed ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents);
-        Test.make ~name:"Plugin space" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Space ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents);
-        Test.make ~name:"Protoc" (Staged.stage @@ fun () -> let encoder = Pbrt.Encoder.create () in Protoc.encode_pb_m v_protoc encoder; (Pbrt.Encoder.to_string encoder))
+        Test.make ~name:"Plugin balanced" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Balanced ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents |> Sys.opaque_identity);
+        Test.make ~name:"Plugin speed" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Speed ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents |> Sys.opaque_identity);
+        Test.make ~name:"Plugin space" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Space ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents |> Sys.opaque_identity);
+        Test.make ~name:"Protoc" (Staged.stage @@ fun () -> let encoder = Pbrt.Encoder.create () in Protoc.encode_pb_m v_protoc encoder; (Pbrt.Encoder.to_string encoder) |> Sys.opaque_identity)
       ]
   in
   let test_decode =
     Test.make_grouped ~name:"Decode"
       [
-        Test.make ~name:"Plugin" (Staged.stage @@ fun () -> Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data));
-        Test.make ~name:"Protoc" (Staged.stage @@ fun () -> Protoc.decode_pb_m (Pbrt.Decoder.of_string data))
+        Test.make ~name:"Plugin" (Staged.stage @@ fun () -> Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data |> Sys.opaque_identity));
+        Test.make ~name:"Protoc" (Staged.stage @@ fun () -> Protoc.decode_pb_m (Pbrt.Decoder.of_string data |> Sys.opaque_identity))
       ]
   in
   Test.make_grouped ~name:(Plugin.M.name' ()) [test_encode; test_decode]
