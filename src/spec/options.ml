@@ -48,7 +48,7 @@ end = struct
   let to_proto t = to_proto' (Runtime'.Writer.init ()) t
 
   let from_proto_exn =
-    let constructor = fun _extensions mangle_names -> mangle_names in
+    let constructor = fun mangle_names _extensions -> mangle_names in
     let spec = Runtime'.Deserialize.C.( basic (1, bool, Some (false)) ^:: nil ) in
     let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
     fun writer -> deserialize writer

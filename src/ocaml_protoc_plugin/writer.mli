@@ -19,6 +19,7 @@ val contents : t -> string
 val varint_size : int -> int
 
 (** Direct functions *)
+
 val write_fixed32_value: int32 -> t -> unit
 val write_fixed64_value: int64 -> t -> unit
 val write_varint_unboxed_value: int -> t -> unit

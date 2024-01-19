@@ -533,7 +533,15 @@ let split_oneof_decl fields oneof_decls =
   in
   inner [] oneof_decls fields
 
+let sort_fields fields =
+  let number = function
+    | FieldDescriptorProto.{ number = Some number; _ } -> number
+    | _ -> failwith "XAll Fields must have a number"
+  in
+  List.sort ~cmp:(fun v v' -> Int.compare (number v) (number v')) fields
+
 let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields oneof_decls =
+  let fields = sort_fields fields in
   let ts =
     split_oneof_decl fields oneof_decls
     |> List.map ~f:(function
@@ -607,7 +615,7 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
 
   let type' =
     List.rev_map ~f:(fun { name; type'; _} -> ((Scope.get_name scope name), (typestr_of_type type'))) ts
-    |> prepend ~cond:has_extensions ("extensions'", "Runtime'.Extensions.t")
+    |> append ~cond:has_extensions ("extensions'", "Runtime'.Extensions.t")
     |> List.rev_map ~f:(function
       | (_, type') when t_as_tuple -> type'
       | (name, type') -> sprintf "%s: %s" name type'
@@ -624,7 +632,7 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
   let fields =(append ~cond:has_extensions "extensions'" field_names) in
   let constructor =
     sprintf "fun %s %s -> %s"
-      (if has_extensions then "extensions'" else "_extensions") args (type_destr fields)
+      args (if has_extensions then "extensions'" else "_extensions") (type_destr fields)
   in
   let apply =
     sprintf "fun ~f:f' writer %s -> f' %s writer %s"

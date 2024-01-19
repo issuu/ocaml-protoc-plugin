@@ -1,5 +1,9 @@
+[@@@ocaml.warning "-26"]
 open Base
 open Stdio
+
+let meassure = Bechamel_perf.Instance.cpu_clock
+
 [@@@ocaml.warning "-32"]
 module type Protoc_impl = sig
   type m
@@ -38,14 +42,15 @@ let make_tests (type v) (module Protoc: Protoc_impl) (module Plugin: Plugin_impl
   let size_normal, unused_normal = verify_identity ~mode:Ocaml_protoc_plugin.Writer.Balanced v_plugin in
   let size_speed, unused_speed = verify_identity ~mode:Ocaml_protoc_plugin.Writer.Speed v_plugin in
   let size_space, unused_space = verify_identity ~mode:Ocaml_protoc_plugin.Writer.Space v_plugin in
-  let data = Plugin.M.to_proto' (Ocaml_protoc_plugin.Writer.init ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents  in
-  let v_plugin = Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data) in
-  let v_protoc = Protoc.decode_pb_m (Pbrt.Decoder.of_string data) in
+  let data_plugin = Plugin.M.to_proto' (Ocaml_protoc_plugin.Writer.init ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents  in
+  let v_plugin' = Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data_plugin) in
+  assert (Poly.equal v_plugin v_plugin');
+  let v_protoc = Protoc.decode_pb_m (Pbrt.Decoder.of_string data_plugin) in
   let protoc_encoder = Pbrt.Encoder.create () in
   let () = Protoc.encode_pb_m v_protoc protoc_encoder in
   let data_protoc = Pbrt.Encoder.to_string protoc_encoder in
-  let v_plugin' = Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data_protoc) in
-  let () = match Plugin.M.equal v_plugin v_plugin' with
+  let v_plugin'' = Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data_protoc) in
+  let () = match Plugin.M.equal v_plugin v_plugin'' with
     | true -> ()
     | false ->
        eprintf "Orig: %s\n" (Plugin.M.show v_plugin);
@@ -69,8 +74,8 @@ let make_tests (type v) (module Protoc: Protoc_impl) (module Plugin: Plugin_impl
   let test_decode =
     Test.make_grouped ~name:"Decode"
       [
-        Test.make ~name:"Plugin" (Staged.stage @@ fun () -> Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data |> Sys.opaque_identity));
-        Test.make ~name:"Protoc" (Staged.stage @@ fun () -> Protoc.decode_pb_m (Pbrt.Decoder.of_string data |> Sys.opaque_identity))
+        Test.make ~name:"Plugin" (Staged.stage @@ fun () -> Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data_plugin |> Sys.opaque_identity));
+        Test.make ~name:"Protoc" (Staged.stage @@ fun () -> Protoc.decode_pb_m (Pbrt.Decoder.of_string data_protoc |> Sys.opaque_identity))
       ]
   in
   Test.make_grouped ~name:(Plugin.M.name' ()) [test_encode; test_decode]
@@ -128,22 +133,22 @@ let create_test_data ~depth () =
 
 let benchmark tests =
   let open Bechamel in
-  let instances = Bechamel_perf.Instance.[ cpu_clock ] in
-  let cfg = Benchmark.cfg ~limit:2000 ~quota:(Time.second 5.0) ~kde:(Some 1000) ~stabilize:true ~compaction:false () in
+  let instances = [ meassure ] in
+  let cfg = Benchmark.cfg ~limit:500 ~quota:(Time.second 5.0) ~kde:(Some 100) ~stabilize:true ~compaction:false () in
   Benchmark.all cfg instances tests
 
 let analyze results =
   let open Bechamel in
-  let ols = Analyze.ols ~bootstrap:10 ~r_square:false
+  let ols = Analyze.ols ~bootstrap:5 ~r_square:false
     ~predictors:[| Measure.run |] in
-  let results = Analyze.all ols Bechamel_perf.Instance.cpu_clock results in
-  Analyze.merge ols [ Bechamel_perf.Instance.cpu_clock ] [ results ]
+  let results = Analyze.all ols meassure results in
+  Analyze.merge ols [ meassure ] [ results ]
 
 let print_bench_results results =
   let open Bechamel in
   let () = Bechamel_notty.Unit.add
-             Bechamel_perf.Instance.cpu_clock
-             (Measure.unit Bechamel_perf.Instance.cpu_clock)
+             meassure
+             (Measure.unit meassure)
   in
 
   let img (window, results) =
@@ -162,7 +167,8 @@ let print_bench_results results =
 
 let _ =
   let v_plugin = create_test_data ~depth:2 () |> Option.value_exn in
-  [ make_tests (module Protoc.Bench) (module Plugin.Bench) v_plugin;
+  [
+    make_tests (module Protoc.Bench) (module Plugin.Bench) v_plugin;
     make_tests (module Protoc.Int64) (module Plugin.Int64) 27;
     make_tests (module Protoc.Float) (module Plugin.Float) 27.0001;
     make_tests (module Protoc.String) (module Plugin.String) "Benchmark";
@@ -171,8 +177,8 @@ let _ =
     List.init 1000 ~f:(fun i -> i) |> make_tests (module Protoc.Int64_list) (module Plugin.Int64_list);
     List.init 1000 ~f:(fun i -> Float.of_int i) |> make_tests (module Protoc.Float_list) (module Plugin.Float_list);
     List.init 1000 ~f:(fun _ -> random_string ()) |> make_tests (module Protoc.String_list) (module Plugin.String_list);
-    (* random_list ~len:100 ~f:(fun () -> Plugin.Enum_list.Enum.ED) () |> make_tests (module Protoc.Enum_list) (module Plugin.Enum_list); *)
-  ]
+       (* random_list ~len:100 ~f:(fun () -> Plugin.Enum_list.Enum.ED) () |> make_tests (module Protoc.Enum_list) (module Plugin.Enum_list); *)
+       ]
   |> List.rev |> List.iter ~f:(fun test ->
     test
     |> benchmark

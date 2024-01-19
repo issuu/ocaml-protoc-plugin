@@ -51,12 +51,15 @@ let module_name_of_proto file =
   |> String.map ~f:(function '-' -> '_' | c -> c)
 
 let has_mangle_option options =
-  Option.map ~f:Spec.Options.Ocaml_options.get options
-  |> function
-  | Some (Ok (Some v)) -> v
-  | Some (Ok None) -> false
+  match options with
   | None -> false
-  | Some (Error _e) -> failwith "Could not parse ocaml-protoc-plugin options with id 1074"
+  | Some options ->
+    Spec.Options.Ocaml_options.get options
+    |> Ocaml_protoc_plugin.Result.get ~msg:"Could not parse ocaml-protoc-plugin options with id 1074"
+    |> function
+    | Some v -> v
+    | None -> false
+
 
 module Type_tree = struct
   type t = { name: string;

@@ -99,7 +99,8 @@ let write_field: type a. a spec -> int -> a -> Writer.t -> unit = fun spec index
 
 let rec write: type a. a compound -> Writer.t -> a -> unit = function
   | Repeated (index, spec, Packed) -> begin
-      let write writer vs = List.iter ~f:(fun v -> write_value spec v writer) vs in
+      let write_value = write_value spec in
+      let write writer vs = List.iter ~f:(fun v -> write_value v writer) vs in
       let write_header = write_field_header String index in
       fun writer vs ->
         match vs with
@@ -113,6 +114,10 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
     fun writer vs ->
       List.iter ~f:(fun v -> write v writer) vs
 
+  (* For required fields the default is none, and the field must always be written!
+     Consider a Basic_req (index, spec) instead. Then default is not an option type,
+     and the code is simpler to read
+  *)
   | Basic (index, spec, default) -> begin
       let write = write_field spec index in
       match default with
@@ -137,6 +142,8 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
         match v with
         | `not_set -> ()
         | v ->
+          (* Wonder if we could get the specs before calling v. Wonder what f is? *)
+          (* We could prob. return a list of all possible values + f v -> v. *)
             let Oneof_elem (index, spec, v) = f v in
             write (Basic (index, spec, None)) writer v
     end

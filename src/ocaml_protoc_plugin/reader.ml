@@ -1,9 +1,5 @@
 (** Some buffer to hold data, and to read and write data *)
-
 open StdLabels
-open Field
-
-type boxed = Boxed | Unboxed
 
 type t = {
   mutable offset : int;
@@ -15,10 +11,14 @@ let create ?(offset = 0) ?length data =
   let end_offset =
     match length with
     | None -> String.length data
-    | Some l -> l + offset
+    | Some l -> offset + l
   in
+  assert (end_offset >= offset);
   assert (String.length data >= end_offset);
   {offset; end_offset; data}
+
+let reset t offset = t.offset <- offset
+let offset { offset; _ } = offset
 
 [@@inline]
 let validate_capacity t count =
@@ -104,37 +104,34 @@ let read_fixed64 t =
 let read_length_delimited t =
   let length = read_varint_unboxed t in
   validate_capacity t length;
-  let v = Length_delimited {offset = t.offset; length; data = t.data} in
+  let v = Field.{ offset = t.offset; length = length; data = t.data } in
   t.offset <- t.offset + length;
   v
 
-let read_field_header : t -> int * int = fun t ->
+let read_field_header: t -> Field.field_type * int = fun t ->
   let v = read_varint_unboxed t in
-  let tpe = v land 0x7 in
+  let tpe : Field.field_type = match v land 0x7 with
+    | 0 -> Varint
+    | 1 -> Fixed64
+    | 2 -> Length_delimited
+    | 5 -> Fixed32
+    | _ -> failwith (Printf.sprintf "Illegal field header: 0x%x" v)
+  in
   let field_number = v / 8 in
   (tpe, field_number)
 
-let read_field_content = fun boxed ->
-  let read_varint = match boxed with
-    | Boxed -> fun r -> Varint (read_varint r)
-    | Unboxed -> fun r -> Varint_unboxed (read_varint_unboxed r)
-  in
-  function
-  | 0 -> fun r -> read_varint r
-  | 1 -> fun r -> Fixed_64_bit (read_fixed64 r)
-  | 2 -> read_length_delimited
-  | 5 -> fun r -> Fixed_32_bit (read_fixed32 r)
-  | n -> fun _ -> Result.raise (`Unknown_field_type n)
-
-
-let read_field : boxed -> t -> int * Field.t = fun boxed ->
-  let read_field_content = read_field_content boxed in
-  fun t ->
-    let (field_type, field_number) = read_field_header t in
-    field_number, read_field_content field_type t
+let read_field_content: Field.field_type -> t -> Field.t = function
+  | Varint -> fun r -> Field.Varint (read_varint r)
+  | Fixed64 -> fun r -> Field.Fixed_64_bit (read_fixed64 r)
+  | Length_delimited -> fun r -> Length_delimited (read_length_delimited r)
+  | Fixed32 -> fun r -> Field.Fixed_32_bit (read_fixed32 r)
 
 let to_list: t -> (int * Field.t) list =
-  let read_field = read_field Boxed in
+  let read_field t =
+    let (tpe, index) = read_field_header t in
+    let field = read_field_content tpe t in
+    (index, field)
+  in
   let rec next t () = match has_more t with
     | true -> Seq.Cons (read_field t, next t)
     | false -> Seq.Nil

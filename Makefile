@@ -24,26 +24,33 @@ uninstall: build ## uninstall
 %: %.proto
 	protoc --experimental_allow_proto3_optional -I $(dir $<) $< -o/dev/stdout | protoc --experimental_allow_proto3_optional --decode google.protobuf.FileDescriptorSet $(GOOGLE_INCLUDE)/descriptor.proto
 
-src/spec/descriptor.ml: build
-	protoc "--plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe" \
+PLUGIN = _build/default/src/plugin/protoc_gen_ocaml.exe
+$(PLUGIN): force
+	dune build src/plugin/protoc_gen_ocaml.exe
+
+src/spec/descriptor.ml: $(PLUGIN)
+	protoc "--plugin=protoc-gen-ocaml=$(PLUGIN)" \
 	  -I /usr/include \
 	  --ocaml_out=src/spec/. \
 	  $(GOOGLE_INCLUDE)/descriptor.proto
 
-src/spec/plugin.ml: build
-	protoc "--plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe" \
+src/spec/plugin.ml: $(PLUGIN)
+	protoc "--plugin=protoc-gen-ocaml=$(PLUGIN)" \
 	  -I /usr/include \
 	  --ocaml_out=src/spec/. \
 	  $(GOOGLE_INCLUDE)/compiler/plugin.proto
 
-src/spec/options.ml: build
-	protoc "--plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe" \
+src/spec/options.ml: $(PLUGIN)
+	protoc "--plugin=protoc-gen-ocaml=$(PLUGIN)" \
 	  -I src/spec -I /usr/include \
 	  --ocaml_out=src/spec/. \
 	  src/spec/options.proto
 .PHONY: bootstrap
 bootstrap: src/spec/descriptor.ml src/spec/plugin.ml src/spec/options.ml ## Regenerate files used for generation
 
+%.ml: %.proto
+	protoc -I $(shell pkg-config protobuf --variable=includedir) -I $(dir $<) --plugin=protoc-gen-ocaml=_build/default/src/plugin/protoc_gen_ocaml.exe \
+		--ocaml_out=$(dir $@). $<
 
 
 .PHONY: doc
@@ -66,6 +73,8 @@ gh-pages: doc ## Publish documentation
 bench: ## Run benchmark to compare with ocaml-protoc
 	dune exec bench/bench.exe
 
+.PHONY: force
+force:
 
 .PHONY: help
 help: ## Show this help
