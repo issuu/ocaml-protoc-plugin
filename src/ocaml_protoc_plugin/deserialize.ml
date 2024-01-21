@@ -100,7 +100,7 @@ let default_value: type a. a spec -> a = function
   | SFixed32 -> Int32.zero
   | SFixed64 -> Int64.zero
   | Message of_proto -> of_proto (Reader.create "")
-  | String -> String.empty
+  | String -> ""
   | Bytes -> Bytes.empty
   | Int32_int -> 0
   | Int64_int -> 0

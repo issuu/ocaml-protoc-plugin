@@ -65,17 +65,15 @@ let make_tests (type v) (module Protoc: Protoc_impl) (module Plugin: Plugin_impl
     let test_encode =
     Test.make_grouped ~name:"Encode"
       [
-        Test.make ~name:"Plugin balanced" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Balanced ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents |> Sys.opaque_identity);
-        Test.make ~name:"Plugin speed" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Speed ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents |> Sys.opaque_identity);
-        Test.make ~name:"Plugin space" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ~mode:Space ()) v_plugin |> Ocaml_protoc_plugin.Writer.contents |> Sys.opaque_identity);
-        Test.make ~name:"Protoc" (Staged.stage @@ fun () -> let encoder = Pbrt.Encoder.create () in Protoc.encode_pb_m v_protoc encoder; (Pbrt.Encoder.to_string encoder) |> Sys.opaque_identity)
+        Test.make ~name:"Plugin" (Staged.stage @@ fun () -> Plugin.M.to_proto' Ocaml_protoc_plugin.Writer.(init ()) v_plugin);
+        Test.make ~name:"Protoc" (Staged.stage @@ fun () -> let encoder = Pbrt.Encoder.create () in Protoc.encode_pb_m v_protoc encoder; Pbrt.Encoder.to_string encoder)
       ]
   in
   let test_decode =
     Test.make_grouped ~name:"Decode"
       [
-        Test.make ~name:"Plugin" (Staged.stage @@ fun () -> Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data_plugin |> Sys.opaque_identity));
-        Test.make ~name:"Protoc" (Staged.stage @@ fun () -> Protoc.decode_pb_m (Pbrt.Decoder.of_string data_protoc |> Sys.opaque_identity))
+        Test.make ~name:"Plugin" (Staged.stage @@ fun () -> Plugin.M.from_proto_exn (Ocaml_protoc_plugin.Reader.create data_plugin));
+        Test.make ~name:"Protoc" (Staged.stage @@ fun () -> Protoc.decode_pb_m (Pbrt.Decoder.of_string data_protoc))
       ]
   in
   Test.make_grouped ~name:(Plugin.M.name' ()) [test_encode; test_decode]
@@ -134,12 +132,12 @@ let create_test_data ~depth () =
 let benchmark tests =
   let open Bechamel in
   let instances = [ meassure ] in
-  let cfg = Benchmark.cfg ~limit:500 ~quota:(Time.second 5.0) ~kde:(Some 100) ~stabilize:true ~compaction:false () in
+  let cfg = Benchmark.cfg ~compaction:false ~kde:(Some 1) ~quota:(Time.second 1.0) () in
   Benchmark.all cfg instances tests
 
 let analyze results =
   let open Bechamel in
-  let ols = Analyze.ols ~bootstrap:5 ~r_square:false
+  let ols = Analyze.ols ~bootstrap:5 ~r_square:true
     ~predictors:[| Measure.run |] in
   let results = Analyze.all ols meassure results in
   Analyze.merge ols [ meassure ] [ results ]
