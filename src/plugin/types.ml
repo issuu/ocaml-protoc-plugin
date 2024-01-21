@@ -39,6 +39,12 @@ type c = {
   deserialize_spec: string;
 }
 
+type field_spec = {
+  typestr : string;
+  serialize_spec: string;
+  deserialize_spec: string;
+}
+
 type t = {
   type' : string;
   constructor: string;
@@ -301,6 +307,11 @@ let string_of_packed = function
   | Packed -> "packed"
   | Not_packed -> "not_packed"
 
+let string_of_type = function
+  | { name; modifier = (No_modifier _ | Required); _ } -> name
+  | { name; modifier = List; _ } -> sprintf "%s list" name
+  | { name; modifier = Optional; _ } -> sprintf "%s option" name
+
 let c_of_compound: type a. string -> a compound -> c = fun name compound ->
   match compound with
   | Basic (index, spec, default) ->
@@ -458,6 +469,15 @@ let c_of_field ~params ~syntax ~scope field =
   | _, { label = None; _ } -> failwith "Label not set on field struct"
   | _, { type' = None; _ } -> failwith "Type must be set"
 
+
+let spec_of_field ~params ~syntax ~scope field : field_spec =
+  let c = c_of_field ~params ~syntax ~scope field in
+  {
+    typestr = string_of_type c.type';
+    serialize_spec = c.serialize_spec;
+    deserialize_spec = c.deserialize_spec;
+  }
+
 let c_of_oneof ~params ~syntax:_ ~scope OneofDescriptorProto.{ name; _ } fields =
   let open FieldDescriptorProto in
   (* Construct the type. *)
@@ -550,18 +570,12 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
         | `Oneof (decl, fields) -> c_of_oneof ~params ~syntax ~scope decl fields
       )
   in
-  let typestr_of_type = function
-    | { name; modifier = (No_modifier _ | Required); _ } -> name
-    | { name; modifier = List; _ } -> sprintf "%s list" name
-    | { name; modifier = Optional; _ } -> sprintf "%s option" name
-  in
-
   let constructor_sig_arg = function
-    | {name; type' = { name = type_name; modifier = Required }; _ } ->
+    | { name; type' = { name = type_name; modifier = Required }; _ } ->
       sprintf "%s:%s" (Scope.get_name scope name) type_name
-    | {name; type' = { name = type_name; modifier = List }; _} ->
+    | { name; type' = { name = type_name; modifier = List }; _} ->
       sprintf "?%s:%s list" (Scope.get_name scope name) type_name
-    | {name; type' = { name = type_name; modifier = (Optional | No_modifier _) }; _} ->
+    | { name; type' = { name = type_name; modifier = (Optional | No_modifier _) }; _} ->
       sprintf "?%s:%s" (Scope.get_name scope name) type_name
   in
 
@@ -614,7 +628,7 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
   in
 
   let type' =
-    List.rev_map ~f:(fun { name; type'; _} -> ((Scope.get_name scope name), (typestr_of_type type'))) ts
+    List.rev_map ~f:(fun { name; type'; _} -> ((Scope.get_name scope name), (string_of_type type'))) ts
     |> append ~cond:has_extensions ("extensions'", "Runtime'.Extensions.t")
     |> List.rev_map ~f:(function
       | (_, type') when t_as_tuple -> type'
@@ -629,7 +643,7 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
   in
 
   let args = String.concat ~sep:" " field_names in
-  let fields =(append ~cond:has_extensions "extensions'" field_names) in
+  let fields = (append ~cond:has_extensions "extensions'" field_names) in
   let constructor =
     sprintf "fun %s %s -> %s"
       args (if has_extensions then "extensions'" else "_extensions") (type_destr fields)

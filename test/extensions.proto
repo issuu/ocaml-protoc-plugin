@@ -7,16 +7,22 @@ message Foo {
     extensions 100 to 199;
     extensions 500 to max;
 }
+
 message Baz {
     optional uint32 a = 1;
 }
 
 extend Foo {
     optional uint32 baz = 128;
-    optional uint32 baz2 = 129;
+    repeated uint32 b2 = 129 [packed = true];
 }
 
 
 extend Foo {
     repeated uint32 r_baz = 130;
+}
+
+extend Foo {
+    optional uint32 a = 131;
+    optional uint32 b = 132 [default = 13];
 }

@@ -7,19 +7,25 @@ let show : t -> string = Format.asprintf "%a" pp
 let equal _ _ = true
 let compare _ _ = 0
 
-let get: type a. (a -> t -> a, t -> a) Spec.Deserialize.compound_list -> t -> a = fun spec t ->
+
+let index_of_spec: type a. a Spec.Serialize.compound -> int = function
+  | Basic (index, _, _) -> index
+  | Basic_opt (index, _) -> index
+  | Repeated (index, _, _) -> index
+  | Oneof _ -> failwith "Oneof fields not allowed in extensions"
+
+let get: type a. a Spec.Deserialize.compound -> t -> a = fun spec t ->
   let writer = Writer.of_list t in
   let reader = Writer.contents writer |> Reader.create in
-  Deserialize.deserialize [] spec (fun a _ -> a) reader
+  Deserialize.deserialize [] Spec.Deserialize.(Cons (spec, Nil)) (fun a _ -> a) reader
 
-let set: ('a -> Writer.t, Writer.t) Serialize.S.compound_list -> t -> 'a -> t = fun spec t v ->
+let set: type a. a Spec.Serialize.compound -> t -> a -> t = fun spec t v ->
   let writer = Writer.init () in
-  let writer = Serialize.serialize [] spec [] writer v in
-  let reader = Writer.contents writer |> Reader.create in
-  (* If we dont produce any fields, we should still clear the previous fields. *)
-  (* TODO: Test this code *)
-  match Reader.to_list reader with
-  | ((index, _) :: _) as fields ->
-    (List.filter ~f:(fun (i, _) -> i != index) t) @ fields
-  | [] -> t
-  | exception Result.Error _ -> failwith "Internal serialization fail"
+  let writer = Serialize.serialize [] Spec.Serialize.(Cons (spec, Nil)) [] writer v in
+  let index = index_of_spec spec in
+  let fields =
+    Writer.contents writer
+    |> Reader.create
+    |> Reader.to_list
+  in
+  List.filter ~f:(fun (i, _) -> i != index) t @ fields

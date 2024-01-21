@@ -122,26 +122,25 @@ let emit_extension ~scope ~params field =
   let module_name = (Scope.get_name scope name) in
   let extendee_type = Scope.get_scoped_name scope ~postfix:"t" extendee in
   let extendee_field = Scope.get_scoped_name scope ~postfix:"extensions'" extendee in
-  (* Create the type of the type' / type_name *)
-  let t =
+  (* Get spec and type *)
+  let c =
     let params = Parameters.{params with singleton_record = false} in
-    Types.make ~params ~syntax:`Proto2 ~is_cyclic:false ~scope ~is_map_entry:false ~has_extensions:false ~fields:[field] []
+    Types.spec_of_field ~params ~syntax:`Proto2 ~scope field
   in
-
   let signature = Code.init () in
   let implementation = Code.init () in
   Code.append implementation signature;
 
-  Code.emit signature `None "type t = %s %s" t.type' params.annot;
-  Code.emit signature `None "val get_exn: %s -> %s" extendee_type t.type';
-  Code.emit signature `None "val get: %s -> (%s, [> Runtime'.Result.error]) result" extendee_type t.type';
-  Code.emit signature `None "val set: %s -> %s -> %s" extendee_type t.type' extendee_type;
+  Code.emit signature `None "type t = %s %s" c.typestr params.annot;
+  Code.emit signature `None "val get_exn: %s -> %s" extendee_type c.typestr;
+  Code.emit signature `None "val get: %s -> (%s, [> Runtime'.Result.error]) result" extendee_type c.typestr;
+  Code.emit signature `None "val set: %s -> %s -> %s" extendee_type c.typestr extendee_type;
 
-  Code.emit implementation `None "type t = %s %s" t.type' params.annot;
-  Code.emit implementation `None "let get_exn extendee = Runtime'.Extensions.get %s (extendee.%s)" t.deserialize_spec extendee_field ;
+  Code.emit implementation `None "type t = %s %s" c.typestr params.annot;
+  Code.emit implementation `None "let get_exn extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.(%s) (extendee.%s)" c.deserialize_spec extendee_field ;
   Code.emit implementation `None "let get extendee = Runtime'.Result.catch (fun () -> get_exn extendee)";
   Code.emit implementation `Begin "let set extendee t =";
-  Code.emit implementation `None "let extensions' = Runtime'.Extensions.set (%s) (extendee.%s) t in" t.serialize_spec extendee_field;
+  Code.emit implementation `None "let extensions' = Runtime'.Extensions.set Runtime'.Serialize.C.(%s) (extendee.%s) t in" c.serialize_spec extendee_field;
   Code.emit implementation `None "{ extendee with %s = extensions' }" extendee_field;
   Code.emit implementation `End "";
   { module_name; signature; implementation }
@@ -350,6 +349,7 @@ let parse_proto_file ~params scope
   in
 
   Code.append implementation implementation';
+  Code.emit implementation `None "";
 
   let base_name = Filename.remove_extension name in
   (base_name ^ ".ml"), implementation
