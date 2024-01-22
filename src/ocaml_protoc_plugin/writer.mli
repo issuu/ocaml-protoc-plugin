@@ -16,7 +16,6 @@ val init: ?mode:mode -> ?block_size:int -> unit -> t
 val contents : t -> string
 
 (**/**)
-val varint_size : int -> int
 
 (** Direct functions *)
 

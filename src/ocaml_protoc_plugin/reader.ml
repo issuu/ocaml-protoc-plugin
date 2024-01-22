@@ -37,6 +37,19 @@ let read_byte t =
   t.offset <- t.offset + 1;
   v
 
+let read_varint_reference t =
+  let open Infix.Int64 in
+  let rec inner n acc =
+    let v = read_byte t |> Int64.of_int in
+    let acc = acc + (v land 0x7fL) lsl n in
+    match v land 0x80L = 0x80L with
+    | true ->
+      (* Still More data *)
+      inner (Int.add n 7) acc
+    | false -> acc
+  in
+  inner 0 0L
+
 [@@inline]
 let read_varint t =
   let rec inner n acc =
@@ -58,20 +71,6 @@ let read_varint t =
 
   in
   inner 0 0
-
-[@@inline]
-let read_varint_reference t =
-  let open Infix.Int64 in
-  let rec inner n acc =
-    let v = read_byte t |> Int64.of_int in
-    let acc = acc + (v land 0x7fL) lsl n in
-    match v land 0x80L = 0x80L with
-    | true ->
-      (* Still More data *)
-      inner (Int.add n 7) acc
-    | false -> acc
-  in
-  inner 0 0L
 
 [@@inline]
 let read_varint_unboxed t =

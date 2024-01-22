@@ -26,274 +26,6 @@ let unused_space t =
   in
   inner t.data
 
-(** Get index of most significant bit. *)
-let varint_size_reference v =
-  let rec inner acc = function
-    | 0 -> acc
-    | v -> inner (acc + 1) (v lsr 1)
-  in
-  match v with
-  | v when v < 0 -> 10
-  | 0 -> 1
-  | v -> (6 + inner 0 v) / 7
-
-let varint_size = function
-  | v when v < 0 -> 10
-  | v when v < 0x80 -> 1
-  | v when v < 0x4000 -> 2
-  | v when v < 0x200000 -> 3
-  | v when v < 0x10000000 -> 4
-  | v when v < 0x800000000 -> 5
-  | v when v < 0x40000000000 -> 6
-  | v when v < 0x2000000000000 -> 7
-  | v when v < 0x100000000000000 -> 8
-  | _ -> 9
-
-(* Manually unroll *)
-let write_varint_unboxed buffer ~offset = function
-  | v when v < 0 ->
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset 0x01;
-    offset + 1
-
-  | v when v < 1 lsl (7*1) ->
-    Bytes.set_uint8 buffer offset v;
-    offset + 1
-
-  | v when v < 1 lsl (7*2) ->
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset v;
-    offset + 1
-
-  | v when v < 1 lsl (7*3) ->
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset v;
-    offset + 1
-
-  | v when v < 1 lsl (7*4) ->
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset v;
-    offset + 1
-
-  | v when v < 1 lsl (7*5) ->
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset v;
-    offset + 1
-
-  | v when v < 1 lsl (7*6) ->
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset v;
-    offset + 1
-
-  | v when v < 1 lsl (7*7) ->
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset v;
-    offset + 1
-
-  | v when v < 1 lsl (8*7) ->
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset v;
-    offset + 1
-
-  | v (* when v < 1 lsl (8*8) *) ->
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset v;
-    offset + 1
-
-(* Write a field delimited length.
-   A delimited field length can be no larger than 2^31.
-   This function always write 5 bytes (7*5bits > 31bits).
-   This allows the field length to be statically allocated and written later.
-   The spec does not forbid this encoding, but there might be implementation
-   that disallow '0' as the ending varint value.
-*)
-let write_delimited_field_length_fixed_size buffer ~offset v =
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset v;
-    offset + 1
-
-(* If we clear the top bit, then its not signed anymore... Maybe. *)
-let write_varint buffer ~offset vl =
-  let v = Int64.to_int vl in
-  (* Int64.to_int just strips the high bit *)
-  match (Int64.shift_right_logical vl 62) = 0L with
-  | true ->
-    (* Bits 63 or 64 are not set, so write as unboxed *)
-    write_varint_unboxed buffer ~offset v
-  | false ->
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let v = v lsr 7 in
-    let offset = offset + 1 in
-    Bytes.set_uint8 buffer offset (v lor 128);
-    let offset = offset + 1 in
-    let v = v lsr 7 in
-    let offset = match vl < 0L with
-      | true ->
-        Bytes.set_uint8 buffer offset (v lor 128);
-        let offset = offset + 1 in
-        Bytes.set_uint8 buffer offset (0x01); (* Always set the 64'th bit *)
-        offset
-      | false ->
-        Bytes.set_uint8 buffer offset v;
-        offset
-    in
-    offset + 1
-
-(** Reference implementation. Uses a loop which is slower than the manually unrolled version *)
 let write_varint_reference buffer ~offset v =
   let rec inner ~offset v =
     let next_offset = offset + 1 in
@@ -303,27 +35,62 @@ let write_varint_reference buffer ~offset v =
       Bytes.set_uint8 buffer offset (Int64.to_int v);
       next_offset
     | rem ->
-      Bytes.set_uint8 buffer offset (Int.logor (Int64.to_int v) 0x80);
+      Bytes.set_uint8 buffer offset (Int.logor (Int64.to_int v) 0b1000_0000);
       inner ~offset:next_offset rem
   in
   inner ~offset v
 
 (** Reference implementation. Uses a loop which is slower than the manually unrolled version *)
-let write_varint_unboxed_reference buffer ~offset v =
+let write_varint_unboxed buffer ~offset v =
   let rec inner ~is_negative ~offset v =
     match v lsr 7 with
     | 0 when is_negative ->
-      (* If the value was signed, set bit 63 and 64 *)
-      inner ~is_negative:false ~offset (v lor 0xC0)
+      (* If the value was signed, set bit 64 also *)
+      inner ~is_negative:false ~offset (v lor 0b1000_0000)
     | 0 ->
       Bytes.set_uint8 buffer offset v;
       offset + 1
     | rem ->
-      let v' = v land 0x7F lor 0x80 in
-      Bytes.set_uint8 buffer offset v';
+      Bytes.set_uint8 buffer offset (v lor 0b1000_0000);
       inner ~is_negative ~offset:(offset + 1) rem
   in
   inner ~is_negative:(v < 0) ~offset v
+
+let write_varint buffer ~offset v =
+  match Int64.shift_right_logical v 62 with
+  | 0b01L ->
+    (* Bit 63 set (and not bit 64).
+       Write as signed int, drop the last byte and clear the msb
+    *)
+    let v = Int64.to_int v in
+    let offset = write_varint_unboxed buffer ~offset v in
+    let byte = Bytes.get_uint8 buffer (offset - 2) land 0b0111_1111 in
+    Bytes.set_uint8 buffer (offset - 2) byte;
+    Bytes.set_uint8 buffer (offset - 1) 0;
+    offset - 1
+  | 0b10L ->
+    (* Only bit 64 is set. Set bit 63, and then clear it again in the output *)
+    let v = Int64.to_int v lor 0x4000_0000_0000_0000 in
+    let offset = write_varint_unboxed buffer ~offset v in
+    let byte = Bytes.get_uint8 buffer (offset - 2) land 0b1011_1111 in
+    Bytes.set_uint8 buffer (offset - 2) byte;
+    offset
+  | _ -> write_varint_unboxed buffer ~offset (Int64.to_int v)
+
+(* Write a field delimited length.
+   A delimited field length can be no larger than 2^31.
+   This function always write 5 bytes (7*5bits = 35bits > 31bits).
+   This allows the field length to be statically allocated and written later.
+   The spec does not forbid this encoding, but there might be implementation
+   that disallow '0' as the ending varint value.
+*)
+let write_delimited_field_length_fixed_size buffer ~offset v =
+  (* Set the 34'th bit to make sure all bytes are written. Then clear it again *)
+  let offset = write_varint_unboxed buffer ~offset (v lor 0x400000000) in
+  let v = Bytes.get_uint8 buffer (offset - 1) in
+  Bytes.set_uint8 buffer (offset-1) (v land 0b0011_1111);
+  offset
+
 
 let ensure_capacity ~size t =
   match t.data with
@@ -467,6 +234,9 @@ let dump t =
   |> String.concat ~sep:"-"
   |> Printf.printf "Buffer: %s\n"
 
+let string_of_bytes b =
+  Bytes.to_seq b |> Seq.map Char.code |> Seq.map (Printf.sprintf "%02x") |> List.of_seq |> String.concat ~sep:" "
+
 let of_list: (int * Field.t) list -> t = fun fields ->
   let t = init () in
   List.iter ~f:(fun (index, field) -> write_field t index field) fields;
@@ -478,12 +248,29 @@ let%expect_test "Writefield" =
   write_field buffer 2 (Varint 5L);
   write_field buffer 3 (Varint 7L);
   write_field buffer 4 (Varint 11L);
-
   dump buffer;
   [%expect {| Buffer: 08-03-10-05-18-07-20-0b |}]
 
+let%expect_test "fixed_size" =
+  List.iter ~f:(fun v ->
+    let buffer = Bytes.make 10 '\255' in
+    let _ = write_delimited_field_length_fixed_size buffer ~offset:0 v in
+    Printf.printf "Fixed field: 0x%08x: %s\n" v (string_of_bytes buffer);
+  ) [0;1;2;0x7fffffff; 0x3fffffff];
+  ();
+  [%expect {|
+    Fixed field: 0x00000000: 80 80 80 80 00 ff ff ff ff ff
+    Fixed field: 0x00000001: 81 80 80 80 00 ff ff ff ff ff
+    Fixed field: 0x00000002: 82 80 80 80 00 ff ff ff ff ff
+    Fixed field: 0x7fffffff: ff ff ff ff 07 ff ff ff ff ff
+    Fixed field: 0x3fffffff: ff ff ff ff 03 ff ff ff ff ff |}]
+
+
 let%test "varint unrolled" =
   let open Infix.Int64 in
+  let string_of_bytes b =
+    Bytes.to_seq b |> Seq.map Char.code |> Seq.map (Printf.sprintf "%02x") |> List.of_seq |> String.concat ~sep:" "
+  in
   let values = List.init ~len:64 ~f:(fun idx -> 1L lsl idx) @
                List.init ~len:64 ~f:(fun idx -> (-1L) lsl idx)
   in
@@ -493,13 +280,13 @@ let%test "varint unrolled" =
       let acc =
         let b1 = Bytes.make 10 '\000' in
         let b2 = Bytes.make 10 '\000' in
-        write_varint_unboxed_reference b1 ~offset:0 (Int64.to_int v) |> ignore;
-        write_varint_unboxed b2 ~offset:0 (Int64.to_int v) |> ignore;
-        match Bytes.equal b1 b2 with
+        write_varint_unboxed b1 ~offset:0 (Int64.to_int v) |> ignore;
+        write_varint b2 ~offset:0 (v) |> ignore;
+        match Bytes.equal b1 b2 || Int64.shift_right_logical v 63 != 0L with
         | true -> acc
         | false ->
-        Printf.printf "Unboxed: %16Lx (%20d): %S = %S\n" v (Int64.to_int v) (Bytes.to_string b1) (Bytes.to_string b2);
-        false
+          Printf.printf "Unboxed: %16Lx (%20d): %S = %S\n" v (Int64.to_int v) (string_of_bytes b1) (string_of_bytes b2);
+          false
       in
       let acc =
         let b1 = Bytes.make 10 '\000' in
@@ -509,26 +296,10 @@ let%test "varint unrolled" =
         match Bytes.equal b1 b2 with
         | true -> acc
         | false ->
-        Printf.printf "Boxed: %16Lx: %S = %S\n" v (Bytes.to_string b1) (Bytes.to_string b2);
+          Printf.printf "Boxed: %16Lx: %S = %S\n" v (string_of_bytes b1) (string_of_bytes b2);
         false
       in
       acc
 
-    ) [v-2L; v-1L; v; v+1L; v+2L]
-  ) values
-
-
-let%test "varint size unrolled" =
-  let open Infix.Int64 in
-  let values = List.init ~len:64 ~f:(fun idx -> 1L lsl idx) in
-  List.fold_left ~init:true ~f:(fun acc v ->
-    List.fold_left ~init:acc ~f:(fun acc v ->
-      let size_reference = varint_size_reference (Int64.to_int v) in
-      let size = varint_size (Int64.to_int v) in
-      match size = size_reference with
-      | true -> acc
-      | false ->
-        Printf.printf "varint_size(0x%Lx/%Ld/%d): %d = %d\n" v v (Int64.to_int v) size size_reference;
-        false
     ) [v-2L; v-1L; v; v+1L; v+2L]
   ) values
