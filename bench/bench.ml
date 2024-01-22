@@ -86,11 +86,11 @@ let _ =
   Gc.set { control with minor_heap_size=4000_1000; space_overhead=500 }
 
 
-let random_list ?(len=100) ~f () =
-  List.init (Random.int len) ~f:(fun _ -> f ())
+let random_list ~len ~f () =
+  List.init len ~f:(fun _ -> f ())
 
-let random_string () =
-  String.init (Random.int 20) ~f:(fun _ -> Random.char ())
+let random_string ~len () =
+  String.init len ~f:(fun _ -> Random.char ())
 
 let create_test_data ~depth () =
   let module M = Plugin.Bench.M in
@@ -106,24 +106,24 @@ let create_test_data ~depth () =
     let random_enum () =
       Array.random_element_exn [| Enum.EA; Enum.EB; Enum.EC; Enum.ED; Enum.EE; |]
     in
-    let s1 = optional ~f:random_string () in
-    let n1 = optional ~f:(random_list ~f:(fun () -> Random.int 1_000)) () in
-    let n2 = optional ~f:(random_list ~f:(fun () -> Random.int 1_000)) () in
-    let d1 = optional ~f:(random_list ~f:(fun () -> Random.float 1_000.)) () in
-    let n3 = optional ~f:(fun () -> Random.int 1_000) () in
-    let b1 = optional ~f:Random.bool () in
-    let _e = optional ~f:(random_list ~f:random_enum) () in
+    let s1 = random_string ~len:20 () in
+    let n1 = random_list ~len:100 ~f:(fun () -> Random.int 1_000) () in
+    let n2 = random_list ~len:100 ~f:(fun () -> Random.int 1_000) () in
+    let d1 = random_list ~len:100 ~f:(fun () -> Random.float 1_000.) () in
+    let n3 = Random.int 10 in
+    let b1 = Random.bool () in
+    let e = random_list ~len:100 ~f:random_enum () in
 
-    Data.make ?s1 ?n1 ?n2 ?d1 ?n3 ?b1 (* ?e *) ()
+    Data.make ~s1 ~n1 ~n2 ~d1 ~n3 ~b1 (* ~e *) ()
   in
 
   let rec create_btree n () =
     match n with
     | 0 -> None
     | n ->
-      let data = random_list ~f:create_data () in
+      let data = random_list ~len:2 ~f:create_data () in
       let children =
-        random_list ~len:8 ~f:(create_btree (n - 1)) () |> List.filter_opt
+        random_list ~len:2 ~f:(create_btree (n - 1)) () |> List.filter_opt
       in
       M.make ~children ~data () |> Option.some
   in
@@ -164,7 +164,7 @@ let print_bench_results results =
 
 
 let _ =
-  let v_plugin = create_test_data ~depth:2 () |> Option.value_exn in
+  let v_plugin = create_test_data ~depth:4 () |> Option.value_exn in
   [
     make_tests (module Protoc.Bench) (module Plugin.Bench) v_plugin;
     make_tests (module Protoc.Int64) (module Plugin.Int64) 27;
@@ -174,7 +174,7 @@ let _ =
 
     List.init 1000 ~f:(fun i -> i) |> make_tests (module Protoc.Int64_list) (module Plugin.Int64_list);
     List.init 1000 ~f:(fun i -> Float.of_int i) |> make_tests (module Protoc.Float_list) (module Plugin.Float_list);
-    List.init 1000 ~f:(fun _ -> random_string ()) |> make_tests (module Protoc.String_list) (module Plugin.String_list);
+    List.init 1000 ~f:(fun _ -> random_string ~len:20 ()) |> make_tests (module Protoc.String_list) (module Plugin.String_list);
        (* random_list ~len:100 ~f:(fun () -> Plugin.Enum_list.Enum.ED) () |> make_tests (module Protoc.Enum_list) (module Plugin.Enum_list); *)
        ]
   |> List.rev |> List.iter ~f:(fun test ->

@@ -247,29 +247,56 @@ let deserialize: type constr a. (int * int) list -> (constr, (int * Field.t) lis
       | false -> Field.Varint, Int.max_int
   in
 
-  let rec read_values: type constr a. (int * int) list -> Field.field_type -> int -> Reader.t -> constr -> (int * Field.t) list -> (constr, (int * Field.t) list -> a) value_list -> a option = fun extension_ranges tpe idx reader constr extensions -> function
-    | VCons (((((index, read_f) :: _) as fields), _required, default, get), vs) when index = idx ->
+  let rec read_values: type constr a. (int * int) list -> Field.field_type -> int -> Reader.t -> constr -> (int * Field.t) list -> (constr, (int * Field.t) list -> a) value_list -> a option = fun extension_ranges tpe idx reader constr extensions ->
+    let rec read_repeated tpe index read_f default get reader =
       let default = read_f default reader tpe in
       let (tpe, idx) = next_field reader in
+      match idx = index with
+      | true -> read_repeated tpe index read_f default get reader
+      | false -> default, tpe, idx
+    in
+    function
+    | VCons (([index, read_f], _required, default, get), vs) when index = idx ->
+      (* Read all values, and apply constructor once all fields have been read.
+         This pattern is the most likely to be matched for all values, and is added
+         as an optimization to avoid reconstructing the value list for each recursion.
+      *)
+      let default, tpe, idx = read_repeated tpe index read_f default get reader in
+      let constr = (constr (get default)) in
+      read_values extension_ranges tpe idx reader constr extensions vs
+    | VCons (((index, read_f) :: fields, _required, default, get), vs) when index = idx ->
+      (* Read all values for the given field *)
+      let default, tpe, idx = read_repeated tpe index read_f default get reader in
       read_values extension_ranges tpe idx reader constr extensions (VCons ((fields, Optional, default, get), vs))
     | vs when in_extension_ranges extension_ranges idx ->
-      (* Extensions may be sent inline. Store all valid extensions. *)
+      (* Extensions may be sent inline. Store all valid extensions, before starting to apply constructors *)
       let extensions = (idx, Reader.read_field_content tpe reader) :: extensions in
       let (tpe, idx) = next_field reader in
       read_values extension_ranges tpe idx reader constr extensions vs
-    | VCons ((_ :: fields, optional, default, get), vs) ->
-      read_values extension_ranges tpe idx reader constr extensions (VCons ((fields, optional, default, get), vs))
     | VCons (([], Required, _default, _get), _vs) ->
-      None
+      (* If there are no more fields to be read we will never find the value.
+         If all values are read, then raise, else revert to full deserialization *)
+      begin match (idx = Int.max_int) with
+      | true -> error_required_field_missing ()
+      | false -> None
+      end
+    | VCons ((_ :: fields, optional, default, get), vs) ->
+      (* Drop the field, as we dont expect to find it. *)
+      read_values extension_ranges tpe idx reader constr extensions (VCons ((fields, optional, default, get), vs))
     | VCons (([], Optional, default, get), vs) ->
+      (* Apply destructor. This case is only relevant for oneof fields *)
       read_values extension_ranges tpe idx reader (constr (get default)) extensions vs
     | VNil when idx = Int.max_int ->
+      (* All fields read successfully. Apply extensions and return result. *)
       Some (constr (List.rev extensions))
-    | VNil -> None
+    | VNil ->
+      (* This implies that there are still fields to be read.
+         Revert to full deserialization.
+      *)
+      None
   in
   fun reader ->
     let offset = Reader.offset reader in
-    (* This start is horrible! We could simplify with has *)
     let (tpe, idx) = next_field reader in
     read_values extension_ranges tpe idx reader constr [] values
     |> function

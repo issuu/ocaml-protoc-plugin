@@ -18,10 +18,11 @@ let%expect_test "Packed" =
   [%expect {|
     i: 5
     i: 6
+    i: 0
     i: 7
     i: 8
     i: 9
-    "\005\006\007\b\t" |}]
+    Data: "\005\006\000\007\b\t". Size: 8 |}]
 
 let%expect_test "Not packed" =
   let module T = Packed.Not_packed in
@@ -43,10 +44,11 @@ let%expect_test "Not packed" =
   [%expect {|
     i: 5
     i: 6
+    i: 0
     i: 7
     i: 8
     i: 9
-    9 |}]
+    Last element: 9. Size: 12 |}]
 
 (* Verify that empty lists are not serialized at all *)
 let%expect_test "Empty lists are not transmitted" =
@@ -63,9 +65,5 @@ let%expect_test "Empty lists are not transmitted" =
   |> Printf.eprintf "Size packed %d\n";
   ();
   [%expect {|
-    i: 5
-    i: 6
-    i: 7
-    i: 8
-    i: 9
-    "\005\006\007\b\t" |}]
+    Size packed 0
+    Size packed 0 |}]
