@@ -570,6 +570,7 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
         | `Oneof (decl, fields) -> c_of_oneof ~params ~syntax ~scope decl fields
       )
   in
+
   let constructor_sig_arg = function
     | { name; type' = { name = type_name; modifier = Required }; _ } ->
       sprintf "%s:%s" (Scope.get_name scope name) type_name
@@ -579,20 +580,15 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
       sprintf "?%s:%s" (Scope.get_name scope name) type_name
   in
 
-  let constructor_arg = function
-    | {name; type' = { modifier = Required; _}; _ } -> sprintf "~%s" (Scope.get_name scope name)
-    | {name; _ } -> sprintf "?%s" (Scope.get_name scope name)
+  let constructor_arg c =
+    let name = Scope.get_name scope c.name in
+    match c with
+    | { type' = { modifier = Required; _}; _ } -> sprintf "~%s" name
+    | { type' = { modifier = Optional; _ }; _} -> sprintf "?%s" name
+    | { type' = { modifier = List; _ }; _} -> sprintf "?(%s = [])" name
+    | { type' = { modifier = No_modifier default; _}; _} -> sprintf "?(%s = %s)" name default
   in
-  let constructor_default_value: c -> string option = fun c ->
-    let dv = match c with
-      | { type' = { modifier = (Optional | Required); _ }; _} -> None
-      | { name; type' = { modifier = List; _ }; _} -> Some ((Scope.get_name scope name), "[]")
-      | { name; type' = { modifier = No_modifier default; _}; _} -> Some ((Scope.get_name scope name), default)
-    in
-    Option.map ~f:(fun (name, default) ->
-      sprintf "let %s = match %s with Some v -> v | None -> %s in" name name default
-    ) dv
-  in
+
   let prepend ?(cond=true) elm l = match cond with
     | true -> elm :: l
     | false -> l
@@ -667,19 +663,13 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
       |> append ~cond:has_extensions "?(extensions' = Runtime'.Extensions.default)"
       |> String.concat ~sep: " "
     in
-    let mappings =
-      List.map ~f:constructor_default_value ts
-      |> List.filter ~f:(function None->false | Some _ -> true)
-      |> List.map ~f:(function Some v -> v | None -> failwith "Cannot be none")
-      |> String.concat ~sep:"\n"
-    in
 
     let constructor =
       List.map ~f:(fun {name; _} -> sprintf "%s" (Scope.get_name scope name)) ts
       |> append ~cond:has_extensions "extensions'"
       |> type_destr
     in
-    sprintf "fun %s () -> \n%s\n%s" args mappings constructor
+    sprintf "%s () = %s" args constructor
   in
   (* Create the deserialize spec *)
   let deserialize_spec =

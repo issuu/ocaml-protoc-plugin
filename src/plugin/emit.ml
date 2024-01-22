@@ -231,9 +231,7 @@ let rec emit_message ~params ~syntax scope
 
       Code.emit implementation `None "let name' () = \"%s\"" (Scope.get_current_scope scope);
       Code.emit implementation `None "type t = %s%s" type' params.annot;
-      Code.emit implementation `Begin "let make =";
-      Code.emit implementation `None "%s" default_constructor_impl;
-      Code.emit implementation `End "";
+      Code.emit implementation `None "let make %s" default_constructor_impl;
 
       Code.emit implementation `Begin "let to_proto' =";
       Code.emit implementation `None "let apply = %s in" apply;
