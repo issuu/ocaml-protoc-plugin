@@ -34,11 +34,7 @@ module rec Options : sig
 end = struct
   let name' () = "options.Options"
   type t = bool
-  let make =
-    fun ?mangle_names () ->
-    let mangle_names = match mangle_names with Some v -> v | None -> false in
-    mangle_names
-
+  let make ?(mangle_names = false) () = mangle_names
   let to_proto' =
     let apply = fun ~f:f' writer mangle_names -> f' [] writer mangle_names in
     let spec = Runtime'.Serialize.C.( basic (1, bool, Some (false)) ^:: nil ) in

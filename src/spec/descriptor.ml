@@ -593,11 +593,7 @@ end = struct
     end = struct
       let name' () = "descriptor.google.protobuf.FileDescriptorSet"
       type t = FileDescriptorProto.t list
-      let make =
-        fun ?file () ->
-        let file = match file with Some v -> v | None -> [] in
-        file
-
+      let make ?(file = []) () = file
       let to_proto' =
         let apply = fun ~f:f' writer file -> f' [] writer file in
         let spec = Runtime'.Serialize.C.( repeated (1, (message (fun t -> FileDescriptorProto.to_proto' t)), not_packed) ^:: nil ) in
@@ -625,17 +621,7 @@ end = struct
     end = struct
       let name' () = "descriptor.google.protobuf.FileDescriptorProto"
       type t = { name: string option; package: string option; dependency: string list; message_type: DescriptorProto.t list; enum_type: EnumDescriptorProto.t list; service: ServiceDescriptorProto.t list; extension: FieldDescriptorProto.t list; options: FileOptions.t option; source_code_info: SourceCodeInfo.t option; public_dependency: int list; weak_dependency: int list; syntax: string option }
-      let make =
-        fun ?name ?package ?dependency ?message_type ?enum_type ?service ?extension ?options ?source_code_info ?public_dependency ?weak_dependency ?syntax () ->
-        let dependency = match dependency with Some v -> v | None -> [] in
-        let message_type = match message_type with Some v -> v | None -> [] in
-        let enum_type = match enum_type with Some v -> v | None -> [] in
-        let service = match service with Some v -> v | None -> [] in
-        let extension = match extension with Some v -> v | None -> [] in
-        let public_dependency = match public_dependency with Some v -> v | None -> [] in
-        let weak_dependency = match weak_dependency with Some v -> v | None -> [] in
-        { name; package; dependency; message_type; enum_type; service; extension; options; source_code_info; public_dependency; weak_dependency; syntax }
-
+      let make ?name ?package ?(dependency = []) ?(message_type = []) ?(enum_type = []) ?(service = []) ?(extension = []) ?options ?source_code_info ?(public_dependency = []) ?(weak_dependency = []) ?syntax () = { name; package; dependency; message_type; enum_type; service; extension; options; source_code_info; public_dependency; weak_dependency; syntax }
       let to_proto' =
         let apply = fun ~f:f' writer { name; package; dependency; message_type; enum_type; service; extension; options; source_code_info; public_dependency; weak_dependency; syntax } -> f' [] writer name package dependency message_type enum_type service extension options source_code_info public_dependency weak_dependency syntax in
         let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: repeated (3, string, not_packed) ^:: repeated (4, (message (fun t -> DescriptorProto.to_proto' t)), not_packed) ^:: repeated (5, (message (fun t -> EnumDescriptorProto.to_proto' t)), not_packed) ^:: repeated (6, (message (fun t -> ServiceDescriptorProto.to_proto' t)), not_packed) ^:: repeated (7, (message (fun t -> FieldDescriptorProto.to_proto' t)), not_packed) ^:: basic_opt (8, (message (fun t -> FileOptions.to_proto' t))) ^:: basic_opt (9, (message (fun t -> SourceCodeInfo.to_proto' t))) ^:: repeated (10, int32_int, not_packed) ^:: repeated (11, int32_int, not_packed) ^:: basic_opt (12, string) ^:: nil ) in
@@ -690,11 +676,7 @@ end = struct
       end = struct
         let name' () = "descriptor.google.protobuf.DescriptorProto.ExtensionRange"
         type t = { start: int option; end': int option; options: ExtensionRangeOptions.t option }
-        let make =
-          fun ?start ?end' ?options () ->
-
-          { start; end'; options }
-
+        let make ?start ?end' ?options () = { start; end'; options }
         let to_proto' =
           let apply = fun ~f:f' writer { start; end'; options } -> f' [] writer start end' options in
           let spec = Runtime'.Serialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: basic_opt (3, (message (fun t -> ExtensionRangeOptions.to_proto' t))) ^:: nil ) in
@@ -722,11 +704,7 @@ end = struct
       end = struct
         let name' () = "descriptor.google.protobuf.DescriptorProto.ReservedRange"
         type t = { start: int option; end': int option }
-        let make =
-          fun ?start ?end' () ->
-
-          { start; end' }
-
+        let make ?start ?end' () = { start; end' }
         let to_proto' =
           let apply = fun ~f:f' writer { start; end' } -> f' [] writer start end' in
           let spec = Runtime'.Serialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: nil ) in
@@ -745,18 +723,7 @@ end = struct
       end
       let name' () = "descriptor.google.protobuf.DescriptorProto"
       type t = { name: string option; field: FieldDescriptorProto.t list; nested_type: DescriptorProto.t list; enum_type: EnumDescriptorProto.t list; extension_range: ExtensionRange.t list; extension: FieldDescriptorProto.t list; options: MessageOptions.t option; oneof_decl: OneofDescriptorProto.t list; reserved_range: ReservedRange.t list; reserved_name: string list }
-      let make =
-        fun ?name ?field ?nested_type ?enum_type ?extension_range ?extension ?options ?oneof_decl ?reserved_range ?reserved_name () ->
-        let field = match field with Some v -> v | None -> [] in
-        let nested_type = match nested_type with Some v -> v | None -> [] in
-        let enum_type = match enum_type with Some v -> v | None -> [] in
-        let extension_range = match extension_range with Some v -> v | None -> [] in
-        let extension = match extension with Some v -> v | None -> [] in
-        let oneof_decl = match oneof_decl with Some v -> v | None -> [] in
-        let reserved_range = match reserved_range with Some v -> v | None -> [] in
-        let reserved_name = match reserved_name with Some v -> v | None -> [] in
-        { name; field; nested_type; enum_type; extension_range; extension; options; oneof_decl; reserved_range; reserved_name }
-
+      let make ?name ?(field = []) ?(nested_type = []) ?(enum_type = []) ?(extension_range = []) ?(extension = []) ?options ?(oneof_decl = []) ?(reserved_range = []) ?(reserved_name = []) () = { name; field; nested_type; enum_type; extension_range; extension; options; oneof_decl; reserved_range; reserved_name }
       let to_proto' =
         let apply = fun ~f:f' writer { name; field; nested_type; enum_type; extension_range; extension; options; oneof_decl; reserved_range; reserved_name } -> f' [] writer name field nested_type enum_type extension_range extension options oneof_decl reserved_range reserved_name in
         let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: repeated (2, (message (fun t -> FieldDescriptorProto.to_proto' t)), not_packed) ^:: repeated (3, (message (fun t -> DescriptorProto.to_proto' t)), not_packed) ^:: repeated (4, (message (fun t -> EnumDescriptorProto.to_proto' t)), not_packed) ^:: repeated (5, (message (fun t -> ExtensionRange.to_proto' t)), not_packed) ^:: repeated (6, (message (fun t -> FieldDescriptorProto.to_proto' t)), not_packed) ^:: basic_opt (7, (message (fun t -> MessageOptions.to_proto' t))) ^:: repeated (8, (message (fun t -> OneofDescriptorProto.to_proto' t)), not_packed) ^:: repeated (9, (message (fun t -> ReservedRange.to_proto' t)), not_packed) ^:: repeated (10, string, not_packed) ^:: nil ) in
@@ -784,11 +751,7 @@ end = struct
     end = struct
       let name' () = "descriptor.google.protobuf.ExtensionRangeOptions"
       type t = { extensions': Runtime'.Extensions.t; uninterpreted_option: UninterpretedOption.t list }
-      let make =
-        fun ?uninterpreted_option ?(extensions' = Runtime'.Extensions.default) () ->
-        let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
-        { uninterpreted_option; extensions' }
-
+      let make ?(uninterpreted_option = []) ?(extensions' = Runtime'.Extensions.default) () = { uninterpreted_option; extensions' }
       let to_proto' =
         let apply = fun ~f:f' writer { uninterpreted_option; extensions' } -> f' extensions' writer uninterpreted_option in
         let spec = Runtime'.Serialize.C.( repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
@@ -898,11 +861,7 @@ end = struct
       end
       let name' () = "descriptor.google.protobuf.FieldDescriptorProto"
       type t = { name: string option; extendee: string option; number: int option; label: Label.t option; type': Type.t option; type_name: string option; default_value: string option; options: FieldOptions.t option; oneof_index: int option; json_name: string option; proto3_optional: bool option }
-      let make =
-        fun ?name ?extendee ?number ?label ?type' ?type_name ?default_value ?options ?oneof_index ?json_name ?proto3_optional () ->
-
-        { name; extendee; number; label; type'; type_name; default_value; options; oneof_index; json_name; proto3_optional }
-
+      let make ?name ?extendee ?number ?label ?type' ?type_name ?default_value ?options ?oneof_index ?json_name ?proto3_optional () = { name; extendee; number; label; type'; type_name; default_value; options; oneof_index; json_name; proto3_optional }
       let to_proto' =
         let apply = fun ~f:f' writer { name; extendee; number; label; type'; type_name; default_value; options; oneof_index; json_name; proto3_optional } -> f' [] writer name extendee number label type' type_name default_value options oneof_index json_name proto3_optional in
         let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (3, int32_int) ^:: basic_opt (4, (enum Label.to_int)) ^:: basic_opt (5, (enum Type.to_int)) ^:: basic_opt (6, string) ^:: basic_opt (7, string) ^:: basic_opt (8, (message (fun t -> FieldOptions.to_proto' t))) ^:: basic_opt (9, int32_int) ^:: basic_opt (10, string) ^:: basic_opt (17, bool) ^:: nil ) in
@@ -930,11 +889,7 @@ end = struct
     end = struct
       let name' () = "descriptor.google.protobuf.OneofDescriptorProto"
       type t = { name: string option; options: OneofOptions.t option }
-      let make =
-        fun ?name ?options () ->
-
-        { name; options }
-
+      let make ?name ?options () = { name; options }
       let to_proto' =
         let apply = fun ~f:f' writer { name; options } -> f' [] writer name options in
         let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, (message (fun t -> OneofOptions.to_proto' t))) ^:: nil ) in
@@ -980,11 +935,7 @@ end = struct
       end = struct
         let name' () = "descriptor.google.protobuf.EnumDescriptorProto.EnumReservedRange"
         type t = { start: int option; end': int option }
-        let make =
-          fun ?start ?end' () ->
-
-          { start; end' }
-
+        let make ?start ?end' () = { start; end' }
         let to_proto' =
           let apply = fun ~f:f' writer { start; end' } -> f' [] writer start end' in
           let spec = Runtime'.Serialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: nil ) in
@@ -1003,13 +954,7 @@ end = struct
       end
       let name' () = "descriptor.google.protobuf.EnumDescriptorProto"
       type t = { name: string option; value: EnumValueDescriptorProto.t list; options: EnumOptions.t option; reserved_range: EnumReservedRange.t list; reserved_name: string list }
-      let make =
-        fun ?name ?value ?options ?reserved_range ?reserved_name () ->
-        let value = match value with Some v -> v | None -> [] in
-        let reserved_range = match reserved_range with Some v -> v | None -> [] in
-        let reserved_name = match reserved_name with Some v -> v | None -> [] in
-        { name; value; options; reserved_range; reserved_name }
-
+      let make ?name ?(value = []) ?options ?(reserved_range = []) ?(reserved_name = []) () = { name; value; options; reserved_range; reserved_name }
       let to_proto' =
         let apply = fun ~f:f' writer { name; value; options; reserved_range; reserved_name } -> f' [] writer name value options reserved_range reserved_name in
         let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: repeated (2, (message (fun t -> EnumValueDescriptorProto.to_proto' t)), not_packed) ^:: basic_opt (3, (message (fun t -> EnumOptions.to_proto' t))) ^:: repeated (4, (message (fun t -> EnumReservedRange.to_proto' t)), not_packed) ^:: repeated (5, string, not_packed) ^:: nil ) in
@@ -1037,11 +982,7 @@ end = struct
     end = struct
       let name' () = "descriptor.google.protobuf.EnumValueDescriptorProto"
       type t = { name: string option; number: int option; options: EnumValueOptions.t option }
-      let make =
-        fun ?name ?number ?options () ->
-
-        { name; number; options }
-
+      let make ?name ?number ?options () = { name; number; options }
       let to_proto' =
         let apply = fun ~f:f' writer { name; number; options } -> f' [] writer name number options in
         let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, int32_int) ^:: basic_opt (3, (message (fun t -> EnumValueOptions.to_proto' t))) ^:: nil ) in
@@ -1069,11 +1010,7 @@ end = struct
     end = struct
       let name' () = "descriptor.google.protobuf.ServiceDescriptorProto"
       type t = { name: string option; method': MethodDescriptorProto.t list; options: ServiceOptions.t option }
-      let make =
-        fun ?name ?method' ?options () ->
-        let method' = match method' with Some v -> v | None -> [] in
-        { name; method'; options }
-
+      let make ?name ?(method' = []) ?options () = { name; method'; options }
       let to_proto' =
         let apply = fun ~f:f' writer { name; method'; options } -> f' [] writer name method' options in
         let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: repeated (2, (message (fun t -> MethodDescriptorProto.to_proto' t)), not_packed) ^:: basic_opt (3, (message (fun t -> ServiceOptions.to_proto' t))) ^:: nil ) in
@@ -1101,12 +1038,7 @@ end = struct
     end = struct
       let name' () = "descriptor.google.protobuf.MethodDescriptorProto"
       type t = { name: string option; input_type: string option; output_type: string option; options: MethodOptions.t option; client_streaming: bool; server_streaming: bool }
-      let make =
-        fun ?name ?input_type ?output_type ?options ?client_streaming ?server_streaming () ->
-        let client_streaming = match client_streaming with Some v -> v | None -> false in
-        let server_streaming = match server_streaming with Some v -> v | None -> false in
-        { name; input_type; output_type; options; client_streaming; server_streaming }
-
+      let make ?name ?input_type ?output_type ?options ?(client_streaming = false) ?(server_streaming = false) () = { name; input_type; output_type; options; client_streaming; server_streaming }
       let to_proto' =
         let apply = fun ~f:f' writer { name; input_type; output_type; options; client_streaming; server_streaming } -> f' [] writer name input_type output_type options client_streaming server_streaming in
         let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (3, string) ^:: basic_opt (4, (message (fun t -> MethodOptions.to_proto' t))) ^:: basic (5, bool, Some (false)) ^:: basic (6, bool, Some (false)) ^:: nil ) in
@@ -1160,20 +1092,7 @@ end = struct
       end
       let name' () = "descriptor.google.protobuf.FileOptions"
       type t = { extensions': Runtime'.Extensions.t; java_package: string option; java_outer_classname: string option; optimize_for: OptimizeMode.t; java_multiple_files: bool; go_package: string option; cc_generic_services: bool; java_generic_services: bool; py_generic_services: bool; java_generate_equals_and_hash: bool option; deprecated: bool; java_string_check_utf8: bool; cc_enable_arenas: bool; objc_class_prefix: string option; csharp_namespace: string option; swift_prefix: string option; php_class_prefix: string option; php_namespace: string option; php_generic_services: bool; php_metadata_namespace: string option; ruby_package: string option; uninterpreted_option: UninterpretedOption.t list }
-      let make =
-        fun ?java_package ?java_outer_classname ?optimize_for ?java_multiple_files ?go_package ?cc_generic_services ?java_generic_services ?py_generic_services ?java_generate_equals_and_hash ?deprecated ?java_string_check_utf8 ?cc_enable_arenas ?objc_class_prefix ?csharp_namespace ?swift_prefix ?php_class_prefix ?php_namespace ?php_generic_services ?php_metadata_namespace ?ruby_package ?uninterpreted_option ?(extensions' = Runtime'.Extensions.default) () ->
-        let optimize_for = match optimize_for with Some v -> v | None -> OptimizeMode.SPEED in
-        let java_multiple_files = match java_multiple_files with Some v -> v | None -> false in
-        let cc_generic_services = match cc_generic_services with Some v -> v | None -> false in
-        let java_generic_services = match java_generic_services with Some v -> v | None -> false in
-        let py_generic_services = match py_generic_services with Some v -> v | None -> false in
-        let deprecated = match deprecated with Some v -> v | None -> false in
-        let java_string_check_utf8 = match java_string_check_utf8 with Some v -> v | None -> false in
-        let cc_enable_arenas = match cc_enable_arenas with Some v -> v | None -> true in
-        let php_generic_services = match php_generic_services with Some v -> v | None -> false in
-        let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
-        { java_package; java_outer_classname; optimize_for; java_multiple_files; go_package; cc_generic_services; java_generic_services; py_generic_services; java_generate_equals_and_hash; deprecated; java_string_check_utf8; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_generic_services; php_metadata_namespace; ruby_package; uninterpreted_option; extensions' }
-
+      let make ?java_package ?java_outer_classname ?(optimize_for = OptimizeMode.SPEED) ?(java_multiple_files = false) ?go_package ?(cc_generic_services = false) ?(java_generic_services = false) ?(py_generic_services = false) ?java_generate_equals_and_hash ?(deprecated = false) ?(java_string_check_utf8 = false) ?(cc_enable_arenas = true) ?objc_class_prefix ?csharp_namespace ?swift_prefix ?php_class_prefix ?php_namespace ?(php_generic_services = false) ?php_metadata_namespace ?ruby_package ?(uninterpreted_option = []) ?(extensions' = Runtime'.Extensions.default) () = { java_package; java_outer_classname; optimize_for; java_multiple_files; go_package; cc_generic_services; java_generic_services; py_generic_services; java_generate_equals_and_hash; deprecated; java_string_check_utf8; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_generic_services; php_metadata_namespace; ruby_package; uninterpreted_option; extensions' }
       let to_proto' =
         let apply = fun ~f:f' writer { java_package; java_outer_classname; optimize_for; java_multiple_files; go_package; cc_generic_services; java_generic_services; py_generic_services; java_generate_equals_and_hash; deprecated; java_string_check_utf8; cc_enable_arenas; objc_class_prefix; csharp_namespace; swift_prefix; php_class_prefix; php_namespace; php_generic_services; php_metadata_namespace; ruby_package; uninterpreted_option; extensions' } -> f' extensions' writer java_package java_outer_classname optimize_for java_multiple_files go_package cc_generic_services java_generic_services py_generic_services java_generate_equals_and_hash deprecated java_string_check_utf8 cc_enable_arenas objc_class_prefix csharp_namespace swift_prefix php_class_prefix php_namespace php_generic_services php_metadata_namespace ruby_package uninterpreted_option in
         let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (8, string) ^:: basic (9, (enum OptimizeMode.to_int), Some (OptimizeMode.SPEED)) ^:: basic (10, bool, Some (false)) ^:: basic_opt (11, string) ^:: basic (16, bool, Some (false)) ^:: basic (17, bool, Some (false)) ^:: basic (18, bool, Some (false)) ^:: basic_opt (20, bool) ^:: basic (23, bool, Some (false)) ^:: basic (27, bool, Some (false)) ^:: basic (31, bool, Some (true)) ^:: basic_opt (36, string) ^:: basic_opt (37, string) ^:: basic_opt (39, string) ^:: basic_opt (40, string) ^:: basic_opt (41, string) ^:: basic (42, bool, Some (false)) ^:: basic_opt (44, string) ^:: basic_opt (45, string) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
@@ -1201,14 +1120,7 @@ end = struct
     end = struct
       let name' () = "descriptor.google.protobuf.MessageOptions"
       type t = { extensions': Runtime'.Extensions.t; message_set_wire_format: bool; no_standard_descriptor_accessor: bool; deprecated: bool; map_entry: bool option; uninterpreted_option: UninterpretedOption.t list }
-      let make =
-        fun ?message_set_wire_format ?no_standard_descriptor_accessor ?deprecated ?map_entry ?uninterpreted_option ?(extensions' = Runtime'.Extensions.default) () ->
-        let message_set_wire_format = match message_set_wire_format with Some v -> v | None -> false in
-        let no_standard_descriptor_accessor = match no_standard_descriptor_accessor with Some v -> v | None -> false in
-        let deprecated = match deprecated with Some v -> v | None -> false in
-        let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
-        { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions' }
-
+      let make ?(message_set_wire_format = false) ?(no_standard_descriptor_accessor = false) ?(deprecated = false) ?map_entry ?(uninterpreted_option = []) ?(extensions' = Runtime'.Extensions.default) () = { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions' }
       let to_proto' =
         let apply = fun ~f:f' writer { message_set_wire_format; no_standard_descriptor_accessor; deprecated; map_entry; uninterpreted_option; extensions' } -> f' extensions' writer message_set_wire_format no_standard_descriptor_accessor deprecated map_entry uninterpreted_option in
         let spec = Runtime'.Serialize.C.( basic (1, bool, Some (false)) ^:: basic (2, bool, Some (false)) ^:: basic (3, bool, Some (false)) ^:: basic_opt (7, bool) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
@@ -1288,17 +1200,7 @@ end = struct
       end
       let name' () = "descriptor.google.protobuf.FieldOptions"
       type t = { extensions': Runtime'.Extensions.t; ctype: CType.t; packed: bool option; deprecated: bool; lazy': bool; jstype: JSType.t; weak: bool; unverified_lazy: bool; uninterpreted_option: UninterpretedOption.t list }
-      let make =
-        fun ?ctype ?packed ?deprecated ?lazy' ?jstype ?weak ?unverified_lazy ?uninterpreted_option ?(extensions' = Runtime'.Extensions.default) () ->
-        let ctype = match ctype with Some v -> v | None -> CType.STRING in
-        let deprecated = match deprecated with Some v -> v | None -> false in
-        let lazy' = match lazy' with Some v -> v | None -> false in
-        let jstype = match jstype with Some v -> v | None -> JSType.JS_NORMAL in
-        let weak = match weak with Some v -> v | None -> false in
-        let unverified_lazy = match unverified_lazy with Some v -> v | None -> false in
-        let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
-        { ctype; packed; deprecated; lazy'; jstype; weak; unverified_lazy; uninterpreted_option; extensions' }
-
+      let make ?(ctype = CType.STRING) ?packed ?(deprecated = false) ?(lazy' = false) ?(jstype = JSType.JS_NORMAL) ?(weak = false) ?(unverified_lazy = false) ?(uninterpreted_option = []) ?(extensions' = Runtime'.Extensions.default) () = { ctype; packed; deprecated; lazy'; jstype; weak; unverified_lazy; uninterpreted_option; extensions' }
       let to_proto' =
         let apply = fun ~f:f' writer { ctype; packed; deprecated; lazy'; jstype; weak; unverified_lazy; uninterpreted_option; extensions' } -> f' extensions' writer ctype packed deprecated lazy' jstype weak unverified_lazy uninterpreted_option in
         let spec = Runtime'.Serialize.C.( basic (1, (enum CType.to_int), Some (CType.STRING)) ^:: basic_opt (2, bool) ^:: basic (3, bool, Some (false)) ^:: basic (5, bool, Some (false)) ^:: basic (6, (enum JSType.to_int), Some (JSType.JS_NORMAL)) ^:: basic (10, bool, Some (false)) ^:: basic (15, bool, Some (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
@@ -1326,11 +1228,7 @@ end = struct
     end = struct
       let name' () = "descriptor.google.protobuf.OneofOptions"
       type t = { extensions': Runtime'.Extensions.t; uninterpreted_option: UninterpretedOption.t list }
-      let make =
-        fun ?uninterpreted_option ?(extensions' = Runtime'.Extensions.default) () ->
-        let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
-        { uninterpreted_option; extensions' }
-
+      let make ?(uninterpreted_option = []) ?(extensions' = Runtime'.Extensions.default) () = { uninterpreted_option; extensions' }
       let to_proto' =
         let apply = fun ~f:f' writer { uninterpreted_option; extensions' } -> f' extensions' writer uninterpreted_option in
         let spec = Runtime'.Serialize.C.( repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
@@ -1358,12 +1256,7 @@ end = struct
     end = struct
       let name' () = "descriptor.google.protobuf.EnumOptions"
       type t = { extensions': Runtime'.Extensions.t; allow_alias: bool option; deprecated: bool; uninterpreted_option: UninterpretedOption.t list }
-      let make =
-        fun ?allow_alias ?deprecated ?uninterpreted_option ?(extensions' = Runtime'.Extensions.default) () ->
-        let deprecated = match deprecated with Some v -> v | None -> false in
-        let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
-        { allow_alias; deprecated; uninterpreted_option; extensions' }
-
+      let make ?allow_alias ?(deprecated = false) ?(uninterpreted_option = []) ?(extensions' = Runtime'.Extensions.default) () = { allow_alias; deprecated; uninterpreted_option; extensions' }
       let to_proto' =
         let apply = fun ~f:f' writer { allow_alias; deprecated; uninterpreted_option; extensions' } -> f' extensions' writer allow_alias deprecated uninterpreted_option in
         let spec = Runtime'.Serialize.C.( basic_opt (2, bool) ^:: basic (3, bool, Some (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
@@ -1391,12 +1284,7 @@ end = struct
     end = struct
       let name' () = "descriptor.google.protobuf.EnumValueOptions"
       type t = { extensions': Runtime'.Extensions.t; deprecated: bool; uninterpreted_option: UninterpretedOption.t list }
-      let make =
-        fun ?deprecated ?uninterpreted_option ?(extensions' = Runtime'.Extensions.default) () ->
-        let deprecated = match deprecated with Some v -> v | None -> false in
-        let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
-        { deprecated; uninterpreted_option; extensions' }
-
+      let make ?(deprecated = false) ?(uninterpreted_option = []) ?(extensions' = Runtime'.Extensions.default) () = { deprecated; uninterpreted_option; extensions' }
       let to_proto' =
         let apply = fun ~f:f' writer { deprecated; uninterpreted_option; extensions' } -> f' extensions' writer deprecated uninterpreted_option in
         let spec = Runtime'.Serialize.C.( basic (1, bool, Some (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
@@ -1424,12 +1312,7 @@ end = struct
     end = struct
       let name' () = "descriptor.google.protobuf.ServiceOptions"
       type t = { extensions': Runtime'.Extensions.t; deprecated: bool; uninterpreted_option: UninterpretedOption.t list }
-      let make =
-        fun ?deprecated ?uninterpreted_option ?(extensions' = Runtime'.Extensions.default) () ->
-        let deprecated = match deprecated with Some v -> v | None -> false in
-        let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
-        { deprecated; uninterpreted_option; extensions' }
-
+      let make ?(deprecated = false) ?(uninterpreted_option = []) ?(extensions' = Runtime'.Extensions.default) () = { deprecated; uninterpreted_option; extensions' }
       let to_proto' =
         let apply = fun ~f:f' writer { deprecated; uninterpreted_option; extensions' } -> f' extensions' writer deprecated uninterpreted_option in
         let spec = Runtime'.Serialize.C.( basic (33, bool, Some (false)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
@@ -1483,13 +1366,7 @@ end = struct
       end
       let name' () = "descriptor.google.protobuf.MethodOptions"
       type t = { extensions': Runtime'.Extensions.t; deprecated: bool; idempotency_level: IdempotencyLevel.t; uninterpreted_option: UninterpretedOption.t list }
-      let make =
-        fun ?deprecated ?idempotency_level ?uninterpreted_option ?(extensions' = Runtime'.Extensions.default) () ->
-        let deprecated = match deprecated with Some v -> v | None -> false in
-        let idempotency_level = match idempotency_level with Some v -> v | None -> IdempotencyLevel.IDEMPOTENCY_UNKNOWN in
-        let uninterpreted_option = match uninterpreted_option with Some v -> v | None -> [] in
-        { deprecated; idempotency_level; uninterpreted_option; extensions' }
-
+      let make ?(deprecated = false) ?(idempotency_level = IdempotencyLevel.IDEMPOTENCY_UNKNOWN) ?(uninterpreted_option = []) ?(extensions' = Runtime'.Extensions.default) () = { deprecated; idempotency_level; uninterpreted_option; extensions' }
       let to_proto' =
         let apply = fun ~f:f' writer { deprecated; idempotency_level; uninterpreted_option; extensions' } -> f' extensions' writer deprecated idempotency_level uninterpreted_option in
         let spec = Runtime'.Serialize.C.( basic (33, bool, Some (false)) ^:: basic (34, (enum IdempotencyLevel.to_int), Some (IdempotencyLevel.IDEMPOTENCY_UNKNOWN)) ^:: repeated (999, (message (fun t -> UninterpretedOption.to_proto' t)), not_packed) ^:: nil ) in
@@ -1535,11 +1412,7 @@ end = struct
       end = struct
         let name' () = "descriptor.google.protobuf.UninterpretedOption.NamePart"
         type t = { name_part: string; is_extension: bool }
-        let make =
-          fun ~name_part ~is_extension () ->
-
-          { name_part; is_extension }
-
+        let make ~name_part ~is_extension () = { name_part; is_extension }
         let to_proto' =
           let apply = fun ~f:f' writer { name_part; is_extension } -> f' [] writer name_part is_extension in
           let spec = Runtime'.Serialize.C.( basic (1, string, None) ^:: basic (2, bool, None) ^:: nil ) in
@@ -1558,11 +1431,7 @@ end = struct
       end
       let name' () = "descriptor.google.protobuf.UninterpretedOption"
       type t = { name: NamePart.t list; identifier_value: string option; positive_int_value: int option; negative_int_value: int option; double_value: float option; string_value: bytes option; aggregate_value: string option }
-      let make =
-        fun ?name ?identifier_value ?positive_int_value ?negative_int_value ?double_value ?string_value ?aggregate_value () ->
-        let name = match name with Some v -> v | None -> [] in
-        { name; identifier_value; positive_int_value; negative_int_value; double_value; string_value; aggregate_value }
-
+      let make ?(name = []) ?identifier_value ?positive_int_value ?negative_int_value ?double_value ?string_value ?aggregate_value () = { name; identifier_value; positive_int_value; negative_int_value; double_value; string_value; aggregate_value }
       let to_proto' =
         let apply = fun ~f:f' writer { name; identifier_value; positive_int_value; negative_int_value; double_value; string_value; aggregate_value } -> f' [] writer name identifier_value positive_int_value negative_int_value double_value string_value aggregate_value in
         let spec = Runtime'.Serialize.C.( repeated (2, (message (fun t -> NamePart.to_proto' t)), not_packed) ^:: basic_opt (3, string) ^:: basic_opt (4, uint64_int) ^:: basic_opt (5, int64_int) ^:: basic_opt (6, double) ^:: basic_opt (7, bytes) ^:: basic_opt (8, string) ^:: nil ) in
@@ -1608,13 +1477,7 @@ end = struct
       end = struct
         let name' () = "descriptor.google.protobuf.SourceCodeInfo.Location"
         type t = { path: int list; span: int list; leading_comments: string option; trailing_comments: string option; leading_detached_comments: string list }
-        let make =
-          fun ?path ?span ?leading_comments ?trailing_comments ?leading_detached_comments () ->
-          let path = match path with Some v -> v | None -> [] in
-          let span = match span with Some v -> v | None -> [] in
-          let leading_detached_comments = match leading_detached_comments with Some v -> v | None -> [] in
-          { path; span; leading_comments; trailing_comments; leading_detached_comments }
-
+        let make ?(path = []) ?(span = []) ?leading_comments ?trailing_comments ?(leading_detached_comments = []) () = { path; span; leading_comments; trailing_comments; leading_detached_comments }
         let to_proto' =
           let apply = fun ~f:f' writer { path; span; leading_comments; trailing_comments; leading_detached_comments } -> f' [] writer path span leading_comments trailing_comments leading_detached_comments in
           let spec = Runtime'.Serialize.C.( repeated (1, int32_int, packed) ^:: repeated (2, int32_int, packed) ^:: basic_opt (3, string) ^:: basic_opt (4, string) ^:: repeated (6, string, not_packed) ^:: nil ) in
@@ -1633,11 +1496,7 @@ end = struct
       end
       let name' () = "descriptor.google.protobuf.SourceCodeInfo"
       type t = Location.t list
-      let make =
-        fun ?location () ->
-        let location = match location with Some v -> v | None -> [] in
-        location
-
+      let make ?(location = []) () = location
       let to_proto' =
         let apply = fun ~f:f' writer location -> f' [] writer location in
         let spec = Runtime'.Serialize.C.( repeated (1, (message (fun t -> Location.to_proto' t)), not_packed) ^:: nil ) in
@@ -1683,11 +1542,7 @@ end = struct
       end = struct
         let name' () = "descriptor.google.protobuf.GeneratedCodeInfo.Annotation"
         type t = { path: int list; source_file: string option; begin': int option; end': int option }
-        let make =
-          fun ?path ?source_file ?begin' ?end' () ->
-          let path = match path with Some v -> v | None -> [] in
-          { path; source_file; begin'; end' }
-
+        let make ?(path = []) ?source_file ?begin' ?end' () = { path; source_file; begin'; end' }
         let to_proto' =
           let apply = fun ~f:f' writer { path; source_file; begin'; end' } -> f' [] writer path source_file begin' end' in
           let spec = Runtime'.Serialize.C.( repeated (1, int32_int, packed) ^:: basic_opt (2, string) ^:: basic_opt (3, int32_int) ^:: basic_opt (4, int32_int) ^:: nil ) in
@@ -1706,11 +1561,7 @@ end = struct
       end
       let name' () = "descriptor.google.protobuf.GeneratedCodeInfo"
       type t = Annotation.t list
-      let make =
-        fun ?annotation () ->
-        let annotation = match annotation with Some v -> v | None -> [] in
-        annotation
-
+      let make ?(annotation = []) () = annotation
       let to_proto' =
         let apply = fun ~f:f' writer annotation -> f' [] writer annotation in
         let spec = Runtime'.Serialize.C.( repeated (1, (message (fun t -> Annotation.to_proto' t)), not_packed) ^:: nil ) in

@@ -172,11 +172,7 @@ end = struct
       end = struct
         let name' () = "plugin.google.protobuf.compiler.Version"
         type t = { major: int option; minor: int option; patch: int option; suffix: string option }
-        let make =
-          fun ?major ?minor ?patch ?suffix () ->
-
-          { major; minor; patch; suffix }
-
+        let make ?major ?minor ?patch ?suffix () = { major; minor; patch; suffix }
         let to_proto' =
           let apply = fun ~f:f' writer { major; minor; patch; suffix } -> f' [] writer major minor patch suffix in
           let spec = Runtime'.Serialize.C.( basic_opt (1, int32_int) ^:: basic_opt (2, int32_int) ^:: basic_opt (3, int32_int) ^:: basic_opt (4, string) ^:: nil ) in
@@ -204,12 +200,7 @@ end = struct
       end = struct
         let name' () = "plugin.google.protobuf.compiler.CodeGeneratorRequest"
         type t = { file_to_generate: string list; parameter: string option; compiler_version: Version.t option; proto_file: Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.t list }
-        let make =
-          fun ?file_to_generate ?parameter ?compiler_version ?proto_file () ->
-          let file_to_generate = match file_to_generate with Some v -> v | None -> [] in
-          let proto_file = match proto_file with Some v -> v | None -> [] in
-          { file_to_generate; parameter; compiler_version; proto_file }
-
+        let make ?(file_to_generate = []) ?parameter ?compiler_version ?(proto_file = []) () = { file_to_generate; parameter; compiler_version; proto_file }
         let to_proto' =
           let apply = fun ~f:f' writer { file_to_generate; parameter; compiler_version; proto_file } -> f' [] writer file_to_generate parameter compiler_version proto_file in
           let spec = Runtime'.Serialize.C.( repeated (1, string, not_packed) ^:: basic_opt (2, string) ^:: basic_opt (3, (message (fun t -> Version.to_proto' t))) ^:: repeated (15, (message (fun t -> Imported'modules.Descriptor.Google.Protobuf.FileDescriptorProto.to_proto' t)), not_packed) ^:: nil ) in
@@ -279,11 +270,7 @@ end = struct
         end = struct
           let name' () = "plugin.google.protobuf.compiler.CodeGeneratorResponse.File"
           type t = { name: string option; insertion_point: string option; content: string option; generated_code_info: Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.t option }
-          let make =
-            fun ?name ?insertion_point ?content ?generated_code_info () ->
-
-            { name; insertion_point; content; generated_code_info }
-
+          let make ?name ?insertion_point ?content ?generated_code_info () = { name; insertion_point; content; generated_code_info }
           let to_proto' =
             let apply = fun ~f:f' writer { name; insertion_point; content; generated_code_info } -> f' [] writer name insertion_point content generated_code_info in
             let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, string) ^:: basic_opt (15, string) ^:: basic_opt (16, (message (fun t -> Imported'modules.Descriptor.Google.Protobuf.GeneratedCodeInfo.to_proto' t))) ^:: nil ) in
@@ -302,11 +289,7 @@ end = struct
         end
         let name' () = "plugin.google.protobuf.compiler.CodeGeneratorResponse"
         type t = { error: string option; supported_features: int option; file: File.t list }
-        let make =
-          fun ?error ?supported_features ?file () ->
-          let file = match file with Some v -> v | None -> [] in
-          { error; supported_features; file }
-
+        let make ?error ?supported_features ?(file = []) () = { error; supported_features; file }
         let to_proto' =
           let apply = fun ~f:f' writer { error; supported_features; file } -> f' [] writer error supported_features file in
           let spec = Runtime'.Serialize.C.( basic_opt (1, string) ^:: basic_opt (2, uint64_int) ^:: repeated (15, (message (fun t -> File.to_proto' t)), not_packed) ^:: nil ) in
