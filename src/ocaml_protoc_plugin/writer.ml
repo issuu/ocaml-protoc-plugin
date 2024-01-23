@@ -26,56 +26,21 @@ let unused_space t =
   in
   inner t.data
 
-let write_varint_reference buffer ~offset v =
+let write_varint buffer ~offset v =
   let rec inner ~offset v =
     let next_offset = offset + 1 in
     let open Infix.Int64 in
     match v lsr 7 with
     | 0L ->
-      Bytes.set_uint8 buffer offset (Int64.to_int v);
+      Bytes.unsafe_set buffer offset (Int64.to_int v |> Char.unsafe_chr);
       next_offset
     | rem ->
-      Bytes.set_uint8 buffer offset (Int.logor (Int64.to_int v) 0b1000_0000);
+      Bytes.unsafe_set buffer offset ((v land 0x7fL) lor 0b1000_0000L |> Int64.to_int |> Char.unsafe_chr);
       inner ~offset:next_offset rem
   in
-  inner ~offset v
+  inner ~offset v[@@unrolled 10]
 
-(** Reference implementation. Uses a loop which is slower than the manually unrolled version *)
-let write_varint_unboxed buffer ~offset v =
-  let rec inner ~is_negative ~offset v =
-    match v lsr 7 with
-    | 0 when is_negative ->
-      (* If the value was signed, set bit 64 also *)
-      inner ~is_negative:false ~offset (v lor 0b1000_0000)
-    | 0 ->
-      Bytes.set_uint8 buffer offset v;
-      offset + 1
-    | rem ->
-      Bytes.set_uint8 buffer offset (v lor 0b1000_0000);
-      inner ~is_negative ~offset:(offset + 1) rem
-  in
-  inner ~is_negative:(v < 0) ~offset v
-
-let write_varint buffer ~offset v =
-  match Int64.shift_right_logical v 62 with
-  | 0b01L ->
-    (* Bit 63 set (and not bit 64).
-       Write as signed int, drop the last byte and clear the msb
-    *)
-    let v = Int64.to_int v in
-    let offset = write_varint_unboxed buffer ~offset v in
-    let byte = Bytes.get_uint8 buffer (offset - 2) land 0b0111_1111 in
-    Bytes.set_uint8 buffer (offset - 2) byte;
-    Bytes.set_uint8 buffer (offset - 1) 0;
-    offset - 1
-  | 0b10L ->
-    (* Only bit 64 is set. Set bit 63, and then clear it again in the output *)
-    let v = Int64.to_int v lor 0x4000_0000_0000_0000 in
-    let offset = write_varint_unboxed buffer ~offset v in
-    let byte = Bytes.get_uint8 buffer (offset - 2) land 0b1011_1111 in
-    Bytes.set_uint8 buffer (offset - 2) byte;
-    offset
-  | _ -> write_varint_unboxed buffer ~offset (Int64.to_int v)
+let write_varint_unboxed buffer ~offset v = write_varint buffer ~offset (Int64.of_int v)
 
 (* Write a field delimited length.
    A delimited field length can be no larger than 2^31.
@@ -266,7 +231,7 @@ let%expect_test "fixed_size" =
     Fixed field: 0x3fffffff: ff ff ff ff 03 ff ff ff ff ff |}]
 
 
-let%test "varint unrolled" =
+let%test "varint" =
   let open Infix.Int64 in
   let string_of_bytes b =
     Bytes.to_seq b |> Seq.map Char.code |> Seq.map (Printf.sprintf "%02x") |> List.of_seq |> String.concat ~sep:" "
@@ -276,30 +241,14 @@ let%test "varint unrolled" =
   in
   List.fold_left ~init:true ~f:(fun acc v ->
     List.fold_left ~init:acc ~f:(fun acc v ->
-
-      let acc =
-        let b1 = Bytes.make 10 '\000' in
-        let b2 = Bytes.make 10 '\000' in
-        write_varint_unboxed b1 ~offset:0 (Int64.to_int v) |> ignore;
-        write_varint b2 ~offset:0 (v) |> ignore;
-        match Bytes.equal b1 b2 || Int64.shift_right_logical v 63 != 0L with
-        | true -> acc
-        | false ->
-          Printf.printf "Unboxed: %16Lx (%20d): %S = %S\n" v (Int64.to_int v) (string_of_bytes b1) (string_of_bytes b2);
-          false
-      in
-      let acc =
-        let b1 = Bytes.make 10 '\000' in
-        let b2 = Bytes.make 10 '\000' in
-        write_varint_reference b1 ~offset:0 v |> ignore;
-        write_varint b2 ~offset:0 v |> ignore;
-        match Bytes.equal b1 b2 with
-        | true -> acc
-        | false ->
-          Printf.printf "Boxed: %16Lx: %S = %S\n" v (string_of_bytes b1) (string_of_bytes b2);
+      let b1 = Bytes.make 10 '\000' in
+      let b2 = Bytes.make 10 '\000' in
+      write_varint_unboxed b1 ~offset:0 (Int64.to_int v) |> ignore;
+      write_varint b2 ~offset:0 (v) |> ignore;
+      match Bytes.equal b1 b2 || Int64.shift_right_logical v 63 != 0L with
+      | true -> acc
+      | false ->
+        Printf.printf "Unboxed: %16Lx (%20d): %S = %S\n" v (Int64.to_int v) (string_of_bytes b1) (string_of_bytes b2);
         false
-      in
-      acc
-
     ) [v-2L; v-1L; v; v+1L; v+2L]
   ) values

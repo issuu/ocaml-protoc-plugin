@@ -20,72 +20,39 @@ let create ?(offset = 0) ?length data =
 let reset t offset = t.offset <- offset
 let offset { offset; _ } = offset
 
-[@@inline]
 let validate_capacity t count =
   match t.offset + count <= t.end_offset with
   | true -> ()
   | false ->
     Result.raise `Premature_end_of_input
-
 [@@inline]
+
 let has_more t = t.offset < t.end_offset
-
 [@@inline]
-let read_byte t =
-  validate_capacity t 1;
-  let v = Bytes.get_uint8 (Bytes.unsafe_of_string t.data) t.offset in
-  t.offset <- t.offset + 1;
-  v
 
-let read_varint_reference t =
+let read_byte t =
+  match t.offset < t.end_offset with
+  | true ->
+    let v = String.unsafe_get t.data t.offset |> Char.code in
+    t.offset <- t.offset + 1;
+    v
+  | false -> Result.raise `Premature_end_of_input
+[@@inline]
+
+let read_varint t =
   let open Infix.Int64 in
-  let rec inner n acc =
+  let rec inner acc bit =
     let v = read_byte t |> Int64.of_int in
-    let acc = acc + (v land 0x7fL) lsl n in
+    let acc = acc lor ((v land 0x7fL) lsl bit) in
     match v land 0x80L = 0x80L with
     | true ->
-      (* Still More data *)
-      inner (Int.add n 7) acc
+      inner acc (Int.add bit 7)
     | false -> acc
   in
-  inner 0 0L
+  inner 0L 0[@@unrolled 10]
 
-[@@inline]
-let read_varint t =
-  let rec inner n acc =
-    let v = read_byte t in
-    let acc = acc + (v land 0x7f) lsl n in
-    match v land 0x80 = 0x80 with
-    | true when acc < 0 -> begin
-        let accl = Int64.of_int acc in (* If bit63 was set, then bit63 and bit64 are now set *)
-        let accl = match read_byte t land 0x01 = 0x01 with
-          | true -> accl
-          | false -> Int64.logand accl 0x7fffffffffffffffL (* Apparently not a negative number after all *)
-        in
-        accl
-      end
-    | true -> inner (n + 7) acc
-    | false when acc < 0 -> (* Bit 63 is set, convert into a 64 bit integer, but clear bit64  *)
-      Int64.logand 0x7fffffffffffffffL (Int64.of_int acc)
-    | false -> Int64.of_int acc
+let read_varint_unboxed t = read_varint t |> Int64.to_int
 
-  in
-  inner 0 0
-
-[@@inline]
-let read_varint_unboxed t =
-  let rec inner n acc =
-    let v = read_byte t in
-    let acc = acc + (v land 0x7f) lsl n in
-    match v land 0x80 = 0x80 with
-    | true ->
-      (* Still More data *)
-      inner (n + 7) acc
-    | false -> acc
-  in
-  inner 0 0
-
-(* Implement little endian ourselves *)
 let read_fixed32 t =
   let size = 4 in
   validate_capacity t size;
@@ -148,7 +115,7 @@ let%expect_test "varint boxed" =
       Writer.contents writer
     in
     Printf.printf "0x%016LxL = 0x%016LxL\n"
-      (read_varint_reference (create buffer))
+      v
       (read_varint (create buffer));
     ()
   ) values;

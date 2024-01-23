@@ -17,8 +17,7 @@ val contents : t -> string
 
 (**/**)
 
-(** Direct functions *)
-
+(* Direct functions *)
 val write_fixed32_value: int32 -> t -> unit
 val write_fixed64_value: int64 -> t -> unit
 val write_varint_unboxed_value: int -> t -> unit
@@ -36,4 +35,6 @@ val of_list: (int * Field.t) list -> t
 val dump : t -> unit
 
 val unused_space : t -> int
+val write_varint: Bytes.t -> offset:int -> Int64.t -> int
+val write_varint_unboxed: Bytes.t -> offset:int -> int -> int
 (**/**)
