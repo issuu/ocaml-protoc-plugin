@@ -35,7 +35,7 @@
 
 (rule
  (targets
-   basic.ml primitive_types.ml int_types.ml repeated.ml enum.ml
+   basic.ml primitive_types.ml int_types.ml repeated.ml enum.ml empty_message.ml
    message.ml oneof.ml map.ml package.ml include.ml included.ml large.ml
    included2.ml included3_dash.ml service.ml recursive.ml protocol.ml name_clash.ml
    name_clash_mangle.ml proto2.ml packed.ml mangle_names.ml extensions.ml
@@ -43,8 +43,8 @@
  (deps
   (:plugin ../src/plugin/protoc_gen_ocaml.exe)
   (:proto
-    basic.proto primitive_types.proto int_types.proto repeated.proto
-    enum.proto message.proto oneof.proto map.proto package.proto large.proto
+    basic.proto primitive_types.proto int_types.proto repeated.proto enum.proto empty_message.proto
+    message.proto oneof.proto map.proto package.proto large.proto
     include.proto included.proto included2.proto included3-dash.proto service.proto
     recursive.proto protocol.proto name_clash.proto name_clash_mangle.proto
     proto2.proto packed.proto mangle_names.proto extensions.proto options.proto

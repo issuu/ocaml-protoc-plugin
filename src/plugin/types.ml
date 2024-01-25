@@ -10,7 +10,7 @@ open StdLabels
    in the spec module.
 
    This will ensure that the plugin will only construct valid types,
-   so that chnges to the spec will require changes here also.
+   so that changes to the spec will require changes here also.
 *)
 
 module T = Ocaml_protoc_plugin.Spec.Make(struct
@@ -552,7 +552,7 @@ let sort_fields fields =
   in
   List.sort ~cmp:(fun v v' -> Int.compare (number v) (number v')) fields
 
-let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields oneof_decls =
+let make ~params ~syntax ~is_cyclic ~is_map_entry ~extension_ranges ~scope ~fields oneof_decls =
   let fields = sort_fields fields in
   let ts =
     split_oneof_decl fields oneof_decls
@@ -563,6 +563,7 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
       | `Oneof (decl, fields) -> c_of_oneof ~params ~syntax ~scope decl fields
     )
   in
+  let has_extensions = match extension_ranges with [] -> false | _ -> true in
 
   let constructor_sig_arg = function
     | { name; type' = { name = type_name; modifier = Required }; _ } ->
@@ -592,7 +593,10 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
   in
 
   let t_as_tuple = is_map_entry ||
-                   (List.length ts = 1 && params.singleton_record = false && not has_extensions && not is_cyclic)
+                   (List.length ts = 1 &&
+                    params.singleton_record = false &&
+                    not has_extensions &&
+                    not is_cyclic)
   in
   (* Or actually a single constr *)
   let type_constr fields = match fields, t_as_tuple with
@@ -618,28 +622,31 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
 
   let type' =
     List.rev_map ~f:(fun { name; type'; _} -> ((Scope.get_name scope name), (string_of_type type'))) ts
-    |> append ~cond:has_extensions ("extensions'", "Runtime'.Extensions.t")
+    |> prepend ~cond:has_extensions ("extensions'", "Runtime'.Extensions.t")
     |> List.rev_map ~f:(function
       | (_, type') when t_as_tuple -> type'
       | (name, type') -> sprintf "%s: %s" name type'
     )
     |> type_constr
   in
-  (* When deserializing, we expect extensions as the last argument *)
-  (* When serializing, its the first argument *)
   let field_names =
     List.map ~f:(fun { name; _} -> Scope.get_name scope name) ts
+    |> append ~cond:has_extensions "extensions'"
   in
 
   let args = String.concat ~sep:" " field_names in
-  let fields = (append ~cond:has_extensions "extensions'" field_names) in
   let constructor =
-    sprintf "fun %s %s -> %s"
-      args (if has_extensions then "extensions'" else "_extensions") (type_destr fields)
+    match field_names with
+    | [] -> (type_destr field_names)
+    | _ ->
+      sprintf "fun %s -> %s"
+        args (type_destr field_names)
   in
-  let apply =
-    sprintf "fun ~f:f' writer %s -> f' %s writer %s"
-      (type_destr fields) (if has_extensions then "extensions'" else "[]") args
+  let apply = match t_as_tuple && not is_map_entry with
+    | true -> "serialize"
+    | false ->
+      sprintf "fun writer %s -> serialize writer %s"
+      (type_destr field_names) args
   in
 
   let default_constructor_sig =
@@ -652,28 +659,40 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
   in
   let default_constructor_impl =
     let args =
-      List.map ~f:constructor_arg ts
-      |> append ~cond:has_extensions "?(extensions' = Runtime'.Extensions.default)"
+      List.rev_map ~f:constructor_arg ts
+      |> prepend ~cond:has_extensions "?(extensions' = Runtime'.Extensions.default)"
+      |> prepend "()"
+      |> List.rev
       |> String.concat ~sep: " "
     in
 
     let constructor =
-      List.map ~f:(fun {name; _} -> sprintf "%s" (Scope.get_name scope name)) ts
-      |> append ~cond:has_extensions "extensions'"
+      List.rev_map ~f:(fun {name; _} -> sprintf "%s" (Scope.get_name scope name)) ts
+      |> prepend ~cond:has_extensions "extensions'"
+      |> List.rev
       |> type_destr
     in
-    sprintf "%s () = %s" args constructor
+    sprintf "%s = %s" args constructor
+  in
+  let nil =
+    match has_extensions with
+    | true ->
+      extension_ranges
+      |> List.map ~f:(fun (start', end') -> sprintf "(%d, %d)" start' end')
+      |> String.concat ~sep:"; "
+      |> sprintf "nil_ext [ %s ]"
+    | false -> "nil"
   in
   (* Create the deserialize spec *)
   let deserialize_spec =
     let spec = List.map ~f:(fun (c : c) -> c.deserialize_spec) ts in
-    String.concat ~sep:" ^:: " (spec @ ["nil"])
+    String.concat ~sep:" ^:: " (spec @ [nil])
     |> sprintf "Runtime'.Deserialize.C.( %s )"
   in
 
   let serialize_spec =
     let spec = List.map ~f:(fun (c : c) -> c.serialize_spec) ts in
-    String.concat ~sep:" ^:: " (spec @ ["nil"])
+    String.concat ~sep:" ^:: " (spec @ [nil])
     |> sprintf "Runtime'.Serialize.C.( %s )"
   in
 

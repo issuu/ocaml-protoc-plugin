@@ -25,7 +25,7 @@ let%expect_test _ =
   in
   ();
   [%expect {|
-    { extensions' = (128, (Field.Varint 7L)); bar = (Some 5) }
+    { bar = (Some 5); extensions' = (128, (Field.Varint 7L)) }
     Ok (Some 7) |}]
 
 let%expect_test _ =
@@ -37,7 +37,7 @@ let%expect_test _ =
   print_endline ([%show: Extensions.Foo.t] foo);
   ();
   [%expect {|
-    { extensions' = (128, (Field.Varint 0L)); bar = (Some 5) } |}]
+    { bar = (Some 5); extensions' = (128, (Field.Varint 0L)) } |}]
 
 let%expect_test _ =
   let foo = Extensions.Foo.{ bar = Some 5; extensions' = Ocaml_protoc_plugin.Extensions.default } in
@@ -103,14 +103,14 @@ let%expect_test _ =
   print_endline ([%show: Extensions.Foo.t] foo);
   ();
   [%expect {|
-    { extensions' = ; bar = (Some 5) }
+    { bar = (Some 5); extensions' =  }
     Set A = Some 7
-    { extensions' = (131, (Field.Varint 7L)); bar = (Some 5) }
+    { bar = (Some 5); extensions' = (131, (Field.Varint 7L)) }
     Set A = None
-    { extensions' = ; bar = (Some 5) }
+    { bar = (Some 5); extensions' =  }
     Set B = 15: 15
-    { extensions' = (132, (Field.Varint 15L)); bar = (Some 5) }
+    { bar = (Some 5); extensions' = (132, (Field.Varint 15L)) }
     Set B = 13: 13
-    { extensions' = ; bar = (Some 5) }
+    { bar = (Some 5); extensions' =  }
     Set B = 0: 0
-    { extensions' = (132, (Field.Varint 0L)); bar = (Some 5) } |}]
+    { bar = (Some 5); extensions' = (132, (Field.Varint 0L)) } |}]
