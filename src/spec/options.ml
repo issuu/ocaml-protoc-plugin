@@ -26,7 +26,7 @@ end
 module rec Options : sig
   val name': unit -> string
   type t = bool
-  val make : ?mangle_names:bool -> unit -> t
+  val make: ?mangle_names:bool -> unit -> t
   val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t
   val to_proto: t -> Runtime'.Writer.t
   val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result
@@ -36,20 +36,16 @@ end = struct
   type t = bool
   let make ?(mangle_names = false) () = mangle_names
   let to_proto' =
-    let apply = fun ~f:f' writer mangle_names -> f' [] writer mangle_names in
     let spec = Runtime'.Serialize.C.( basic (1, bool, Some (false)) ^:: nil ) in
-    let serialize = Runtime'.Serialize.serialize [] spec in
-    fun writer t -> apply ~f:serialize writer t
+    let serialize = Runtime'.Serialize.serialize spec in
+    serialize
 
   let to_proto t = to_proto' (Runtime'.Writer.init ()) t
-
   let from_proto_exn =
-    let constructor = fun mangle_names _extensions -> mangle_names in
+    let constructor = fun mangle_names -> mangle_names in
     let spec = Runtime'.Deserialize.C.( basic (1, bool, Some (false)) ^:: nil ) in
-    let deserialize = Runtime'.Deserialize.deserialize [] spec constructor in
-    fun writer -> deserialize writer
-    let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)
-
+    Runtime'.Deserialize.deserialize spec constructor
+  let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)
 end
 and Ocaml_options : sig
   type t = Options.t option
@@ -62,6 +58,6 @@ end = struct
   let get extendee = Runtime'.Result.catch (fun () -> get_exn extendee)
   let set extendee t =
     let extensions' = Runtime'.Extensions.set Runtime'.Serialize.C.(basic_opt (1074, (message (fun t -> Options.to_proto' t)))) (extendee.Imported'modules.Descriptor.Google.Protobuf.FileOptions.extensions') t in
-    { extendee with Imported'modules.Descriptor.Google.Protobuf.FileOptions.extensions' = extensions' }
+    { extendee with Imported'modules.Descriptor.Google.Protobuf.FileOptions.extensions' = extensions' } [@@warning "-23"]
 
 end
