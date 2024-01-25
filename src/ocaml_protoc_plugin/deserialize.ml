@@ -238,6 +238,9 @@ let deserialize_full: type constr a. extension_ranges -> (constr, a) value_list 
 
 let deserialize: type constr a. (constr, a) compound_list -> constr -> Reader.t -> a = fun spec constr ->
 
+  (* Exception indicating that fast deserialization did not succeed and revert to full deserialization *)
+  let exception Restart_full in
+
   let rec extension_ranges: type a b. (a, b) compound_list -> extension_ranges = function
     | Nil -> []
     | Nil_ext extension_ranges -> extension_ranges
@@ -269,9 +272,9 @@ let deserialize: type constr a. (constr, a) compound_list -> constr -> Reader.t 
     in
     function
     | VNil when idx = Int.max_int ->
-      Some constr
+      constr
     | VNil_ext when idx = Int.max_int ->
-      Some (constr (List.rev extensions))
+      constr (List.rev extensions)
       (* All fields read successfully. Apply extensions and return result. *)
     | VCons (([index, read_f], _required, default, get), vs) when index = idx ->
       (* Read all values, and apply constructor once all fields have been read.
@@ -295,7 +298,7 @@ let deserialize: type constr a. (constr, a) compound_list -> constr -> Reader.t 
          If all values are read, then raise, else revert to full deserialization *)
       begin match (idx = Int.max_int) with
       | true -> error_required_field_missing ()
-      | false -> None
+      | false -> raise Restart_full
       end
     | VCons ((_ :: fields, optional, default, get), vs) ->
       (* Drop the field, as we dont expect to find it. *)
@@ -307,7 +310,7 @@ let deserialize: type constr a. (constr, a) compound_list -> constr -> Reader.t 
       (* This implies that there are still fields to be read.
          Revert to full deserialization.
       *)
-      None
+      raise Restart_full
   in
 
   let extension_ranges = extension_ranges spec in
@@ -316,9 +319,8 @@ let deserialize: type constr a. (constr, a) compound_list -> constr -> Reader.t 
   fun reader ->
     let offset = Reader.offset reader in
     let (tpe, idx) = next_field reader in
-    read_values extension_ranges tpe idx reader constr [] values
-    |> function
-    | Some t -> t
-    | None ->
+    try
+      read_values extension_ranges tpe idx reader constr [] values
+    with Restart_full ->
       Reader.reset reader offset;
       deserialize_full extension_ranges values constr reader
