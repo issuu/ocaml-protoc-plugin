@@ -17,11 +17,11 @@ let index_of_spec: type a. a Spec.Serialize.compound -> int = function
 let get: type a. a Spec.Deserialize.compound -> t -> a = fun spec t ->
   let writer = Writer.of_list t in
   let reader = Writer.contents writer |> Reader.create in
-  Deserialize.deserialize [] Spec.Deserialize.(Cons (spec, Nil)) (fun a _ -> a) reader
+  Deserialize.deserialize Spec.Deserialize.(Cons (spec, Nil)) (fun a -> a) reader
 
 let set: type a. a Spec.Serialize.compound -> t -> a -> t = fun spec t v ->
   let writer = Writer.init () in
-  let writer = Serialize.serialize [] Spec.Serialize.(Cons (spec, Nil)) [] writer v in
+  let writer = Serialize.serialize Spec.Serialize.(Cons (spec, Nil)) writer v in
   let index = index_of_spec spec in
   let fields =
     Writer.contents writer

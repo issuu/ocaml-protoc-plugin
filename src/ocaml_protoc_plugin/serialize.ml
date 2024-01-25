@@ -148,29 +148,24 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
             write (Basic (index, spec, None)) writer v
     end
 
+let in_extension_ranges extension_ranges index =
+  List.exists ~f:(fun (start, end') -> index >= start && index <= end') extension_ranges
+
 let rec serialize : type a. (a, Writer.t) compound_list -> Writer.t -> a = function
   | Nil -> fun writer -> writer
+  | Nil_ext extension_ranges ->
+    fun writer extensions ->
+      List.iter ~f:(function
+        | (index, field) when in_extension_ranges extension_ranges index -> Writer.write_field writer index field
+        | _ -> ()
+      ) extensions;
+      writer
   | Cons (compound, rest) ->
     let cont = serialize rest in
     let write = write compound in
     fun writer v ->
       write writer v;
       cont writer
-
-let in_extension_ranges extension_ranges index =
-  List.exists ~f:(fun (start, end') -> index >= start && index <= end') extension_ranges
-
-let serialize extension_ranges spec =
-  let serialize = serialize spec in
-  match extension_ranges with
-  | [] -> fun _ -> serialize
-  | extension_ranges ->
-    fun extensions writer ->
-      List.iter ~f:(function
-        | (index, field) when in_extension_ranges extension_ranges index -> Writer.write_field writer index field
-        | _ -> ()
-      ) extensions;
-      serialize writer
 
 let%expect_test "zigzag encoding" =
   let test v =

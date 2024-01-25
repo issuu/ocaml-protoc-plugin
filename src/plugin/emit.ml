@@ -141,7 +141,7 @@ let emit_extension ~scope ~params field =
   Code.emit implementation `None "let get extendee = Runtime'.Result.catch (fun () -> get_exn extendee)";
   Code.emit implementation `Begin "let set extendee t =";
   Code.emit implementation `None "let extensions' = Runtime'.Extensions.set Runtime'.Serialize.C.(%s) (extendee.%s) t in" c.serialize_spec extendee_field;
-  Code.emit implementation `None "{ extendee with %s = extensions' }" extendee_field;
+  Code.emit implementation `None "{ extendee with %s = extensions' } [@@warning \"-23\"]" extendee_field;
   Code.emit implementation `End "";
   { module_name; signature; implementation }
 
@@ -187,7 +187,12 @@ let rec emit_message ~params ~syntax scope
   let signature = Code.init () in
   let implementation = Code.init () in
 
-  let has_extensions = not (extension_ranges = []) in
+  let extension_ranges =
+    List.map ~f:(function
+      | DescriptorProto.ExtensionRange.{ start = Some start; end' = Some end'; _ } -> (start, end')
+      | _ -> failwith "Start and end must be defined for Extension ranges"
+    ) extension_ranges
+  in
   (* Ignore empty modules *)
   let module_name, scope =
     match name with
@@ -206,24 +211,14 @@ let rec emit_message ~params ~syntax scope
     | Some _name ->
       let is_map_entry = is_map_entry options in
       let is_cyclic = Scope.is_cyclic scope in
-      let extension_ranges =
-        extension_ranges
-        |> List.map ~f:(function
-            | DescriptorProto.ExtensionRange.{ start = Some start; end' = Some end'; _ } -> (start, end')
-            | _ -> failwith "Extension ranges must be defined"
-          )
-        |> List.map ~f:(fun (s, e) -> sprintf "(%d, %d)" s e)
-        |> String.concat ~sep:"; "
-        |> sprintf "[%s]"
-      in
       let Types.{ type'; constructor; apply; deserialize_spec; serialize_spec; default_constructor_sig; default_constructor_impl } =
-        Types.make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields oneof_decls
+        Types.make ~params ~syntax ~is_cyclic ~is_map_entry ~extension_ranges ~scope ~fields oneof_decls
       in
       ignore (default_constructor_sig, default_constructor_impl);
 
       Code.emit signature `None "val name': unit -> string";
       Code.emit signature `None "type t = %s %s" type' params.annot;
-      Code.emit signature `None "val make : %s" default_constructor_sig;
+      Code.emit signature `None "val make: %s" default_constructor_sig;
       Code.emit signature `None "val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t";
       Code.emit signature `None "val to_proto: t -> Runtime'.Writer.t";
       Code.emit signature `None "val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result";
@@ -234,23 +229,19 @@ let rec emit_message ~params ~syntax scope
       Code.emit implementation `None "let make %s" default_constructor_impl;
 
       Code.emit implementation `Begin "let to_proto' =";
-      Code.emit implementation `None "let apply = %s in" apply;
       Code.emit implementation `None "let spec = %s in" serialize_spec;
-      Code.emit implementation `None "let serialize = Runtime'.Serialize.serialize %s spec in" extension_ranges;
-      Code.emit implementation `None "fun writer t -> apply ~f:serialize writer t";
-      Code.emit implementation `End "";
-      Code.emit implementation `Begin "let to_proto t = to_proto' (Runtime'.Writer.init ()) t";
+      Code.emit implementation `None "let serialize = Runtime'.Serialize.serialize spec in";
+      Code.emit implementation `None "%s" apply;
       Code.emit implementation `End "";
 
+      Code.emit implementation `None "let to_proto t = to_proto' (Runtime'.Writer.init ()) t";
 
       Code.emit implementation `Begin "let from_proto_exn =";
       Code.emit implementation `None "let constructor = %s in" constructor;
       Code.emit implementation `None "let spec = %s in" deserialize_spec;
-      Code.emit implementation `None "let deserialize = Runtime'.Deserialize.deserialize %s spec constructor in" extension_ranges;
-      Code.emit implementation `None "fun writer -> deserialize writer";
-
-      Code.emit implementation `None "let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)";
-      Code.emit implementation `End "";
+      Code.emit implementation `None "Runtime'.Deserialize.deserialize spec constructor";
+      (* TODO: No need to have a function here. We could drop deserialize thing here *)
+      Code.emit implementation `End "let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)";
     | None -> ()
   in
   {module_name; signature; implementation}

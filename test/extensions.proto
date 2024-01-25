@@ -26,3 +26,11 @@ extend Foo {
     optional uint32 a = 131;
     optional uint32 b = 132 [default = 13];
 }
+
+message Bar {
+    extensions 100 to 199;
+}
+
+extend Bar {
+    optional uint32 z = 131;
+}

@@ -5,6 +5,8 @@ end
 module Make(T : T) = struct
 
   type packed = Packed | Not_packed
+  type extension_ranges = (int * int) list
+  type extensions = (int * Field.t) list
 
   type _ spec =
     | Double : float spec
@@ -51,6 +53,7 @@ module Make(T : T) = struct
 
   type (_, _) compound_list =
     | Nil : ('a, 'a) compound_list
+    | Nil_ext: extension_ranges -> (extensions -> 'a, 'a) compound_list
     | Cons : ('a compound) * ('b, 'c) compound_list -> ('a -> 'b, 'c) compound_list
 
   module C = struct
@@ -99,6 +102,7 @@ module Make(T : T) = struct
 
     let ( ^:: ) a b = Cons (a, b)
     let nil = Nil
+    let nil_ext extension_ranges = Nil_ext extension_ranges
 
     let show: type a. a spec -> string = function
       | Double -> "Double"

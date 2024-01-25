@@ -11,9 +11,11 @@ type 'a reader = 'a -> Reader.t -> Field.field_type -> 'a
 type 'a getter = 'a -> 'a
 type 'a field_spec = (int * 'a reader)
 type 'a value = ('a field_spec list * required * 'a * 'a getter)
+type extensions = (int * Field.t) list
 
 type (_, _) value_list =
   | VNil : ('a, 'a) value_list
+  | VNil_ext : (extensions -> 'a, 'a) value_list
   | VCons : ('a value) * ('b, 'c) value_list -> ('a -> 'b, 'c) value_list
 
 type sentinel_field_spec = int * (Reader.t -> Field.field_type -> unit)
@@ -21,6 +23,7 @@ type 'a sentinel_getter = unit -> 'a
 
 type (_, _) sentinel_list =
   | NNil : ('a, 'a) sentinel_list
+  | NNil_ext: (extensions -> 'a, 'a) sentinel_list
   | NCons : (sentinel_field_spec list  * 'a sentinel_getter) * ('b, 'c) sentinel_list -> ('a -> 'b, 'c) sentinel_list
 
 let error_wrong_field str field = Result.raise (`Wrong_field_type (str, field))
@@ -175,10 +178,10 @@ let in_extension_ranges extension_ranges index =
   List.exists ~f:(fun (start, end') -> index >= start && index <= end') extension_ranges
 
 (** Full (slow) deserialization. *)
-let deserialize_full: type constr a. (int * int) list -> (constr, (int * Field.t) list -> a) value_list -> constr -> Reader.t -> a  = fun extension_ranges values constructor reader ->
-  (* Need to return the map also! *)
+let deserialize_full: type constr a. extension_ranges -> (constr, a) value_list -> constr -> Reader.t -> a  = fun extension_ranges values constructor reader ->
   let rec make_sentinel_list: type a b. (a, b) value_list -> (a, b) sentinel_list = function
     | VNil -> NNil
+    | VNil_ext -> NNil_ext
     (* Consider optimizing when optional is true *)
     | VCons ((fields, required, default, getter), rest) ->
       let v = ref (default, required) in
@@ -197,6 +200,7 @@ let deserialize_full: type constr a. (int * int) list -> (constr, (int * Field.t
 
   let rec create_map: type a b. _ IntMap.t -> (a, b) sentinel_list -> _ IntMap.t = fun map -> function
     | NNil -> map
+    | NNil_ext -> map
     | NCons ((fields, _), rest) ->
       let map =
         List.fold_left ~init:map ~f:(fun map (index, read)-> IntMap.add index read map) fields
@@ -204,13 +208,14 @@ let deserialize_full: type constr a. (int * int) list -> (constr, (int * Field.t
       create_map map rest
   in
 
-  let rec apply: type constr t. constr -> (constr, t) sentinel_list -> t = fun constr -> function
+  let rec apply: type constr a. extensions -> constr -> (constr, a) sentinel_list -> a = fun extensions constr -> function
     | NNil -> constr
+    | NNil_ext -> constr extensions
     | NCons ((_, get), rest) ->
-      apply (constr (get ())) rest
+      apply extensions (constr (get ())) rest
   in
 
-  let rec read: (Reader.t -> Field.field_type -> unit) IntMap.t -> (int * Field.t) list -> (int * Field.t) list = fun map extensions ->
+  let rec read: (Reader.t -> Field.field_type -> unit) IntMap.t -> extensions -> extensions = fun map extensions ->
     match Reader.has_more reader with
     | false -> List.rev extensions
     | true ->
@@ -229,17 +234,24 @@ let deserialize_full: type constr a. (int * int) list -> (constr, (int * Field.t
   let sentinels = make_sentinel_list values in
   let map = create_map IntMap.empty sentinels in
   let extensions = read map [] in
-  apply constructor sentinels extensions
+  apply extensions constructor sentinels
 
-let deserialize: type constr a. (int * int) list -> (constr, (int * Field.t) list -> a) compound_list -> constr -> Reader.t -> a = fun extension_ranges spec constr ->
+let deserialize: type constr a. (constr, a) compound_list -> constr -> Reader.t -> a = fun spec constr ->
+
+  let rec extension_ranges: type a b. (a, b) compound_list -> extension_ranges = function
+    | Nil -> []
+    | Nil_ext extension_ranges -> extension_ranges
+    | Cons (_, rest) -> extension_ranges rest
+  in
+
   let rec make_values: type a b. (a, b) compound_list -> (a, b) value_list = function
     | Nil -> VNil
+    | Nil_ext _extension_ranges -> VNil_ext
     | Cons (spec, rest) ->
       let value = value spec in
       let values = make_values rest in
       VCons (value, values)
   in
-  let values = make_values spec in
 
   let next_field reader =
     match Reader.has_more reader with
@@ -247,7 +259,7 @@ let deserialize: type constr a. (int * int) list -> (constr, (int * Field.t) lis
       | false -> Field.Varint, Int.max_int
   in
 
-  let rec read_values: type constr a. (int * int) list -> Field.field_type -> int -> Reader.t -> constr -> (int * Field.t) list -> (constr, (int * Field.t) list -> a) value_list -> a option = fun extension_ranges tpe idx reader constr extensions ->
+  let rec read_values: type constr a. extension_ranges -> Field.field_type -> int -> Reader.t -> constr -> extensions -> (constr, a) value_list -> a = fun extension_ranges tpe idx reader constr extensions ->
     let rec read_repeated tpe index read_f default get reader =
       let default = read_f default reader tpe in
       let (tpe, idx) = next_field reader in
@@ -256,6 +268,11 @@ let deserialize: type constr a. (int * int) list -> (constr, (int * Field.t) lis
       | false -> default, tpe, idx
     in
     function
+    | VNil when idx = Int.max_int ->
+      Some constr
+    | VNil_ext when idx = Int.max_int ->
+      Some (constr (List.rev extensions))
+      (* All fields read successfully. Apply extensions and return result. *)
     | VCons (([index, read_f], _required, default, get), vs) when index = idx ->
       (* Read all values, and apply constructor once all fields have been read.
          This pattern is the most likely to be matched for all values, and is added
@@ -286,15 +303,16 @@ let deserialize: type constr a. (int * int) list -> (constr, (int * Field.t) lis
     | VCons (([], Optional, default, get), vs) ->
       (* Apply destructor. This case is only relevant for oneof fields *)
       read_values extension_ranges tpe idx reader (constr (get default)) extensions vs
-    | VNil when idx = Int.max_int ->
-      (* All fields read successfully. Apply extensions and return result. *)
-      Some (constr (List.rev extensions))
-    | VNil ->
+    | VNil | VNil_ext ->
       (* This implies that there are still fields to be read.
          Revert to full deserialization.
       *)
       None
   in
+
+  let extension_ranges = extension_ranges spec in
+  let values = make_values spec in
+
   fun reader ->
     let offset = Reader.offset reader in
     let (tpe, idx) = next_field reader in

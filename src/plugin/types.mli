@@ -26,6 +26,6 @@ val make:
   syntax:[ `Proto2 | `Proto3 ] ->
   is_cyclic: bool ->
   is_map_entry: bool ->
-  has_extensions: bool ->
+  extension_ranges: (int*int) list ->
   scope:Scope.t ->
   fields:FieldDescriptorProto.t list -> OneofDescriptorProto.t list -> t
