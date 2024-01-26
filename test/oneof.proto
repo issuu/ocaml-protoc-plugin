@@ -50,3 +50,13 @@ message Test5 {
   message Empty { };
   oneof a { Empty e  = 1; };
 }
+
+message Test6 {
+  int64 i = 1;
+  oneof a {
+    int64 a1 = 10;
+    int64 a2 = 21;
+  };
+  int64 j = 20;
+  oneof b { int64 f = 30; };
+}

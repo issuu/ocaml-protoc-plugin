@@ -528,35 +528,27 @@ let c_of_oneof ~params ~syntax:_ ~scope OneofDescriptorProto.{ name; _ } fields 
 (** Return a list of plain fields + a list of fields per oneof_decl *)
 let split_oneof_decl fields oneof_decls =
   let open FieldDescriptorProto in
-  let rec inner oneofs oneof_decls = function
-    | { oneof_index = Some i; _ } as o1 :: fs -> begin
-        match oneofs with
-        | [] -> inner [o1] oneof_decls fs
-        | { oneof_index = Some j; _ } :: _ when i = j ->
-          inner (o1 :: oneofs) oneof_decls fs
-        | oneofs ->
-          `Oneof (List.hd oneof_decls, List.rev oneofs) :: inner [o1] (List.tl oneof_decls) fs
-      end
-    | f :: fs -> begin
-        match oneofs with
-        | [] -> `Field f :: inner [] oneof_decls fs
-        | oneofs ->
-          `Oneof (List.hd oneof_decls, List.rev oneofs) :: `Field f :: inner [] (List.tl oneof_decls) fs
-      end
-    | [] -> begin
-        match oneofs, oneof_decls with
-        | [], [] -> []
-        | oneofs, [oneof_decl] ->
-          [ `Oneof (oneof_decl, List.rev oneofs) ]
-        | _ -> failwith "No field or no oneof"
-      end
+  let rec filter_oneofs acc rest index = function
+    | { oneof_index = Some i; _ } as f :: fs when i = index ->
+      filter_oneofs (f :: acc) rest index fs
+    | f :: fs -> filter_oneofs acc (f :: rest) index fs
+    | [] -> List.rev acc, List.rev rest
   in
-  inner [] oneof_decls fields
+  let rec inner = function
+    | { oneof_index = Some i; _ } as f :: fs ->
+      let oneofs, fs = filter_oneofs [f] [] i fs in
+      let decl = List.nth oneof_decls i in
+      `Oneof (decl, oneofs) :: inner fs
+    | f :: fs ->
+      `Field f :: inner fs
+    | [] -> []
+  in
+  inner fields
 
 let sort_fields fields =
   let number = function
     | FieldDescriptorProto.{ number = Some number; _ } -> number
-    | _ -> failwith "XAll Fields must have a number"
+    | _ -> failwith "All Fields must have a number"
   in
   List.sort ~cmp:(fun v v' -> Int.compare (number v) (number v')) fields
 
@@ -565,10 +557,11 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~has_extensions ~scope ~fields
   let ts =
     split_oneof_decl fields oneof_decls
     |> List.map ~f:(function
-        | `Oneof (_, [ FieldDescriptorProto.{ proto3_optional = Some true; _ } as field] )
-        | `Field field -> c_of_field ~params ~syntax ~scope field
-        | `Oneof (decl, fields) -> c_of_oneof ~params ~syntax ~scope decl fields
-      )
+      (* proto3 Oneof fields with only one field is mapped as regular field *)
+      | `Oneof (_, [ FieldDescriptorProto.{ proto3_optional = Some true; _ } as field] )
+      | `Field field -> c_of_field ~params ~syntax ~scope field
+      | `Oneof (decl, fields) -> c_of_oneof ~params ~syntax ~scope decl fields
+    )
   in
 
   let constructor_sig_arg = function
