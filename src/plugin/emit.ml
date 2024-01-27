@@ -211,14 +211,16 @@ let rec emit_message ~params ~syntax scope
     | Some _name ->
       let is_map_entry = is_map_entry options in
       let is_cyclic = Scope.is_cyclic scope in
-      let Types.{ type'; constructor; apply; deserialize_spec; serialize_spec; default_constructor_sig; default_constructor_impl } =
+      let Types.{ type'; constructor; apply; deserialize_spec; serialize_spec;
+                  default_constructor_sig; default_constructor_impl; merge_impl } =
         Types.make ~params ~syntax ~is_cyclic ~is_map_entry ~extension_ranges ~scope ~fields oneof_decls
       in
-      ignore (default_constructor_sig, default_constructor_impl);
+      ignore (merge_impl);
 
       Code.emit signature `None "val name': unit -> string";
       Code.emit signature `None "type t = %s %s" type' params.annot;
       Code.emit signature `None "val make: %s" default_constructor_sig;
+      Code.emit signature `None "val merge: t -> t -> t";
       Code.emit signature `None "val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t";
       Code.emit signature `None "val to_proto: t -> Runtime'.Writer.t";
       Code.emit signature `None "val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result";
@@ -227,6 +229,7 @@ let rec emit_message ~params ~syntax scope
       Code.emit implementation `None "let name' () = \"%s\"" (Scope.get_current_scope scope);
       Code.emit implementation `None "type t = %s%s" type' params.annot;
       Code.emit implementation `None "let make %s" default_constructor_impl;
+      Code.emit implementation `None "let merge = (%s)" merge_impl;
 
       Code.emit implementation `Begin "let to_proto' =";
       Code.emit implementation `None "let spec = %s in" serialize_spec;
@@ -240,7 +243,6 @@ let rec emit_message ~params ~syntax scope
       Code.emit implementation `None "let constructor = %s in" constructor;
       Code.emit implementation `None "let spec = %s in" deserialize_spec;
       Code.emit implementation `None "Runtime'.Deserialize.deserialize spec constructor";
-      (* TODO: No need to have a function here. We could drop deserialize thing here *)
       Code.emit implementation `End "let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)";
     | None -> ()
   in

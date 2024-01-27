@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package merge;
+
+message T {
+  int64 a = 1;
+  repeated int64 b = 2;
+  repeated string c = 3;
+  T d = 4;
+
+  oneof o {
+    int64 i = 12;
+    T k = 11;
+    string j = 10;
+  };
+}

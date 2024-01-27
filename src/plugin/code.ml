@@ -29,8 +29,13 @@ let emit t indent fmt =
     | n -> String.sub ~pos:0 ~len:(String.length s - n) s
   in
   let prepend s =
-    String.split_on_char ~sep:'\n' s
-    |> List.iter ~f:(fun s -> t.code <- (trim_end ~char:' ' (t.indent ^ s)) :: t.code)
+    match String.split_on_char ~sep:'\n' s with
+    | line :: lines ->
+      t.code <- (trim_end ~char:' ' (t.indent ^ line)) :: t.code;
+      incr t;
+      List.iter lines ~f:(fun line -> t.code <- (trim_end ~char:' ' (t.indent ^ line)) :: t.code);
+      decr t;
+    | [] -> ()
   in
   let emit s =
     match indent with

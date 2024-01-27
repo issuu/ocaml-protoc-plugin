@@ -3,6 +3,7 @@ module Serialize = Serialize
 module Deserialize = Deserialize
 module Spec = Spec
 module Runtime = Runtime
+module Field = Field
 (**/**)
 
 module Reader = Reader

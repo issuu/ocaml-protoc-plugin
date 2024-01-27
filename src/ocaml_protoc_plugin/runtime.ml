@@ -7,4 +7,5 @@ module Runtime' = struct
   module Extensions = Extensions
   module Reader = Reader
   module Writer = Writer
+  module Merge = Merge
 end

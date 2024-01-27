@@ -8,6 +8,7 @@ type t = {
   serialize_spec: string;
   default_constructor_sig: string;
   default_constructor_impl: string;
+  merge_impl: string;
 }
 
 type field_spec = {

@@ -70,4 +70,14 @@ message MessageDefaults {
   optional float    oc = 22 [default = -27];
   optional double   od = 23 [default = -27];
   optional bool     oe = 24 [default = true];
+  oneof of {
+    int64 og = 1 [default = 5];
+  };
+}
+
+message Oneof_default {
+  oneof a {
+    int64 i = 1 [default = 5];
+    int64 j = 2 [default = 7];
+  };
 }

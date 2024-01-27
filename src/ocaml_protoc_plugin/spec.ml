@@ -7,6 +7,7 @@ module Make(T : T) = struct
   type packed = Packed | Not_packed
   type extension_ranges = (int * int) list
   type extensions = (int * Field.t) list
+  type 'a merge = 'a -> 'a -> 'a
 
   type _ spec =
     | Double : float spec
@@ -40,7 +41,10 @@ module Make(T : T) = struct
     | String : string spec
     | Bytes : bytes spec
     | Enum :  ('a, int -> 'a, 'a -> int) T.dir -> 'a spec
-    | Message : ('a, Reader.t -> 'a, Writer.t -> 'a -> Writer.t) T.dir -> 'a spec
+    | Message : ('a, ((Reader.t -> 'a) * 'a merge), Writer.t -> 'a -> Writer.t) T.dir -> 'a spec
+
+  (* Existential types *)
+  type espec = Espec: _ spec -> espec
 
   type _ oneof =
     | Oneof_elem : int * 'b spec * ('a, ('b -> 'a), 'b) T.dir -> 'a oneof

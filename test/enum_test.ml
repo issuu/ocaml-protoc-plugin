@@ -14,13 +14,10 @@ let%expect_test _ =
 let%expect_test _ =
   let module T = Enum.Aliasing in
   let t = T.Enum.Z in
-  Test_lib.test_encode (module T) t;
-  (* We do expect the enum to be deserialized as Y. *)
+  (* Due to aliasing, we expect this to be deserialized as 'Y'. *)
+  Test_lib.test_encode (module T) ~expect:T.Enum.Y t;
   [%expect {|
-    e: Y
-
-    Expect  :Z
-    Observed:Y |}]
+    e: Y |}]
 
 let%expect_test _ =
   let module T = Enum.Negative in

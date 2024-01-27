@@ -85,7 +85,7 @@ let read_of_spec: type a. a spec -> Field.field_type * (Reader.t -> a) = functio
     let v = Bytes.create length in
     Bytes.blit_string ~src:data ~src_pos:offset ~dst:v ~dst_pos:0 ~len:length;
     v
-  | Message from_proto -> Length_delimited, fun reader ->
+  | Message (from_proto, _merge) -> Length_delimited, fun reader ->
     let Field.{ offset; length; data } = Reader.read_length_delimited reader in
     from_proto (Reader.create ~offset ~length data)
 
@@ -102,7 +102,7 @@ let default_value: type a. a spec -> a = function
   | Fixed64 -> Int64.zero
   | SFixed32 -> Int32.zero
   | SFixed64 -> Int64.zero
-  | Message of_proto -> of_proto (Reader.create "")
+  | Message (of_proto, _merge) -> of_proto (Reader.create "")
   | String -> ""
   | Bytes -> Bytes.empty
   | Int32_int -> 0
@@ -130,7 +130,11 @@ let read_field ~read:(expect, read_f) ~map v reader field_type =
 
 let value: type a. a compound -> a value = function
   | Basic (index, spec, default) ->
-    let read = read_field ~read:(read_of_spec spec) ~map:keep_last in
+    let map = match spec with
+      | Message (_, merge) -> merge
+      | _ -> keep_last
+    in
+    let read = read_field ~read:(read_of_spec spec) ~map in
     let required = match default with
       | Some _ -> Optional
       | None -> Required
@@ -141,7 +145,17 @@ let value: type a. a compound -> a value = function
     in
     ([(index, read)], required, default, id)
   | Basic_opt (index, spec) ->
-    let read = read_field ~read:(read_of_spec spec) ~map:(fun _ v -> Some v) in
+    let map = match spec with
+      | Message (_, merge) ->
+        let map v1 v2 =
+          match v1 with
+          | None -> Some v2
+          | Some prev -> Some (merge prev v2)
+        in
+        map
+      | _ -> fun _ v -> Some v (* Keep last for all other non-repeated types *)
+    in
+    let read = read_field ~read:(read_of_spec spec) ~map in
     ([(index, read)], Optional, None, id)
   | Repeated (index, spec, Packed) ->
     let field_type, read_f = read_of_spec spec in
