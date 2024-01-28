@@ -52,7 +52,7 @@ message Test5 {
 }
 
 message Test6 {
-  optional int64 i = 1;
+  int64 i = 1;
   oneof a {
     int64 a1 = 10;
     int64 a2 = 21;

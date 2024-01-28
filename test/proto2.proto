@@ -75,9 +75,29 @@ message MessageDefaults {
   };
 }
 
+// Default on oneofs makes really no sense
 message Oneof_default {
   oneof a {
     int64 i = 1 [default = 5];
     int64 j = 2 [default = 7];
   };
+}
+
+message NameClash {
+  message M1 { required int64 t = 1; };
+  message M2 { required int64 t = 1; };
+  message M3 { required int64 t = 1; };
+  message M4 { required int64 t = 1; };
+  message M5 { required int64 t = 1; };
+  required M1 t = 1;
+  required M2 T = 2;
+  required M3 _t = 3;
+  required M3 _T = 4;
+  required M4 T_ = 5;
+
+  oneof oneof {
+    int64 not_set = 10;
+    int64 Not_set = 11;
+    int64 Not_Set = 12;
+  }
 }

@@ -303,9 +303,8 @@ let string_of_oneof_elem dir (Oneof_elem (index, spec, (_, deser, ser, _, _))) =
   let s = match dir with `Deserialize -> deser | `Serialize -> ser in
   sprintf "oneof_elem (%d, %s, %s)" index spec_string s
 
-let string_of_proto_type: type a. a spec -> a option -> string = fun spec -> function
-  | Some s -> sprintf "Some (%s)" (string_of_default spec s)
-  | None -> "None"
+let string_of_proto_type: type a. a spec -> a -> string = fun spec default ->
+  sprintf "(%s)" (string_of_default spec default)
 
 let string_of_packed = function
   | Packed -> "packed"
@@ -321,12 +320,16 @@ let c_of_compound: type a. string -> a compound -> c = fun name -> function
     let deserialize_spec = sprintf "basic (%d, %s, %s)" index (string_of_spec `Deserialize spec) (string_of_proto_type spec default) in
     let serialize_spec = sprintf "basic (%d, %s, %s)" index (string_of_spec `Serialize spec) (string_of_proto_type spec default) in
     let modifier =
-      match spec, default with
-      | _, None-> Required
-      | Message _, _ -> Optional
-      | _, Some v -> No_modifier (string_of_default spec v)
+      match spec with
+      | Message _ -> Optional
+      | _ -> No_modifier (string_of_default spec default)
     in
     let type' = { name = type_of_spec spec; modifier } in
+    { name; type'; deserialize_spec; serialize_spec }
+  | Basic_req (index, spec) ->
+    let deserialize_spec = sprintf "basic_req (%d, %s)" index (string_of_spec `Deserialize spec) in
+    let serialize_spec = sprintf "basic_req (%d, %s)" index (string_of_spec `Serialize spec) in
+    let type' = { name = type_of_spec spec; modifier = Required } in
     { name; type'; deserialize_spec; serialize_spec }
   | Basic_opt (index, spec) ->
     let deserialize_spec = sprintf "basic_opt (%d, %s)" index (string_of_spec `Deserialize spec) in
@@ -372,13 +375,13 @@ let c_of_field ~params ~syntax ~scope field =
   (* Required message *)
   | `Proto2, { label = Some Label.LABEL_REQUIRED; type' = Some TYPE_MESSAGE; type_name; _ } ->
     let spec = spec_of_message ~scope type_name in
-    Basic (number, spec, None)
+    Basic_req (number, spec)
     |> c_of_compound name
 
   (* Enum under proto2 with a default value *)
   | `Proto2, { label = Some Label.LABEL_OPTIONAL; type' = Some TYPE_ENUM; type_name; default_value = Some default; _ } ->
     let spec = spec_of_enum ~scope type_name (Some default) in
-    Basic (number, Enum spec, Some default)
+    Basic (number, Enum spec, default)
     |> c_of_compound name
 
   (* Enum under proto2 with no default value *)
@@ -390,20 +393,20 @@ let c_of_field ~params ~syntax ~scope field =
   (* Required Enum under proto2 *)
   | `Proto2, { label = Some Label.LABEL_REQUIRED; type' = Some TYPE_ENUM; type_name; _ } ->
     let spec = spec_of_enum ~scope type_name None in
-    Basic (number, Enum spec, None)
+    Basic_req (number, Enum spec)
     |> c_of_compound name
 
   (* Required fields under proto2 *)
   | `Proto2, { label = Some Label.LABEL_REQUIRED; type' = Some type'; type_name; _ } ->
     let Espec spec = spec_of_type ~params ~scope type_name None type' in
-    Basic (number, spec, None)
+    Basic_req (number, spec)
     |> c_of_compound name
 
   (* Proto2 optional fields with a default *)
   | `Proto2, { label = Some Label.LABEL_OPTIONAL; type' = Some type'; type_name; default_value = Some default; _ } ->
     let Espec spec = spec_of_type ~params ~scope type_name (Some default) type' in
     let default = make_default spec default in
-    Basic (number, spec, Some default)
+    Basic (number, spec, default)
     |> c_of_compound name
 
   (* Proto2 optional fields - no default *)
@@ -429,7 +432,7 @@ let c_of_field ~params ~syntax ~scope field =
   | `Proto3, { label = Some Label.LABEL_OPTIONAL; type' = Some type'; type_name; _} ->
     let Espec spec = spec_of_type ~params ~scope type_name None type' in
     let default = default_of_spec spec in
-    Basic (number, spec, Some default)
+    Basic (number, spec, default)
     |> c_of_compound name
 
   (* Repeated fields cannot have a default *)
@@ -725,40 +728,37 @@ let make ~params ~syntax ~is_cyclic ~is_map_entry ~extension_ranges ~scope ~fiel
           *)
 
           let name = Scope.get_name scope name in
-          sprintf "let %s = match ((t1%s%s), (t2%s%s)) with" name sep name sep name ::
+          sprintf "match ((t1%s%s), (t2%s%s)) with"sep name sep name ::
           List.map ~f:(fun (ctr, type') ->
-            let spec = sprintf "basic (0, %s, None)" type' in
+            let spec = sprintf "basic_req (0, %s)" type' in (* Oneof messages are marked as required, as one must be set. *)
             sprintf "  | (%s v1, %s v2) -> %s (Runtime'.Merge.merge Runtime'.Deserialize.C.( %s ) v1 v2)" ctr ctr ctr spec
           ) ctrs
           |> append "  | (v1, `not_set)  -> v1"
           |> append "  | (_, v2) -> v2"
-          |> append "in"
           |> String.concat ~sep:"\n"
+          |> fun value -> name, value
 
         | { name; deserialize_spec; _ } ->
           let name = Scope.get_name scope name in
-          sprintf "let %s = Runtime'.Merge.merge Runtime'.Deserialize.C.( %s ) t1%s%s t2%s%s in\n"
-            name deserialize_spec sep name sep name
+          name, sprintf "Runtime'.Merge.merge Runtime'.Deserialize.C.( %s ) t1%s%s t2%s%s"
+            deserialize_spec sep name sep name
       )
-      |> append ~cond:has_extensions (sprintf "let extensions' = List.append t1%sextensions' t2%sextensions' in" sep sep)
-      |> String.concat ~sep:"\n"
+      |> append ~cond:has_extensions ("extensions'", sprintf "List.append t1%sextensions' t2%sextensions'" sep sep)
     in
     let constr =
-      let names =
-        List.map ts ~f:(fun c -> Scope.get_name scope c.name)
-        |> append ~cond:has_extensions "extensions'"
-      in
       match as_tuple with
       | true ->
-        names
+        List.map ~f:snd merge_values
         |> String.concat ~sep:","
         |> sprintf "(%s)"
       | false ->
-        names
-        |> String.concat ~sep:"; "
-        |> sprintf "{ %s }"
+        List.map merge_values ~f:(fun (name, value) ->
+          Printf.sprintf "%s = (%s);" name value
+        )
+        |> String.concat ~sep:"\n"
+        |> sprintf "{\n%s\n }"
     in
-    sprintf "fun %s -> \n%s\n%s" args merge_values constr
+    sprintf "fun %s -> %s" args constr
   in
 
   (* The type contains optional elements. We should not have those *)

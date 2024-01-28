@@ -50,14 +50,25 @@ module Make(T : T) = struct
     | Oneof_elem : int * 'b spec * ('a, ('b -> 'a), 'b) T.dir -> 'a oneof
 
   type _ compound =
-    | Basic : int * 'a spec * 'a option -> 'a compound
+    (* A field, where the default value is know (and set). This cannot be used for message types *)
+    | Basic : int * 'a spec * 'a -> 'a compound
+
+    (* Proto2/proto3 optional fields. *)
     | Basic_opt : int * 'a spec -> 'a option compound
+
+    (* Proto2 required fields (and oneof fields) *)
+    | Basic_req : int * 'a spec -> 'a compound
+
+    (* Repeated fields *)
     | Repeated : int * 'a spec * packed -> 'a list compound
     | Oneof : ('a, 'a oneof list, 'a -> unit oneof) T.dir -> ([> `not_set ] as 'a) compound
 
   type (_, _) compound_list =
     | Nil : ('a, 'a) compound_list
+
+    (* Nil_ext denotes that the message contains extensions *)
     | Nil_ext: extension_ranges -> (extensions -> 'a, 'a) compound_list
+
     | Cons : ('a compound) * ('b, 'c) compound_list -> ('a -> 'b, 'c) compound_list
 
   module C = struct
@@ -97,6 +108,7 @@ module Make(T : T) = struct
 
     let repeated (i, s, p) = Repeated (i, s, p)
     let basic (i, s, d) = Basic (i, s, d)
+    let basic_req (i, s) = Basic_req (i, s)
     let basic_opt (i, s) = Basic_opt (i, s)
     let oneof s = Oneof s
     let oneof_elem (a, b, c) = Oneof_elem (a, b, c)

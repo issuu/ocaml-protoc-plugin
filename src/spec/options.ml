@@ -36,19 +36,16 @@ end = struct
   let name' () = "options.Options"
   type t = (bool)
   let make ?(mangle_names = false) () = (mangle_names)
-  let merge = (fun (t1_mangle_names) (t2_mangle_names) ->
-    let mangle_names = Runtime'.Merge.merge Runtime'.Deserialize.C.( basic (1, bool, Some (false)) ) t1_mangle_names t2_mangle_names in
-
-    (mangle_names))
+  let merge = (fun (t1_mangle_names) (t2_mangle_names) -> (Runtime'.Merge.merge Runtime'.Deserialize.C.( basic (1, bool, (false)) ) t1_mangle_names t2_mangle_names))
   let to_proto' =
-    let spec = Runtime'.Serialize.C.( basic (1, bool, Some (false)) ^:: nil ) in
+    let spec = Runtime'.Serialize.C.( basic (1, bool, (false)) ^:: nil ) in
     let serialize = Runtime'.Serialize.serialize spec in
     serialize
 
   let to_proto t = to_proto' (Runtime'.Writer.init ()) t
   let from_proto_exn =
     let constructor = fun mangle_names -> (mangle_names) in
-    let spec = Runtime'.Deserialize.C.( basic (1, bool, Some (false)) ^:: nil ) in
+    let spec = Runtime'.Deserialize.C.( basic (1, bool, (false)) ^:: nil ) in
     Runtime'.Deserialize.deserialize spec constructor
   let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)
 end

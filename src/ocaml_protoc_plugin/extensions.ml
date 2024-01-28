@@ -11,6 +11,7 @@ let compare _ _ = 0
 let index_of_spec: type a. a Spec.Serialize.compound -> int = function
   | Basic (index, _, _) -> index
   | Basic_opt (index, _) -> index
+  | Basic_req (index, _) -> index
   | Repeated (index, _, _) -> index
   | Oneof _ -> failwith "Oneof fields not allowed in extensions"
 

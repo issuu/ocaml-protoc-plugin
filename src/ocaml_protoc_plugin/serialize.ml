@@ -120,16 +120,15 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
   *)
   | Basic (index, spec, default) -> begin
       let write = write_field spec index in
-      match default with
-      | Some default ->
-        fun writer v -> begin
-            match v with
-            | v when v = default -> ()
-            | v -> write v writer
-        end
-      | None ->
-        fun writer v -> write v writer
+      let writer writer = function
+        | v when v = default -> ()
+        | v -> write v writer
+      in
+      writer
     end
+  | Basic_req (index, spec) ->
+      let write = write_field spec index in
+      fun writer v -> write v writer
   | Basic_opt (index, spec) -> begin
       let write = write_field spec index in
       fun writer v ->
@@ -145,7 +144,7 @@ let rec write: type a. a compound -> Writer.t -> a -> unit = function
           (* Wonder if we could get the specs before calling v. Wonder what f is? *)
           (* We could prob. return a list of all possible values + f v -> v. *)
             let Oneof_elem (index, spec, v) = f v in
-            write (Basic (index, spec, None)) writer v
+            write (Basic_req (index, spec)) writer v
     end
 
 let in_extension_ranges extension_ranges index =
