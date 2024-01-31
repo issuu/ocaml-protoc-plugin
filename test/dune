@@ -53,7 +53,7 @@
  (action
   (run protoc -I %{read-lines:google_include} -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=open=Google_types;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=open=Google_types;open=Test_runtime;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets int_types_native.ml int_types_native_proto2.ml)
@@ -63,7 +63,7 @@
  (action
   (run protoc -I %{read-lines:google_include} -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=open=Google_types;int32_as_int=false;int64_as_int=false;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=open=Google_types;open=Test_runtime;int32_as_int=false;int64_as_int=false;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (targets singleton_record.ml oneof2.ml)
@@ -73,7 +73,7 @@
  (action
   (run protoc -I %{read-lines:google_include} -I .
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=open=Google_types;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=open=Google_types;open=Test_runtime;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
 
 (rule
  (enabled_if (<> %{read:config/support_proto3_optional.conf} ""))
@@ -86,4 +86,4 @@
   (run protoc -I %{read-lines:google_include} -I .
        "--experimental_allow_proto3_optional"
        "--plugin=protoc-gen-ocaml=%{plugin}"
-       "--ocaml_out=open=Google_types;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))
+       "--ocaml_out=open=Google_types;open=Test_runtime;annot=[@@deriving show { with_path = false }, eq]:." %{proto})))

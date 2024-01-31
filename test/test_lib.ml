@@ -45,6 +45,7 @@ let dump_protoc ?(protoc_args=[]) name data =
   | n -> Printf.printf "'protoc' exited with status code: %d\n" n
 
 let test_merge (type t) (module M : T with type t = t) (t: t) =
+  Test_runtime.set_stragegy Test_runtime.Standard;
   let iterations = [1;2;3;4] in
   let writer = Writer.init () in
   let _ =
@@ -63,7 +64,23 @@ let test_merge (type t) (module M : T with type t = t) (t: t) =
   in
   ()
 
-
+let test_decode (type t) (module M : T with type t = t) strategy expect data =
+  let reader = Reader.create data in
+  Test_runtime.set_stragegy strategy;
+  match M.from_proto reader with
+  | Ok observed -> begin
+      match M.equal expect observed with
+      | true -> ()
+      | false ->
+        Printf.printf "\n%s: Expect: %s\nObserved:%s\n" (Test_runtime.show_strategy strategy) ([%show: M.t] expect) ([%show: M.t] observed)
+     end
+  | Error err ->
+    Printf.printf "\n%s:Decode failed: %s \n" (Test_runtime.show_strategy strategy) (Result.show_error err)
+  | exception exn ->
+    Reader.reset reader 0;
+    let fields = Reader.to_list reader in
+    Printf.printf "\n%s:Decode failed: %s\n" (Test_runtime.show_strategy strategy) (Printexc.to_string exn);
+    Printf.printf "\n%s:Data: %s\n" (Test_runtime.show_strategy strategy) (List.map ~f:fst fields |> List.map ~f:string_of_int |> String.concat ~sep:", ")
 
 (** Create a common function for testing. *)
 let test_encode (type t) ?dump ?(protoc=true) ?protoc_args (module M : T with type t = t) ?(validate : t option) ?(expect : t option) (t : t) =
@@ -83,24 +100,8 @@ let test_encode (type t) ?dump ?(protoc=true) ?protoc_args (module M : T with ty
     | true -> dump_protoc ?protoc_args (M.name' ()) data
     | false -> ()
   in
-  let in_data_unordered =
-    let writer = Writer.init () in
-    Writer.write_field writer (1 lsl 29 - 1) (Field.varint_unboxed 5);
-    let _ = M.to_proto' writer expect in
-    Reader.create (Writer.contents writer)
-  in
-  let in_data = Reader.create data in
-  match (M.from_proto in_data, M.from_proto in_data_unordered) with
-  | Ok observed, Ok observed_unordered -> begin
-      match M.equal expect observed, M.equal expect observed_unordered with
-      | true, true ->
-        test_merge (module M) expect
-      | false, _ ->
-        Printf.printf "\nExpect: %s\nObserved:%s\n" ([%show: M.t] expect) ([%show: M.t] observed)
-      | _, false ->
-        Printf.printf "\nExpect(unordered):%s\nObserved:%s\n" ([%show: M.t] expect) ([%show: M.t] observed_unordered)
-    end
-  | Error err, _ ->
-    Printf.printf "\nDecode failed: %s \n" (Result.show_error err)
-  | _, Error err ->
-    Printf.printf "\nDecode unordered failed: %s \n" (Result.show_error err)
+  test_decode (module M) Test_runtime.Standard expect data;
+  test_decode (module M) Test_runtime.Fast expect data;
+  test_decode (module M) Test_runtime.Full expect data;
+  test_merge (module M) expect;
+  ()

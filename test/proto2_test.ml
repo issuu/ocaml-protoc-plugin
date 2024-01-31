@@ -26,7 +26,7 @@ let%expect_test "Required fields must be in the message" =
     | Ok t -> print_endline (T.show t)
     | Error e  -> Printf.printf "Decode failure: %s\n" (Ocaml_protoc_plugin.Result.show_error e)
   in ();
-  [%expect {| Decode failure: `Required_field_missing |}]
+  [%expect {| Decode failure: `Required_field_missing ((2, Int32_int)) |}]
 
 let%expect_test "Only tramitting the required field" =
   let module T = Proto2.Message1_ in
