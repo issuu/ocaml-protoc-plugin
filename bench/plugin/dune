@@ -1,12 +1,12 @@
 (rule
  (targets
-   bench.ml
+   bench.ml empty.ml
    int64.ml  string.ml  float.ml  enum.ml
    int64_list.ml  string_list.ml  float_list.ml  enum_list.ml
  )
  (deps
   (:proto
-    ../bench.proto
+    ../bench.proto ../empty.proto
     ../int64.proto ../string.proto ../float.proto ../enum.proto
     ../int64_list.proto ../string_list.proto ../float_list.proto ../enum_list.proto)
   (:plugin ../../src/plugin/protoc_gen_ocaml.exe)

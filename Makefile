@@ -71,7 +71,7 @@ gh-pages: doc ## Publish documentation
 
 .PHONY: bench
 bench: ## Run benchmark to compare with ocaml-protoc
-	dune exec bench/bench.exe
+	dune exec bench/bench.exe --profile=bench
 
 .PHONY: force
 force:

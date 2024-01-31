@@ -1,6 +1,6 @@
 (rule
  (targets
-   bench.ml bench.mli
+   bench.ml bench.mli empty.ml empty.mli
    int64.ml  string.ml  float.ml  enum.ml
    int64.mli string.mli float.mli enum.mli
    int64_list.ml  string_list.ml  float_list.ml  enum_list.ml
@@ -8,7 +8,7 @@
  )
  (deps
   (:proto
-    ../bench.proto
+    ../bench.proto ../empty.proto
     ../int64.proto ../string.proto ../float.proto ../enum.proto
     ../int64_list.proto ../string_list.proto ../float_list.proto ../enum_list.proto))
  (action

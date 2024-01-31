@@ -78,6 +78,26 @@ let make_tests (type v) (module Protoc: Protoc_impl) (module Plugin: Plugin_impl
   in
   Test.make_grouped ~name:(Plugin.M.name' ()) [test_encode; test_decode]
 
+let make_int_tests vl =
+  let open Ocaml_protoc_plugin in
+  let open Bechamel in
+  let make_test id group name ?(reset=(fun _ -> ())) f v =
+    Test.make ~name:(Printf.sprintf "%s(0x%08Lx)/%s" group id name) (Staged.stage @@ (fun () -> reset v; f v |> Sys.opaque_identity))
+  in
+  let v = Int64.to_int_exn vl in
+  let buffer = Bytes.create 10 in
+  let reader =
+    let writer = Writer.init () in
+    Writer.write_varint_value vl writer;
+    Reader.create (Writer.contents writer)
+  in
+  [
+      make_test vl "Read" "boxed" ~reset:(fun r -> Reader.reset r 0) Reader.read_varint reader;
+      make_test vl "Read" "unboxed" ~reset:(fun r -> Reader.reset r 0) Reader.read_varint_unboxed reader;
+      make_test vl "Write" "boxed" (Writer.write_varint buffer ~offset:0) vl;
+      make_test vl "Write" "unboxed" (Writer.write_varint_unboxed buffer ~offset:0) v;
+  ]
+
 let _ =
   Random.init 0;
   let module Gc = Stdlib.Gc in
@@ -132,7 +152,7 @@ let create_test_data ~depth () =
 let benchmark tests =
   let open Bechamel in
   let instances = [ meassure ] in
-  let cfg = Benchmark.cfg ~compaction:false ~kde:(Some 1) ~quota:(Time.second 1.0) () in
+  let cfg = Benchmark.cfg ~compaction:false ~kde:(Some 1) ~quota:(Time.second 5.0) () in
   Benchmark.all cfg instances tests
 
 let analyze results =
@@ -164,20 +184,23 @@ let print_bench_results results =
 
 
 let _ =
-  let v_plugin = create_test_data ~depth:4 () |> Option.value_exn in
+  let v_plugin = create_test_data ~depth:4 () in
+  let v_plugin = Option.value_exn v_plugin in
   [
     make_tests (module Protoc.Bench) (module Plugin.Bench) v_plugin;
     make_tests (module Protoc.Int64) (module Plugin.Int64) 27;
     make_tests (module Protoc.Float) (module Plugin.Float) 27.0001;
     make_tests (module Protoc.String) (module Plugin.String) "Benchmark";
     make_tests (module Protoc.Enum) (module Plugin.Enum) Plugin.Enum.Enum.ED;
+    make_tests (module Protoc.Empty) (module Plugin.Empty) ();
 
     List.init 1000 ~f:(fun i -> i) |> make_tests (module Protoc.Int64_list) (module Plugin.Int64_list);
     List.init 1000 ~f:(fun i -> Float.of_int i) |> make_tests (module Protoc.Float_list) (module Plugin.Float_list);
     List.init 1000 ~f:(fun _ -> random_string ~len:20 ()) |> make_tests (module Protoc.String_list) (module Plugin.String_list);
-       (* random_list ~len:100 ~f:(fun () -> Plugin.Enum_list.Enum.ED) () |> make_tests (module Protoc.Enum_list) (module Plugin.Enum_list); *)
-       ]
-  |> List.rev |> List.iter ~f:(fun test ->
+    (* random_list ~len:100 ~f:(fun () -> Plugin.Enum_list.Enum.ED) () |> make_tests (module Protoc.Enum_list) (module Plugin.Enum_list); *)
+       (Bechamel.Test.make_grouped ~name:"Varint" @@ (make_int_tests (0xFFFF_FFFFL)))
+  ]
+  |> List.iter ~f:(fun test ->
     test
     |> benchmark
     |> analyze

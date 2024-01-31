@@ -1,0 +1,3 @@
+(lang dune 3.12)
+(env (bench (ocamlopt_flags :standard -O3 -unbox-closures -unboxed-types -remove-unused-arguments -rounds 4 -inline 100.00 -inline-max-depth 5 -inline-max-unroll 5)))
+;(env (bench (ocamlopt_flags :standard -O3 -rounds 10 -unbox-closures -inline 100.00 -inline-max-depth 5 -remove-unused-arguments)))
