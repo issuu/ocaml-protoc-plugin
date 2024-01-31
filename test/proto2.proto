@@ -9,6 +9,7 @@ message A {
 message Message {
   message Required {
     optional uint64 a = 1;
+    optional uint64 b = 2;
   }
   enum E {
     A = 0;

@@ -42,26 +42,8 @@ let%expect_test _ =
 
 let%expect_test _ =
   let module T = Primitive_types.Types in
-  let t =
-    T.
-      {
-        int64 = 0;
-        sint64 = 0;
-        uint64 = 0;
-        int32 = 0;
-        sint32 = 0;
-        uint32 = 0;
-        double = 0.0;
-        float = 0.0;
-        fixed64 = 0L;
-        fixed32 = 0l;
-        sfixed64 = 0L;
-        sfixed32 = 0l;
-        bool = false;
-        string = "";
-        bytes = Bytes.of_string "";
-      }
-  in
+  let t = T.make () in
+  Test_lib.test_encode (module T) t;
   let bin = T.to_proto t in
   Printf.printf "Size: %d%!" (Ocaml_protoc_plugin.Writer.contents bin |> String.length);
   [%expect {| Size: 0 |}]

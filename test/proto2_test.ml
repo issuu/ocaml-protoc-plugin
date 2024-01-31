@@ -1,7 +1,12 @@
 open Proto2
+
 let%expect_test _ =
   let module T = Proto2.Message in
-  let t = T.{enum = Some E.B; i = 0; j = 5; required = Some 7; k = Some 5 } in
+  (* Verify signature that required messages are mapped as mandatory arguments *)
+  let make: ?enum:T.E.t -> ?i:int -> j:int -> required:T.Required.t -> ?k:int -> unit -> T.t = T.make in
+  let t' = make ~enum:T.E.B ~i:0 ~j:5 ~required:(T.Required.make ~a:7 ()) ~k:5 () in
+  let t = T.{enum = Some E.B; i = 0; j = 5; required = T.Required.make ~a:7 (); k = Some 5 } in
+  if (not (T.equal t t')) then Printf.eprintf "Error: Type does not match";
   Test_lib.test_encode (module T) t;
   [%expect {|
     enum: B

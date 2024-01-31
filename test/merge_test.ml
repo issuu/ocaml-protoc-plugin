@@ -3,7 +3,6 @@ open Merge.Merge
 
 let test_merge (type t) (module T: Test_lib.T with type t = t) (init : t) (ts: t list) =
   let open Ocaml_protoc_plugin in
-
   let writer = Writer.init () in
   let expect =
     List.fold_left ~init ~f:(fun acc t ->
