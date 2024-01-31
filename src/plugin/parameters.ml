@@ -44,7 +44,7 @@ let parse parameters =
 
 let use_snakecase options =
   Option.bind ~f:(fun option ->
-      Spec.Options.Ocaml_options.get option
-      |> Ocaml_protoc_plugin.Result.get ~msg:"Could not parse ocaml options"
-    ) options
+    Spec.Options.Ocaml_options.get option
+    |> Ocaml_protoc_plugin.Result.get ~msg:"Could not parse ocaml options"
+  ) options
   |> Option.value ~default:false

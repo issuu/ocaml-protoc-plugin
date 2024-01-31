@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+enum Enum {
+  EA = 0;
+  EB = 1;
+  EC = 2;
+  ED = 3;
+  EE = 4;
+}
+
+message M {
+  Enum i = 1;
+}

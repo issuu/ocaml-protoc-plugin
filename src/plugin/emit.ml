@@ -31,27 +31,29 @@ let emit_enum_type ~scope ~params
   Code.append signature t;
   Code.append implementation t;
   Code.emit signature `None "val to_int: t -> int";
-  Code.emit signature `None "val from_int: int -> (t, [> Runtime'.Result.error]) result";
+  Code.emit signature `None "val from_int: int -> t Runtime'.Result.t";
+  Code.emit signature `None "val from_int_exn: int -> t";
 
   Code.emit implementation `Begin "let to_int = function";
   List.iter ~f:(fun EnumValueDescriptorProto.{name; number; _} ->
     Code.emit implementation `None "| %s -> %d" (Scope.get_name_exn scope name) (Option.value_exn number)
   ) values;
   Code.emit implementation `End "";
-
-  Code.emit implementation `Begin "let from_int = function";
+  Code.emit implementation `Begin "let from_int_exn = function";
   let _ =
     List.fold_left ~init:IntSet.empty ~f:(fun seen EnumValueDescriptorProto.{name; number; _} ->
         let idx = (Option.value_exn ~message:"All enum descriptions must have a value" number) in
         match IntSet.mem idx seen with
         | true -> seen
         | false ->
-          Code.emit implementation `None "| %d -> Ok %s" idx (Scope.get_name_exn scope name);
+          Code.emit implementation `None "| %d -> %s" idx (Scope.get_name_exn scope name);
           IntSet.add idx seen
       ) values
   in
-  Code.emit implementation `None "| n -> Error (`Unknown_enum_value n)";
+  Code.emit implementation `None "| n -> Runtime'.Result.raise (`Unknown_enum_value n)";
   Code.emit implementation `End "";
+  Code.emit implementation `Begin "let from_int e = Runtime'.Result.catch (fun () -> from_int_exn e)";
+
   {module_name; signature; implementation}
 
 let emit_service_type ~options scope ServiceDescriptorProto.{ name; method' = methods; _ } =
@@ -120,24 +122,25 @@ let emit_extension ~scope ~params field =
   let module_name = (Scope.get_name scope name) in
   let extendee_type = Scope.get_scoped_name scope ~postfix:"t" extendee in
   let extendee_field = Scope.get_scoped_name scope ~postfix:"extensions'" extendee in
-  (* Create the type of the type' / type_name *)
-  let t =
+  (* Get spec and type *)
+  let c =
     let params = Parameters.{params with singleton_record = false} in
-    Types.make ~params ~syntax:`Proto2 ~is_cyclic:false ~scope ~is_map_entry:false ~has_extensions:false ~fields:[field] []
+    Types.spec_of_field ~params ~syntax:`Proto2 ~scope field
   in
-
   let signature = Code.init () in
   let implementation = Code.init () in
   Code.append implementation signature;
 
-  Code.emit signature `None "type t = %s %s" t.type' params.annot;
-  Code.emit signature `None "val get: %s -> (%s, [> Runtime'.Result.error]) result" extendee_type t.type';
-  Code.emit signature `None "val set: %s -> %s -> %s" extendee_type t.type' extendee_type;
+  Code.emit signature `None "type t = %s %s" c.typestr params.annot;
+  Code.emit signature `None "val get_exn: %s -> %s" extendee_type c.typestr;
+  Code.emit signature `None "val get: %s -> (%s, [> Runtime'.Result.error]) result" extendee_type c.typestr;
+  Code.emit signature `None "val set: %s -> %s -> %s" extendee_type c.typestr extendee_type;
 
-  Code.emit implementation `None "type t = %s %s" t.type' params.annot;
-  Code.emit implementation `None "let get extendee = Runtime'.Extensions.get %s (extendee.%s) |> Runtime'.Result.open_error" t.deserialize_spec extendee_field ;
+  Code.emit implementation `None "type t = %s %s" c.typestr params.annot;
+  Code.emit implementation `None "let get_exn extendee = Runtime'.Extensions.get Runtime'.Deserialize.C.(%s) (extendee.%s)" c.deserialize_spec extendee_field ;
+  Code.emit implementation `None "let get extendee = Runtime'.Result.catch (fun () -> get_exn extendee)";
   Code.emit implementation `Begin "let set extendee t =";
-  Code.emit implementation `None "let extensions' = Runtime'.Extensions.set (%s) (extendee.%s) t in" t.serialize_spec extendee_field;
+  Code.emit implementation `None "let extensions' = Runtime'.Extensions.set Runtime'.Serialize.C.(%s) (extendee.%s) t in" c.serialize_spec extendee_field;
   Code.emit implementation `None "{ extendee with %s = extensions' }" extendee_field;
   Code.emit implementation `End "";
   { module_name; signature; implementation }
@@ -221,27 +224,32 @@ let rec emit_message ~params ~syntax scope
       Code.emit signature `None "val name': unit -> string";
       Code.emit signature `None "type t = %s %s" type' params.annot;
       Code.emit signature `None "val make : %s" default_constructor_sig;
+      Code.emit signature `None "val to_proto': Runtime'.Writer.t -> t -> Runtime'.Writer.t";
       Code.emit signature `None "val to_proto: t -> Runtime'.Writer.t";
       Code.emit signature `None "val from_proto: Runtime'.Reader.t -> (t, [> Runtime'.Result.error]) result";
+      Code.emit signature `None "val from_proto_exn: Runtime'.Reader.t -> t";
 
       Code.emit implementation `None "let name' () = \"%s\"" (Scope.get_current_scope scope);
       Code.emit implementation `None "type t = %s%s" type' params.annot;
-      Code.emit implementation `Begin "let make =";
-      Code.emit implementation `None "%s" default_constructor_impl;
-      Code.emit implementation `End "";
+      Code.emit implementation `None "let make %s" default_constructor_impl;
 
-      Code.emit implementation `Begin "let to_proto =";
+      Code.emit implementation `Begin "let to_proto' =";
       Code.emit implementation `None "let apply = %s in" apply;
       Code.emit implementation `None "let spec = %s in" serialize_spec;
-      Code.emit implementation `None "let serialize = Runtime'.Serialize.serialize %s (spec) in" extension_ranges;
-      Code.emit implementation `None "fun t -> apply ~f:serialize t";
+      Code.emit implementation `None "let serialize = Runtime'.Serialize.serialize %s spec in" extension_ranges;
+      Code.emit implementation `None "fun writer t -> apply ~f:serialize writer t";
+      Code.emit implementation `End "";
+      Code.emit implementation `Begin "let to_proto t = to_proto' (Runtime'.Writer.init ()) t";
       Code.emit implementation `End "";
 
-      Code.emit implementation `Begin "let from_proto =";
+
+      Code.emit implementation `Begin "let from_proto_exn =";
       Code.emit implementation `None "let constructor = %s in" constructor;
       Code.emit implementation `None "let spec = %s in" deserialize_spec;
       Code.emit implementation `None "let deserialize = Runtime'.Deserialize.deserialize %s spec constructor in" extension_ranges;
-      Code.emit implementation `None "fun writer -> deserialize writer |> Runtime'.Result.open_error";
+      Code.emit implementation `None "fun writer -> deserialize writer";
+
+      Code.emit implementation `None "let from_proto writer = Runtime'.Result.catch (fun () -> from_proto_exn writer)";
       Code.emit implementation `End "";
     | None -> ()
   in
@@ -339,6 +347,7 @@ let parse_proto_file ~params scope
   in
 
   Code.append implementation implementation';
+  Code.emit implementation `None "";
 
   let base_name = Filename.remove_extension name in
   (base_name ^ ".ml"), implementation

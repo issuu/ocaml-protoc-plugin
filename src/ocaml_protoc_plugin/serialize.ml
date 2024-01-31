@@ -1,126 +1,153 @@
 open StdLabels
-open Field
 
 module S = Spec.Serialize
 module C = S.C
 open S
 
-(* Take a list of fields and return a field *)
-let serialize_message : (int * Field.t) list -> string =
- fun fields ->
-  let writer = Writer.init () in
-  List.iter ~f:(fun (index, field) -> Writer.write_field writer index field) fields;
-  Writer.contents writer
+let field_type: type a. a spec -> int = function
+  | Int64 | UInt64 | SInt64 | Int32 | UInt32 | SInt32
+  | Int64_int | UInt64_int | Int32_int | UInt32_int | SInt64_int | SInt32_int
+  | Bool | Enum _ -> 0 (* Varint *)
+  | String | Bytes | Message _ -> 2 (* Length delimited *)
+  | Double | Fixed64 | SFixed64 | Fixed64_int | SFixed64_int -> 1 (* Fixed 64 bit *)
+  | Float | Fixed32 | SFixed32 | Fixed32_int | SFixed32_int -> 5 (* Fixed 32 bit *)
 
-let unsigned_varint v = Field.Varint v
+let write_fixed64 ~f v =
+  Writer.write_fixed64_value (f v)
 
-let signed_varint v =
-  let open! Infix.Int64 in
-  let v =
-    match v with
-    | v when v < 0L -> v lsl 1 lxor (-1L)
-    | v -> v lsl 1
+let write_fixed32 ~f v =
+  Writer.write_fixed32_value (f v)
+
+let zigzag_encoding v =
+  let open Infix.Int64 in
+  let v = match v < 0L with
+    | true -> v lsl 1 lxor (-1L)
+    | false -> v lsl 1
   in
-  Field.Varint v
+  v
 
+let zigzag_encoding_unboxed v =
+  let v = match v < 0 with
+    | true -> v lsl 1 lxor (-1)
+    | false -> v lsl 1
+  in
+  v
 
-let rec field_of_spec: type a. a spec -> a -> Field.t = function
-  | Double -> fun v -> Fixed_64_bit (Int64.bits_of_float v)
-  | Float -> fun v -> Fixed_32_bit (Int32.bits_of_float v)
-  | Int64 -> unsigned_varint
-  | Int64_int -> fun v -> unsigned_varint (Int64.of_int v)
-  | UInt64 -> unsigned_varint
-  | UInt64_int -> fun v -> unsigned_varint (Int64.of_int v)
-  | SInt64 -> signed_varint
-  | SInt64_int -> fun v -> signed_varint (Int64.of_int v)
-  | Int32 -> fun v -> unsigned_varint (Int64.of_int32 v)
-  | Int32_int -> fun v -> unsigned_varint (Int64.of_int v)
-  | UInt32 -> fun v -> unsigned_varint (Int64.of_int32 v)
-  | UInt32_int -> fun v -> unsigned_varint (Int64.of_int v)
-  | SInt32 -> fun v -> signed_varint (Int64.of_int32 v)
-  | SInt32_int -> fun v -> signed_varint (Int64.of_int v)
+let write_varint ~f v =
+  Writer.write_varint_value (f v)
 
-  | Fixed64 -> fixed_64_bit
-  | Fixed64_int -> fun v -> Fixed_64_bit (Int64.of_int v)
-  | SFixed64 -> fixed_64_bit
-  | SFixed64_int -> fun v -> Fixed_64_bit (Int64.of_int v)
-  | Fixed32 -> fixed_32_bit
-  | Fixed32_int -> fun v -> Fixed_32_bit (Int32.of_int v)
-  | SFixed32 -> fixed_32_bit
-  | SFixed32_int -> fun v -> Fixed_32_bit (Int32.of_int v)
+let write_varint_unboxed ~f v =
+  Writer.write_varint_unboxed_value (f v)
 
-  | Bool -> fun v -> unsigned_varint (match v with | true -> 1L | false -> 0L)
-  | String -> fun v -> Length_delimited {offset = 0; length = String.length v; data = v}
-  | Bytes -> fun v -> Length_delimited {offset = 0; length = Bytes.length v; data = Bytes.to_string v}
-  | Enum f ->
-    let to_field = field_of_spec UInt64 in
-    fun v -> f v |> Int64.of_int |> to_field
+let write_length_delimited_string ~f v =
+  let v = f v in
+  Writer.write_length_delimited_value ~data:v ~offset:0 ~len:(String.length v)
+
+let id x = x
+let (@@) a b = fun v -> b (a v)
+
+let write_value : type a. a spec -> a -> Writer.t -> unit = function
+  | Double -> write_fixed64 ~f:Int64.bits_of_float
+  | Float -> write_fixed32 ~f:Int32.bits_of_float
+  | Fixed64 -> write_fixed64 ~f:id
+  | SFixed64 -> write_fixed64 ~f:id
+  | Fixed64_int -> write_fixed64 ~f:Int64.of_int
+  | SFixed64_int -> write_fixed64 ~f:Int64.of_int
+  | Fixed32 -> write_fixed32 ~f:id
+  | SFixed32 -> write_fixed32 ~f:id
+  | Fixed32_int -> write_fixed32 ~f:Int32.of_int
+  | SFixed32_int -> write_fixed32 ~f:Int32.of_int
+  | Int64 -> write_varint ~f:id
+  | UInt64 -> write_varint ~f:id
+  | SInt64 -> write_varint ~f:zigzag_encoding
+  | Int32 -> write_varint_unboxed ~f:Int32.to_int
+  | UInt32 -> write_varint_unboxed ~f:Int32.to_int
+  | SInt32 -> write_varint_unboxed ~f:(Int32.to_int @@ zigzag_encoding_unboxed)
+  | Int64_int -> write_varint_unboxed ~f:id
+  | UInt64_int -> write_varint_unboxed ~f:id
+  | Int32_int -> write_varint_unboxed ~f:id
+  | UInt32_int -> write_varint_unboxed ~f:id
+  | SInt64_int -> write_varint_unboxed ~f:zigzag_encoding_unboxed
+  | SInt32_int -> write_varint_unboxed ~f:zigzag_encoding_unboxed
+
+  | Bool -> write_varint_unboxed ~f:(function true -> 1 | false -> 0)
+  | String -> write_length_delimited_string ~f:id
+  | Bytes -> write_length_delimited_string ~f:Bytes.unsafe_to_string
+  | Enum f -> write_varint_unboxed ~f
   | Message to_proto ->
-    fun v ->
-      let writer = to_proto v in
-      Field.length_delimited (Writer.contents writer)
+    Writer.write_length_delimited_value' ~write:to_proto
 
+(** Optimized when the value is given in advance, and the continuation is expected to be called multiple times *)
+let write_value_const : type a. a spec -> a -> Writer.t -> unit = fun spec v ->
+  let write_value = write_value spec in
+  let writer = Writer.init () in
+  write_value v writer;
+  let data = Writer.contents writer in
+  Writer.write_const_value data
 
-let is_scalar: type a. a spec -> bool = function
-  | String -> false
-  | Bytes -> false
-  | Message _ -> false
-  | _ -> true
+let write_field_header: 'a spec -> int -> Writer.t -> unit = fun spec index ->
+  let field_type = field_type spec in
+  let header = (index lsl 3) + field_type in
+  write_value_const Int64_int header
+
+let write_field: type a. a spec -> int -> a -> Writer.t -> unit = fun spec index ->
+  let write_field_header = write_field_header spec index in
+  let write_value = write_value spec in
+  fun v writer ->
+    write_field_header writer;
+    write_value v writer
 
 let rec write: type a. a compound -> Writer.t -> a -> unit = function
-  | Basic (index, Message (to_proto), _) -> begin
-      fun writer v ->
-      let v = to_proto v in
-      Writer.concat_as_length_delimited writer ~src:v index
+  | Repeated (index, spec, Packed) -> begin
+      let write_value = write_value spec in
+      let write writer vs = List.iter ~f:(fun v -> write_value v writer) vs in
+      let write_header = write_field_header String index in
+      fun writer vs ->
+        match vs with
+        | [] -> ()
+        | vs ->
+          write_header writer;
+          Writer.write_length_delimited_value' ~write vs writer
     end
-  | Repeated (index, Message to_proto, _) ->
-    let write = write (Basic (index, Message to_proto, Required)) in
-    fun writer vs -> List.iter ~f:(fun v -> write writer v) vs
-  | Repeated (index, spec, Packed) when is_scalar spec -> begin
-      let f = field_of_spec spec in
-      fun writer -> function
-      | [] -> ()
-      | vs ->
-        let writer' = Writer.init () in
-        List.iter ~f:(fun v -> Writer.add_field writer' (f v)) vs;
-        Writer.concat_as_length_delimited writer ~src:writer' index
-    end
-  | Repeated (index, spec, _) ->
-      let f = field_of_spec spec in
-      fun writer vs -> List.iter ~f:(fun v -> Writer.write_field writer index (f v)) vs
+  | Repeated (index, spec, Not_packed) ->
+    let write = write_field spec index in
+    fun writer vs ->
+      List.iter ~f:(fun v -> write v writer) vs
+
+  (* For required fields the default is none, and the field must always be written!
+     Consider a Basic_req (index, spec) instead. Then default is not an option type,
+     and the code is simpler to read
+  *)
   | Basic (index, spec, default) -> begin
-      let f = field_of_spec spec in
+      let write = write_field spec index in
       match default with
-      | Proto3 -> begin
-          fun writer v -> match f v with
-            | Varint 0L -> ()
-            | Fixed_64_bit 0L -> ()
-            | Fixed_32_bit 0l -> ()
-            | Length_delimited {length = 0; _} -> ()
-            | field -> Writer.write_field writer index field
+      | Some default ->
+        fun writer v -> begin
+            match v with
+            | v when v = default -> ()
+            | v -> write v writer
         end
-      | Proto2 default -> fun writer -> begin
-          function
-          | v when v = default -> ()
-          | v -> Writer.write_field writer index (f v)
-        end
-      | Required -> fun writer v -> Writer.write_field writer index (f v)
+      | None ->
+        fun writer v -> write v writer
     end
   | Basic_opt (index, spec) -> begin
-    let f = field_of_spec spec in
-    fun writer -> function
-      | Some v -> Writer.write_field writer index (f v)
-      | None -> ()
+      let write = write_field spec index in
+      fun writer v ->
+        match v with
+        | Some v -> write v writer
+        | None -> ()
   end
   | Oneof f -> begin
-      fun writer -> function
+      fun writer v ->
+        match v with
         | `not_set -> ()
         | v ->
+          (* Wonder if we could get the specs before calling v. Wonder what f is? *)
+          (* We could prob. return a list of all possible values + f v -> v. *)
             let Oneof_elem (index, spec, v) = f v in
-            write (Basic (index, spec, Required)) writer v
+            write (Basic (index, spec, None)) writer v
     end
 
-(** Allow emitted code to present a protobuf specification. *)
 let rec serialize : type a. (a, Writer.t) compound_list -> Writer.t -> a = function
   | Nil -> fun writer -> writer
   | Cons (compound, rest) ->
@@ -133,30 +160,41 @@ let rec serialize : type a. (a, Writer.t) compound_list -> Writer.t -> a = funct
 let in_extension_ranges extension_ranges index =
   List.exists ~f:(fun (start, end') -> index >= start && index <= end') extension_ranges
 
-
 let serialize extension_ranges spec =
   let serialize = serialize spec in
-  fun extensions ->
-    let writer = Writer.init () in
-    List.iter ~f:(function
+  match extension_ranges with
+  | [] -> fun _ -> serialize
+  | extension_ranges ->
+    fun extensions writer ->
+      List.iter ~f:(function
         | (index, field) when in_extension_ranges extension_ranges index -> Writer.write_field writer index field
         | _ -> ()
       ) extensions;
-    serialize writer
+      serialize writer
 
-
-let%expect_test "signed varint" =
+let%expect_test "zigzag encoding" =
   let test v =
     let vl = Int64.of_int v in
-    Printf.printf "signed_varint %LdL = %s\n" vl (signed_varint vl |> Field.show);
-    ()
+    Printf.printf "zigzag_encoding(%LdL) = %LdL\n" vl (zigzag_encoding vl);
+    Printf.printf "zigzag_encoding_unboxed(%d) = %d\n" v (zigzag_encoding_unboxed v);
   in
-  List.iter ~f:test [0; -1; 1; -2; 2; 2147483647; -2147483648];
+  List.iter ~f:test [0; -1; 1; -2; 2; 2147483647; -2147483648; Int.max_int; Int.min_int; ];
   [%expect {|
-    signed_varint 0L = (Field.Varint 0L)
-    signed_varint -1L = (Field.Varint 1L)
-    signed_varint 1L = (Field.Varint 2L)
-    signed_varint -2L = (Field.Varint 3L)
-    signed_varint 2L = (Field.Varint 4L)
-    signed_varint 2147483647L = (Field.Varint 4294967294L)
-    signed_varint -2147483648L = (Field.Varint 4294967295L) |}]
+    zigzag_encoding(0L) = 0L
+    zigzag_encoding_unboxed(0) = 0
+    zigzag_encoding(-1L) = 1L
+    zigzag_encoding_unboxed(-1) = 1
+    zigzag_encoding(1L) = 2L
+    zigzag_encoding_unboxed(1) = 2
+    zigzag_encoding(-2L) = 3L
+    zigzag_encoding_unboxed(-2) = 3
+    zigzag_encoding(2L) = 4L
+    zigzag_encoding_unboxed(2) = 4
+    zigzag_encoding(2147483647L) = 4294967294L
+    zigzag_encoding_unboxed(2147483647) = 4294967294
+    zigzag_encoding(-2147483648L) = 4294967295L
+    zigzag_encoding_unboxed(-2147483648) = 4294967295
+    zigzag_encoding(4611686018427387903L) = 9223372036854775806L
+    zigzag_encoding_unboxed(4611686018427387903) = -2
+    zigzag_encoding(-4611686018427387904L) = 9223372036854775807L
+    zigzag_encoding_unboxed(-4611686018427387904) = -1 |}]

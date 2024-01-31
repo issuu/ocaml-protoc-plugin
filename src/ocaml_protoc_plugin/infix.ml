@@ -10,3 +10,16 @@ module Int64 = struct
   let ( * ) = mul
   let (-) = sub
 end
+
+module Int = struct
+  open Int
+  let (land) = logand
+  let (lsl) = shift_left
+  let (lsr) = shift_right_logical
+  let (lor) = logor
+  let (lxor) = logxor
+  let (+) = add
+  let (/) = div
+  let ( * ) = mul
+  let (-) = sub
+end

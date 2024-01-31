@@ -19,10 +19,7 @@ let read_all in_channel =
 let read () =
   read_all stdin
   |> Ocaml_protoc_plugin.Reader.create
-  |> Plugin.CodeGeneratorRequest.from_proto
-  |> function
-  | Ok v -> v
-  | Error _ -> failwith "Could not decode generator request"
+  |> Plugin.CodeGeneratorRequest.from_proto_exn
 
 (* Write to stdout *)
 let write response =
@@ -52,8 +49,6 @@ let parse_request Plugin.CodeGeneratorRequest.{file_to_generate = files_to_gener
    | true -> List.iter ~f:(fun (_, code) -> Printf.eprintf "%s\n%!" (Code.contents code)) result
    | false -> ());
   result
-
-
 
 let () =
   let request = read () in

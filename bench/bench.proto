@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+enum Enum {
+  EA = 0;
+  EB = 1;
+  EC = 2;
+  ED = 3;
+  EE = 4;
+}
+
+message data {
+  optional string s1 = 1;
+  repeated int64 n1 = 2 [packed = true];
+  repeated int64 n2 = 3 [packed = true];
+  repeated double d1 = 4 [packed = true];
+  optional int64 n3 = 5;
+  bool b1 = 6;
+  //repeated Enum e = 7;
+}
+
+message M {
+  repeated M children = 1;
+  repeated data data = 2;
+}

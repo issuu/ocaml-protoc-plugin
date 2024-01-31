@@ -1,0 +1,3 @@
+(executable
+ (name        bench)
+ (libraries   protoc plugin bechamel bechamel-notty notty.unix bechamel-perf base stdio))

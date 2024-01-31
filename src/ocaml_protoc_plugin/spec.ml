@@ -4,7 +4,6 @@ end
 
 module Make(T : T) = struct
 
-  type 'a proto_type = Proto3 | Proto2 of 'a | Required
   type packed = Packed | Not_packed
 
   type _ spec =
@@ -38,14 +37,14 @@ module Make(T : T) = struct
     | Bool : bool spec
     | String : string spec
     | Bytes : bytes spec
-    | Enum :  ('a, int -> 'a Result.t, 'a -> int) T.dir -> 'a spec
-    | Message : ('a, Reader.t -> 'a Result.t, 'a -> Writer.t) T.dir -> 'a spec
+    | Enum :  ('a, int -> 'a, 'a -> int) T.dir -> 'a spec
+    | Message : ('a, Reader.t -> 'a, Writer.t -> 'a -> Writer.t) T.dir -> 'a spec
 
   type _ oneof =
     | Oneof_elem : int * 'b spec * ('a, ('b -> 'a), 'b) T.dir -> 'a oneof
 
   type _ compound =
-    | Basic : int * 'a spec * 'a proto_type -> 'a compound
+    | Basic : int * 'a spec * 'a option -> 'a compound
     | Basic_opt : int * 'a spec -> 'a option compound
     | Repeated : int * 'a spec * packed -> 'a list compound
     | Oneof : ('a, 'a oneof list, 'a -> unit oneof) T.dir -> ([> `not_set ] as 'a) compound
@@ -87,10 +86,7 @@ module Make(T : T) = struct
 
     let some v = Some v
     let none = None
-    let proto2 v = Proto2 v
-    let proto2_bytes v = Proto2 (Some (Bytes.of_string v))
-    let proto3 = Proto3
-    let required = Required
+    let default_bytes v = (Some (Bytes.of_string v))
 
     let repeated (i, s, p) = Repeated (i, s, p)
     let basic (i, s, d) = Basic (i, s, d)
@@ -103,6 +99,40 @@ module Make(T : T) = struct
 
     let ( ^:: ) a b = Cons (a, b)
     let nil = Nil
+
+    let show: type a. a spec -> string = function
+      | Double -> "Double"
+      | Float -> "Float"
+
+      | Int32 -> "Int32"
+      | UInt32 -> "UInt32"
+      | SInt32 -> "SInt32"
+      | Fixed32 -> "Fixed32"
+      | SFixed32 -> "SFixed32"
+
+      | Int32_int -> "Int32_int"
+      | UInt32_int -> "UInt32_int"
+      | SInt32_int -> "SInt32_int"
+      | Fixed32_int -> "Fixed32_int"
+      | SFixed32_int -> "SFixed32_int"
+
+      | UInt64 -> "UInt64"
+      | Int64 -> "Int64"
+      | SInt64 -> "SInt64"
+      | Fixed64 -> "Fixed64"
+      | SFixed64 -> "SFixed64"
+
+      | UInt64_int -> "UInt64_int"
+      | Int64_int -> "Int64_int"
+      | SInt64_int -> "SInt64_int"
+      | Fixed64_int -> "Fixed64_int"
+      | SFixed64_int -> "SFixed64_int"
+
+      | Bool -> "Bool"
+      | String -> "String"
+      | Bytes -> "Bytes"
+      | Enum _ -> "Enum"
+      | Message _ -> "Message"
   end
 end
 

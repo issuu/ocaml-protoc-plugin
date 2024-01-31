@@ -4,5 +4,6 @@ val pp : Format.formatter -> t -> unit
 val show : t -> string
 val equal : t -> t -> bool
 val compare : t -> t -> int
-val get : ('b -> 'b, 'b) Deserialize.S.compound_list -> t -> 'b Result.t
-val set : ('a -> Writer.t, Writer.t) Spec.Serialize.compound_list -> t -> 'a -> t
+
+val get: 'a Spec.Deserialize.compound -> t -> 'a
+val set: 'a Spec.Serialize.compound -> t -> 'a -> t
