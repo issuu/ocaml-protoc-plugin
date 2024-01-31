@@ -4,4 +4,5 @@
  (synopsis "Serialization and deserialization of protobuf types")
  (inline_tests)
  (preprocess (pps ppx_expect))
+ (instrumentation (backend bisect_ppx))
 )

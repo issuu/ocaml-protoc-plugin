@@ -25,7 +25,9 @@
  (inline_tests)
  (modules :standard \ proto3_optional_test_opt)
  (preprocess
-  (pps ppx_expect ppx_deriving.show ppx_deriving.eq)))
+  (pps ppx_expect ppx_deriving.show ppx_deriving.eq))
+)
+
 
 
 (rule

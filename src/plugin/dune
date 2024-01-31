@@ -3,4 +3,5 @@
  (public_name protoc-gen-ocaml)
  (libraries spec)
  (package ocaml-protoc-plugin)
+ (instrumentation (backend bisect_ppx))
 )

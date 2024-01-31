@@ -90,6 +90,9 @@ let test_encode (type t) ?dump ?(protoc=true) ?protoc_args (module M : T with ty
     | _ -> ()
   in
   let data = M.to_proto expect |> Writer.contents in
+  let data_speed = M.to_proto' (Writer.init ~mode:Speed ()) expect |> Writer.contents in
+  let data_space = M.to_proto' (Writer.init ~mode:Space ()) expect |> Writer.contents in
+  let data_balanced = M.to_proto' (Writer.init ~mode:Balanced ()) expect |> Writer.contents in
 
   let () =
     match dump with
@@ -100,6 +103,10 @@ let test_encode (type t) ?dump ?(protoc=true) ?protoc_args (module M : T with ty
     | true -> dump_protoc ?protoc_args (M.name' ()) data
     | false -> ()
   in
+
+  test_decode (module M) Test_runtime.Standard expect data_space;
+  test_decode (module M) Test_runtime.Standard expect data_speed;
+  test_decode (module M) Test_runtime.Standard expect data_balanced;
   test_decode (module M) Test_runtime.Standard expect data;
   test_decode (module M) Test_runtime.Fast expect data;
   test_decode (module M) Test_runtime.Full expect data;

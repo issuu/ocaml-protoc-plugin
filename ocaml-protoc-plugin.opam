@@ -19,6 +19,7 @@ depends: [
   "ppx_expect" {with-test}
   "ppx_inline_test" {with-test}
   "ppx_deriving" {with-test}
+  "bisect_ppx" {with-test}
   "conf-pkg-config" {build}
 ]
 

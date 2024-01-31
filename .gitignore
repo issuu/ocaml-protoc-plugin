@@ -1,6 +1,7 @@
 /_build/
 /_opam/
 /*.install
+_coverage
 .merlin
 node_modules
 lib
