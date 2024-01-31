@@ -5,7 +5,7 @@ type error =
   | `Illegal_value of string * Field.t
   | `Unknown_enum_value of int
   | `Oneof_missing
-  | `Required_field_missing ]
+  | `Required_field_missing of int * string ]
 
 exception Error of error
 

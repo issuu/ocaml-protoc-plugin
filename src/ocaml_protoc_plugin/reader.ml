@@ -92,6 +92,11 @@ let read_field_content: Field.field_type -> t -> Field.t = function
   | Length_delimited -> fun r -> Length_delimited (read_length_delimited r)
   | Fixed32 -> fun r -> Field.Fixed_32_bit (read_fixed32 r)
 
+let next_field_header reader =
+  match has_more reader with
+  | true -> Some (read_field_header reader)
+  | false -> None
+
 let to_list: t -> (int * Field.t) list =
   let read_field t =
     let (tpe, index) = read_field_header t in

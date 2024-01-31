@@ -5,10 +5,13 @@ module S = Spec.Deserialize
 module C = S.C
 open S
 
+(** Exception indicating that fast deserialization did not succeed and revert to full deserialization *)
+exception Restart_full
+
 type 'a reader = 'a -> Reader.t -> Field.field_type -> 'a
 type ('a, 'b) getter = 'a -> 'b
 type 'a field_spec = (int * 'a reader)
-type _ value = Value: ('b field_spec list * 'b * ('b, 'a) getter) -> 'a value
+type _ value = Value: ('b field_spec list * 'b * ('b, 'a) getter) -> 'a value [@@unboxed]
 type extensions = (int * Field.t) list
 
 type (_, _) value_list =
@@ -25,7 +28,7 @@ type (_, _) sentinel_list =
   | NCons : (sentinel_field_spec list  * 'a sentinel_getter) * ('b, 'c) sentinel_list -> ('a -> 'b, 'c) sentinel_list
 
 let error_wrong_field str field = Result.raise (`Wrong_field_type (str, field))
-let error_required_field_missing () = Result.raise `Required_field_missing
+let error_required_field_missing index spec = Result.raise (`Required_field_missing (index, Spec.Deserialize.C.show spec))
 
 let decode_zigzag v =
   let open Infix.Int64 in
@@ -86,38 +89,14 @@ let read_of_spec: type a. a spec -> Field.field_type * (Reader.t -> a) = functio
   | Message (from_proto, _merge) -> Length_delimited, fun reader ->
     let Field.{ offset; length; data } = Reader.read_length_delimited reader in
     from_proto (Reader.create ~offset ~length data)
-(*
-let default_value: type a. a spec -> a = function
-  | Double -> 0.0
-  | Float -> 0.0
-  | Int32 -> Int32.zero
-  | Int64 -> Int64.zero
-  | UInt32 -> Int32.zero
-  | UInt64 -> Int64.zero
-  | SInt32 -> Int32.zero
-  | SInt64 -> Int64.zero
-  | Fixed32 -> Int32.zero
-  | Fixed64 -> Int64.zero
-  | SFixed32 -> Int32.zero
-  | SFixed64 -> Int64.zero
-  | Message (of_proto, _merge) -> of_proto (Reader.create "")
-  | String -> ""
-  | Bytes -> Bytes.empty
-  | Int32_int -> 0
-  | Int64_int -> 0
-  | UInt32_int -> 0
-  | UInt64_int -> 0
-  | SInt32_int -> 0
-  | SInt64_int -> 0
-  | Fixed32_int -> 0
-  | Fixed64_int -> 0
-  | SFixed32_int -> 0
-  | SFixed64_int -> 0
-  | Enum of_int -> of_int 0
-  | Bool -> false
-*)
+
 let id x = x
 let keep_last _ v = v
+let merge_opt merge v1 v2 =
+  match v1 with
+  | None -> Some v2
+  | Some v1 -> Some (merge v1 v2)
+let keep_last_opt _ v = Some v
 
 let read_field ~read:(expect, read_f) ~map v reader field_type =
   match expect = field_type with
@@ -128,25 +107,16 @@ let read_field ~read:(expect, read_f) ~map v reader field_type =
 
 let value: type a. a compound -> a value = function
   | Basic_req (index, spec) ->
-    let map _ v2 = Some v2 in
-    let read = read_field ~read:(read_of_spec spec) ~map in
-    let getter = function Some v -> v | None -> error_required_field_missing () in
+    let read = read_field ~read:(read_of_spec spec) ~map:keep_last_opt in
+    let getter = function Some v -> v | None -> error_required_field_missing index spec in
     Value ([(index, read)], None, getter)
   | Basic (index, spec, default) ->
-    let map = keep_last
-    in
-    let read = read_field ~read:(read_of_spec spec) ~map in
+    let read = read_field ~read:(read_of_spec spec) ~map:keep_last in
     Value ([(index, read)], default, id)
   | Basic_opt (index, spec) ->
     let map = match spec with
-      | Message (_, merge) ->
-        let map v1 v2 =
-          match v1 with
-          | None -> Some v2
-          | Some v1 -> Some (merge v1 v2)
-        in
-        map
-      | _ -> fun _ v -> Some v (* Keep last for all other non-repeated types *)
+      | Message (_, merge) -> merge_opt merge
+      | _ -> keep_last_opt
     in
     let read = read_field ~read:(read_of_spec spec) ~map in
     Value ([(index, read)], None, id)
@@ -181,8 +151,21 @@ let value: type a. a compound -> a value = function
 
 module IntMap = Map.Make(struct type t = int let compare = Int.compare end)
 
+let rec extension_ranges: type a b. (a, b) compound_list -> extension_ranges = function
+  | Nil -> []
+  | Nil_ext extension_ranges -> extension_ranges
+  | Cons (_, rest) -> extension_ranges rest
+
 let in_extension_ranges extension_ranges index =
   List.exists ~f:(fun (start, end') -> index >= start && index <= end') extension_ranges
+
+let rec make_values: type a b. (a, b) compound_list -> (a, b) value_list = function
+  | Nil -> VNil
+  | Nil_ext _extension_ranges -> VNil_ext
+  | Cons (spec, rest) ->
+    let value = value spec in
+    let values = make_values rest in
+    VCons (value, values)
 
 (** Full (slow) deserialization. *)
 let deserialize_full: type constr a. extension_ranges -> (constr, a) value_list -> constr -> Reader.t -> a  = fun extension_ranges values constructor reader ->
@@ -240,85 +223,68 @@ let deserialize_full: type constr a. extension_ranges -> (constr, a) value_list 
   let extensions = read map [] in
   apply extensions constructor sentinels
 
-let deserialize: type constr a. (constr, a) compound_list -> constr -> Reader.t -> a = fun spec constr ->
+(* Fast deserialization. Assumes all fields in input are sorted. *)
+let deserialize_fast: type constr a. extension_ranges -> (constr, a) value_list -> constr -> Reader.t -> a  = fun extension_ranges values constr reader ->
 
-  (* Exception indicating that fast deserialization did not succeed and revert to full deserialization *)
-  let exception Restart_full in
-
-  let rec extension_ranges: type a b. (a, b) compound_list -> extension_ranges = function
-    | Nil -> []
-    | Nil_ext extension_ranges -> extension_ranges
-    | Cons (_, rest) -> extension_ranges rest
-  in
-
-  let rec make_values: type a b. (a, b) compound_list -> (a, b) value_list = function
-    | Nil -> VNil
-    | Nil_ext _extension_ranges -> VNil_ext
-    | Cons (spec, rest) ->
-      let value = value spec in
-      let values = make_values rest in
-      VCons (value, values)
-  in
-
-  let next_field reader =
-    match Reader.has_more reader with
-      | true -> Reader.read_field_header reader
-      | false -> Field.Varint, Int.max_int
-  in
-
-  let rec read_values: type constr a. extension_ranges -> Field.field_type -> int -> Reader.t -> constr -> extensions -> (constr, a) value_list -> a = fun extension_ranges tpe idx reader constr extensions ->
-    let rec read_repeated tpe index read_f default reader =
-      let default = read_f default reader tpe in
-      let (tpe, idx) = next_field reader in
-      match idx = index with
-      | true -> read_repeated tpe index read_f default reader
-      | false -> default, tpe, idx
-    in
-    function
-    | VNil when idx = Int.max_int ->
-      constr
-    | VNil_ext when idx = Int.max_int ->
-      constr (List.rev extensions)
-      (* All fields read successfully. Apply extensions and return result. *)
-    | VCons (Value ([index, read_f], default, get), vs) when index = idx ->
-      (* Read all values, and apply constructor once all fields have been read.
-         This pattern is the most likely to be matched for all values, and is added
-         as an optimization to avoid reconstructing the value list for each recursion.
-      *)
-      let default, tpe, idx = read_repeated tpe index read_f default reader in
-      let constr = (constr (get default)) in
-      read_values extension_ranges tpe idx reader constr extensions vs
-    | VCons (Value ((index, read_f) :: fields, default, get), vs) when index = idx ->
-      (* Read all values for the given field *)
-      let default, tpe, idx = read_repeated tpe index read_f default reader in
-      read_values extension_ranges tpe idx reader constr extensions (VCons (Value (fields, default, get), vs))
-    | vs when in_extension_ranges extension_ranges idx ->
-      (* Extensions may be sent inline. Store all valid extensions, before starting to apply constructors *)
+  let rec read_fields: type a. extension_ranges -> Field.field_type -> int -> Reader.t -> extensions -> a -> (int * a reader) list -> ((Field.field_type * int) option * extensions * a) = fun extension_ranges tpe idx reader extensions v -> function
+    | ((index, read_f) :: _) as lst when idx = index ->
+      let v = read_f v reader tpe in
+      begin
+        match Reader.next_field_header reader with
+        | Some (tpe, idx) -> read_fields extension_ranges tpe idx reader extensions v lst
+        | None -> (None, extensions, v)
+      end
+    | rest when in_extension_ranges extension_ranges idx ->
       let extensions = (idx, Reader.read_field_content tpe reader) :: extensions in
-      let (tpe, idx) = next_field reader in
-      read_values extension_ranges tpe idx reader constr extensions vs
-    | VCons (Value (_ :: fields, default, get), vs) ->
-      (* Drop the field, as we dont expect to find it. *)
-      read_values extension_ranges tpe idx reader constr extensions (VCons (Value (fields, default, get), vs))
-    | VCons (Value ([], default, get), vs) ->
-      (* Apply destructor. This case is only relevant for oneof fields *)
-      read_values extension_ranges tpe idx reader (constr (get default)) extensions vs
-    | VNil | VNil_ext ->
-      (* This implies that there are still fields to be read.
-         Revert to full deserialization.
-      *)
-      raise Restart_full
+      begin
+        match Reader.next_field_header reader with
+        | Some (tpe, idx) -> read_fields extension_ranges tpe idx reader extensions v rest
+        | None -> (None, extensions, v)
+      end
+    | _ :: rest -> read_fields extension_ranges tpe idx reader extensions v rest
+    | [] -> (Some (tpe, idx), extensions, v)
   in
 
+  let rec apply: type constr a. constr -> extensions -> (constr, a) value_list -> a = fun constr extensions -> function
+    | VNil -> constr
+    | VNil_ext -> constr (List.rev extensions)
+    | VCons (Value (_, default, get), vs) -> apply (constr (get default)) extensions vs
+  in
+
+  let rec read_values: type constr a. extension_ranges -> (Field.field_type * int) option -> Reader.t -> constr -> extensions -> (constr, a) value_list -> a = fun extension_ranges next_field reader constr extensions vs ->
+    match next_field with
+    | None -> apply constr extensions vs
+    | Some (tpe, idx) -> match vs with
+      | VCons (Value (fields, default, get), vs) ->
+        let (next_field, extensions, v) = read_fields extension_ranges tpe idx reader extensions default fields in
+        read_values extension_ranges next_field reader (constr (get v)) extensions vs
+      | VNil | VNil_ext ->
+        (* This implies that there are still fields to be read.
+           Revert to full deserialization.
+        *)
+        raise Restart_full
+  in
+  let next_field = Reader.next_field_header reader in
+  read_values extension_ranges next_field reader constr [] values
+
+let deserialize: type constr a. (constr, a) compound_list -> constr -> Reader.t -> a = fun spec constr ->
   let extension_ranges = extension_ranges spec in
   let values = make_values spec in
-
   fun reader ->
     let offset = Reader.offset reader in
-    let (tpe, idx) = next_field reader in
     try
-      read_values extension_ranges tpe idx reader constr [] values
-    with (Restart_full | Result.Error `Required_field_missing) ->
+      deserialize_fast extension_ranges values constr reader
+    with (Restart_full | Result.Error `Required_field_missing _ ) ->
       (* Revert to full deserialization *)
       Reader.reset reader offset;
       deserialize_full extension_ranges values constr reader
+
+let deserialize_full: type constr a. (constr, a) compound_list -> constr -> Reader.t -> a = fun spec constr ->
+  let extension_ranges = extension_ranges spec in
+  let values = make_values spec in
+  fun reader -> deserialize_full extension_ranges values constr reader
+
+let deserialize_fast: type constr a. (constr, a) compound_list -> constr -> Reader.t -> a = fun spec constr ->
+  let extension_ranges = extension_ranges spec in
+  let values = make_values spec in
+  fun reader -> deserialize_fast extension_ranges values constr reader

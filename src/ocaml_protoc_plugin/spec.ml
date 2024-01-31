@@ -44,7 +44,7 @@ module Make(T : T) = struct
     | Message : ('a, ((Reader.t -> 'a) * 'a merge), Writer.t -> 'a -> Writer.t) T.dir -> 'a spec
 
   (* Existential types *)
-  type espec = Espec: _ spec -> espec
+  type espec = Espec: _ spec -> espec [@@unboxed]
 
   type _ oneof =
     | Oneof_elem : int * 'b spec * ('a, ('b -> 'a), 'b) T.dir -> 'a oneof
@@ -64,11 +64,13 @@ module Make(T : T) = struct
     | Oneof : ('a, 'a oneof list, 'a -> unit oneof) T.dir -> ([> `not_set ] as 'a) compound
 
   type (_, _) compound_list =
+    (* End of list *)
     | Nil : ('a, 'a) compound_list
 
     (* Nil_ext denotes that the message contains extensions *)
     | Nil_ext: extension_ranges -> (extensions -> 'a, 'a) compound_list
 
+    (* List element *)
     | Cons : ('a compound) * ('b, 'c) compound_list -> ('a -> 'b, 'c) compound_list
 
   module C = struct

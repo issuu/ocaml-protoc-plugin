@@ -16,4 +16,5 @@ val read_fixed64 : t -> int64
 
 val read_varint : t -> int64
 val read_varint_unboxed : t -> int
+val next_field_header : t -> (Field.field_type * int) option
 (**/**)

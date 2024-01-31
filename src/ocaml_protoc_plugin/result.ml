@@ -1,6 +1,3 @@
-(** This module provides result type and functions for compatibility
- * with OCaml 4.06 *)
-
 type error =
   [ `Premature_end_of_input
   | `Unknown_field_type of int
@@ -8,7 +5,7 @@ type error =
   | `Illegal_value of string * Field.t
   | `Unknown_enum_value of int
   | `Oneof_missing
-  | `Required_field_missing ]
+  | `Required_field_missing of int * string ]
 
 exception Error of error
 type 'a t = ('a, error) result
@@ -18,10 +15,8 @@ let catch f = try Ok (f ()) with Error (#error as v) -> Error v
 
 let ( >>| ) : 'a t -> ('a -> 'b) -> 'b t = function Ok x -> fun f -> Ok (f x) | Error err -> fun _ -> Error err
 let ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t = function Ok x -> fun f -> f x | Error err -> fun _ -> Error err
-
-(* Extra functions (from Base) *)
-
 let return x = Ok x
+
 let fail : error -> 'a t = fun x -> Error x
 let get ~msg = function
   | Ok v -> v
@@ -63,9 +58,17 @@ let pp_error : Format.formatter -> [> error] -> unit = fun fmt -> function
      Format.fprintf fmt "@])")
   | `Oneof_missing ->
     Format.pp_print_string fmt "`Oneof_missing"
-  | `Required_field_missing ->
-    Format.pp_print_string fmt
-      "`Required_field_missing"
+  | `Required_field_missing x ->
+    (Format.fprintf fmt
+       "`Required_field_missing (@[<hov>";
+     ((fun (a0, a1) ->
+         Format.fprintf fmt "(@[";
+         ((Format.fprintf fmt "%d") a0;
+          Format.fprintf fmt ",@ ";
+          (Format.fprintf fmt "%s") a1);
+         Format.fprintf fmt "@])")) x;
+     Format.fprintf fmt "@])")
+
 let show_error : error -> string = Format.asprintf "%a" pp_error
 
 let _ =
