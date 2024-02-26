@@ -1,3 +1,6 @@
+# Active development moved 
+This repository contains original version of `ocaml-protoc-plugin`. However, active development of this libary has moved to [andersfugmann/ocaml-protoc-plugin](https://github.com/andersfugmann/ocaml-protoc-plugin). Consider using [andersfugmann/ocaml-protoc-plugin](https://github.com/andersfugmann/ocaml-protoc-plugin) when filing new isses and PR's against latest versions of ocaml-protoc-plugin. 
+
 # Ocaml protoc plugin
 [![Main workflow](https://github.com/issuu/ocaml-protoc-plugin/actions/workflows/workflow.yml/badge.svg)](https://github.com/issuu/ocaml-protoc-plugin/actions/workflows/workflow.yml)
 
