@@ -1,0 +1,16 @@
+name: Check Licenses
+on: [pull_request]
+
+jobs:
+  check-licenses:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@cbb722410c2e876e24abbe8de2cc27693e501dcb # v4
+      - name: Check licenses
+        uses: BendingSpoons/github-actions/check-licenses@check-licenses-v0.4.2
+        with:
+          license-config-github-token: ${{ secrets.LICENSE_CONFIG_GITHUB_TOKEN }}
+          scope: external
