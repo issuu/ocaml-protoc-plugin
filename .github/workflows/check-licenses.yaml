@@ -1,6 +1,5 @@
 name: Check Licenses
 on: [pull_request]
-
 jobs:
   check-licenses:
     runs-on: [self-hosted]
@@ -10,17 +9,14 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@cbb722410c2e876e24abbe8de2cc27693e501dcb # v4
-
-
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v2
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
-
       - run: opam pin . --no-action
       - run: opam depext conf-protoc --yes --with-doc --with-test
       - run: opam install . --deps-only --with-doc --with-test
-      - uses: BendingSpoons/github-actions/check-licenses@check-licenses-v0.4.3
+      - uses: BendingSpoons/github-actions/check-licenses@check-licenses-v0.5.0
         with:
           license-config-github-token: ${{ secrets.LICENSE_CONFIG_GITHUB_TOKEN }}
           scope: external
