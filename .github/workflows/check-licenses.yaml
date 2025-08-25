@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@cbb722410c2e876e24abbe8de2cc27693e501dcb # v4
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
-        uses: ocaml/setup-ocaml@v2
+        uses: ocaml/setup-ocaml@d7b04341511764175f0caa9ca95812db2a02c4a3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
       - run: opam pin . --no-action
