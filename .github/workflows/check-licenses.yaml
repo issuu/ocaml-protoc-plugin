@@ -16,7 +16,7 @@ jobs:
       - run: opam pin . --no-action
       - run: opam depext conf-protoc --yes --with-doc --with-test
       - run: opam install . --deps-only --with-doc --with-test
-      - uses: BendingSpoons/github-actions/check-licenses@61d566cd7b62810c302495c8976b18f3754343e2
+      - uses: BendingSpoons/github-actions/check-licenses@463fb9768269a4b7b1c4930ab7365b8c2a7762e9
         with:
           license-config-github-token: ${{ secrets.LICENSE_CONFIG_GITHUB_TOKEN }}
           scope: external
